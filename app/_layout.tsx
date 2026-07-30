@@ -1,13 +1,13 @@
 import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { Provider as PaperProvider } from 'react-native-paper';
-import 'react-native-reanimated';
 
 import { useColorScheme } from '@/components/useColorScheme';
+import { WellnessProvider } from '@/context/WellnessContext';
+import { lightTheme, darkTheme } from '@/src/theme';
 
 export {
   // Catch any errors thrown by the Layout component.
@@ -26,6 +26,7 @@ export default function RootLayout() {
   const [loaded, error] = useFonts({
     SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
     ...FontAwesome.font,
+    NotoColorEmoji: require('../assets/fonts/NotoColorEmoji.ttf'),
   });
 
   // Expo Router uses Error Boundaries to catch errors in the navigation tree.
@@ -50,14 +51,19 @@ function RootLayoutNav() {
   const colorScheme = useColorScheme();
 
   return (
-    <PaperProvider>
-      <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+    <PaperProvider theme={colorScheme === 'dark' ? darkTheme : lightTheme}>
+      <WellnessProvider>
         <Stack initialRouteName="login">
           <Stack.Screen name="login" options={{ headerShown: false }} />
+          <Stack.Screen name="register" options={{ headerShown: false }} />
+          <Stack.Screen name="mood-logger" options={{ headerShown: false }} />
+          <Stack.Screen name="sleep-logger" options={{ headerShown: false }} />
+          <Stack.Screen name="activity-logger" options={{ headerShown: false }} />
+          <Stack.Screen name="journal" options={{ headerShown: false }} />
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
           <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
         </Stack>
-      </ThemeProvider>
+      </WellnessProvider>
     </PaperProvider>
   );
 }

@@ -1,211 +1,407 @@
-import React from 'react';
-import { View, StyleSheet, ScrollView, TouchableOpacity, Dimensions, StatusBar } from 'react-native';
-import { Text, Avatar, Badge, Button, Surface } from 'react-native-paper';
-import { Smile, Moon, Zap, Activity, ChevronRight, Bell, Sparkles } from 'lucide-react-native';
+import React, { useState } from 'react';
+import { View, StyleSheet, ScrollView, TouchableOpacity, Dimensions, StatusBar, Platform } from 'react-native';
+import { Text, Avatar, Badge, Surface, Portal, Modal } from 'react-native-paper';
+import { Smile, Moon, Zap, Activity, ChevronRight, Bell, Sparkles, MessageCircle, HeartPulse, BookOpen, Flame, Compass, X, Wind, CheckCircle2 } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
+import { useWellness } from '@/context/WellnessContext';
+import { LinearGradient } from 'expo-linear-gradient';
+import AdminDashboard from '@/components/dashboards/AdminDashboard';
+import TeacherDashboard from '@/components/dashboards/TeacherDashboard';
 
 const { width } = Dimensions.get('window');
 const JUCOCH_GREEN = '#2D6A4F';
 
-const MOODS = [
-  { label: 'Awful', emoji: '😫', color: '#FF6B6B' },
-  { label: 'Bad', emoji: '☹️', color: '#FF9F43' },
-  { label: 'Good', emoji: '🙂', color: '#FBC531' },
-  { label: 'Great', emoji: '😊', color: '#4BCFFA' },
-  { label: 'Amazing', emoji: '🤩', color: '#48BB78' },
+const QUICK_ACTIONS = [
+  { id: 'mood', label: 'Log Mood', icon: Smile, color: '#48BB78', route: '/mood-logger', desc: 'How are you feeling?' },
+  { id: 'sleep', label: 'Sleep Log', icon: Moon, color: '#5F27CD', route: '/sleep-logger', desc: 'Record rest hours' },
+  { id: 'chat', label: 'AI Coach', icon: Sparkles, color: '#1E88E5', route: '/(tabs)/chat', desc: '24/7 AI Companion' },
+  { id: 'journal', label: 'Journal', icon: BookOpen, color: '#FF9F43', route: '/journal-logger', desc: 'Reflect & express' },
 ];
 
 export default function HomeScreen() {
   const router = useRouter();
+  const { userAlias, userRole, moodLogs, sleepLogs, activityEntries, wellnessScore, getCurrentStreak, addMoodLog } = useWellness();
+
+  const [selectedMood, setSelectedMood] = useState<string | null>(null);
+  const [moodSavedMsg, setMoodSavedMsg] = useState('');
+  const [showBreathingModal, setShowBreathingModal] = useState(false);
+
+  const displayName = userAlias || 'Wellness Explorer';
+  const displayRole = userRole || 'Individual';
+  const isAdmin = displayRole === 'Admin';
+  const isTeacher = displayRole === 'Teacher';
+
+  const MOOD_OPTIONS = [
+    { label: 'Awful', emoji: '😫', color: '#FF6B6B' },
+    { label: 'Bad', emoji: '☹️', color: '#FF9F43' },
+    { label: 'Good', emoji: '🙂', color: '#FBC531' },
+    { label: 'Great', emoji: '😊', color: '#4BCFFA' },
+    { label: 'Amazing', emoji: '🤩', color: '#48BB78' },
+  ];
+
+  const handleQuickMoodSelect = (mood: typeof MOOD_OPTIONS[0]) => {
+    setSelectedMood(mood.label);
+    addMoodLog({ id: Date.now(), mood: mood.label, emoji: mood.emoji, timestamp: 'Just now' });
+    setMoodSavedMsg(`Recorded your mood as "${mood.label} ${mood.emoji}"!`);
+    setTimeout(() => setMoodSavedMsg(''), 2500);
+  };
 
   return (
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" />
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         
-        {/* Modern Header */}
+        {/* Top Header */}
         <View style={styles.header}>
-          <View>
-            <Text variant="bodyMedium" style={styles.greetingText}>Hello, Jamie 👋</Text>
-            <Text variant="headlineSmall" style={styles.welcomeText}>How's your mind today?</Text>
+          <View style={{ flex: 1 }}>
+            <Text variant="bodyMedium" style={styles.greetingText}>Welcome back 👋</Text>
+            <Text variant="headlineSmall" style={styles.welcomeText}>
+              {isAdmin ? 'Master Control Panel' : isTeacher ? 'Classroom Overview' : displayName}
+            </Text>
+            <View style={styles.roleBadgeWrapper}>
+              <Surface style={styles.roleBadgeSurface} elevation={0}>
+                <Text style={styles.roleBadgeText}>{displayRole} Account</Text>
+              </Surface>
+            </View>
           </View>
+
           <TouchableOpacity onPress={() => router.push('/(tabs)/profile')} activeOpacity={0.8}>
-            <Surface style={styles.avatarSurface} elevation={2}>
-              <Avatar.Text size={48} label="JD" style={{ backgroundColor: JUCOCH_GREEN }} />
+            <Surface style={styles.avatarSurface} elevation={3}>
+              <Avatar.Text size={50} label={displayName.slice(0, 2).toUpperCase()} style={{ backgroundColor: JUCOCH_GREEN }} />
               <Badge style={styles.onlineBadge} size={12} />
             </Surface>
           </TouchableOpacity>
         </View>
 
-        {/* Daily Motivation Card */}
-        <Surface style={styles.motivationCard} elevation={0}>
-            <Sparkles size={20} color={JUCOCH_GREEN} />
-            <Text style={styles.motivationText}>
-                "Your mental health is a priority. Your happiness is an essential. Your self-care is a necessity."
-            </Text>
-        </Surface>
+        {/* ROLE SPECIFIC EXCLUSIVE DASHBOARDS FOR ADMIN AND TEACHER */}
+        {isAdmin ? (
+          <AdminDashboard />
+        ) : isTeacher ? (
+          <TeacherDashboard />
+        ) : (
+          /* PERSONAL WELLNESS DASHBOARD FOR STUDENT AND INDIVIDUAL ONLY */
+          <>
+            {/* Daily Quote Banner */}
+            <Surface style={styles.motivationCard} elevation={1}>
+              <View style={styles.motivationIconBg}>
+                <Sparkles size={18} color={JUCOCH_GREEN} />
+              </View>
+              <Text style={styles.motivationText}>
+                "Your mental health is a priority. Your self-care is an essential necessity."
+              </Text>
+            </Surface>
 
-        {/* High-Impact Wellness Score */}
-        <Surface style={styles.scoreCard} elevation={4}>
-            <View style={styles.scoreInfo}>
-                <Text style={styles.scoreTitle}>AI WELLNESS SCORE</Text>
-                <View style={styles.scoreMain}>
-                    <Text style={styles.scoreValue}>78</Text>
-                    <View style={styles.trendBadge}>
-                        <Text style={styles.trendText}>↑ +6 pts</Text>
-                    </View>
+            {/* High-Impact AI Wellness Hero Card */}
+            <TouchableOpacity activeOpacity={0.92} onPress={() => router.push('/(tabs)/insights')}>
+              <LinearGradient
+                colors={['#1B4332', '#2D6A4F', '#40916C']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.heroCardGradient}
+              >
+                <View style={styles.heroHeader}>
+                  <View style={styles.heroTag}>
+                    <Activity size={12} color="#FFF" style={{ marginRight: 4 }} />
+                    <Text style={styles.heroTagText}>AI WELLNESS INDEX</Text>
+                  </View>
+                  <View style={styles.streakTag}>
+                    <Flame size={14} color="#FFB703" fill="#FFB703" style={{ marginRight: 4 }} />
+                    <Text style={styles.streakTagText}>{getCurrentStreak()} Day Streak</Text>
+                  </View>
                 </View>
-                <Text style={styles.scoreSub}>Your emotional stability is improving!</Text>
-            </View>
-            <View style={styles.scoreVisual}>
-                <Surface style={styles.outerCircle} elevation={0}>
-                    <Surface style={styles.innerCircle} elevation={0}>
-                        <Activity size={24} color={JUCOCH_GREEN} />
-                    </Surface>
-                </Surface>
-            </View>
-        </Surface>
 
-        {/* Elegant Stats Grid */}
-        <View style={styles.statsGrid}>
-          <StatCard icon={Smile} value="7.2" label="Mood" color="#48BB78" />
-          <StatCard icon={Moon} value="6.4h" label="Sleep" color="#5F27CD" />
-          <StatCard icon={Zap} value="11" label="Streak" color="#FF9F43" />
-          <StatCard icon={Activity} value="3" label="Logs" color="#FF6B6B" />
-        </View>
+                <View style={styles.heroMainRow}>
+                  <View style={styles.scoreInfo}>
+                    <View style={styles.scoreMain}>
+                      <Text style={styles.scoreValue}>{wellnessScore}</Text>
+                      <Text style={styles.scoreScale}>/100</Text>
+                    </View>
+                    <Text style={styles.scoreSub}>
+                      {wellnessScore >= 80 ? '🌟 Excellent emotional balance today!' : 
+                       wellnessScore >= 60 ? '✨ Stable emotional state. Keep it up!' :
+                       '💙 Rest and talk with Jucoch AI for support.'}
+                    </Text>
+                  </View>
 
-        {/* Modern Alert Section */}
-        <Surface style={styles.warningCard} elevation={1}>
-            <View style={styles.warningIconBg}>
-                <Bell size={20} color="#FF6B6B" />
-            </View>
-            <View style={styles.warningTextContent}>
-                <Text style={styles.warningTitle}>Early Warning Detected</Text>
-                <Text style={styles.warningDesc}>
-                    Sleep quality dropped 24%. Let's talk about it.
-                </Text>
-            </View>
-            <IconButton icon={() => <ChevronRight size={20} color="#FF6B6B" />} onPress={() => {}} />
-        </Surface>
+                  <View style={styles.scoreRingWrapper}>
+                    <View style={styles.outerCircle}>
+                      <View style={styles.innerCircle}>
+                        <HeartPulse size={26} color={JUCOCH_GREEN} />
+                      </View>
+                    </View>
+                  </View>
+                </View>
 
-        {/* User-Friendly Mood Quick Log */}
-        <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Mood Quick Log</Text>
-            <TouchableOpacity onPress={() => router.push('/mood-logger')}>
-                <Text style={styles.seeAll}>See Details</Text>
+                <View style={styles.heroFooter}>
+                  <Text style={styles.heroFooterText}>View Full Analytics & Reports</Text>
+                  <ChevronRight size={16} color="#FFF" />
+                </View>
+              </LinearGradient>
             </TouchableOpacity>
-        </View>
-        
-        <View style={styles.emojiRow}>
-            {MOODS.map((m) => (
-                <TouchableOpacity 
-                    key={m.label} 
-                    style={styles.emojiItem} 
-                    onPress={() => router.push('/mood-logger')}
-                    activeOpacity={0.7}
-                >
-                    <Text style={styles.emojiText}>{m.emoji}</Text>
-                    <Text style={styles.emojiLabel}>{m.label}</Text>
-                </TouchableOpacity>
-            ))}
-        </View>
 
-        <Button 
-            mode="contained" 
-            buttonColor={JUCOCH_GREEN} 
-            style={styles.mainActionButton}
-            contentStyle={{ height: 56 }}
-            onPress={() => router.push('/(tabs)/chat')}
-        >
-            Start AI Chat Session
-        </Button>
+            {/* Quick Interactive Mood Check-in Bar */}
+            <View style={styles.sectionContainer}>
+              <View style={styles.sectionHeader}>
+                <Text style={styles.sectionTitle}>QUICK MOOD CHECK-IN</Text>
+                {moodSavedMsg ? (
+                  <Text style={styles.moodSavedText}>✓ Saved!</Text>
+                ) : (
+                  <Text style={styles.sectionSub}>Tap how you feel</Text>
+                )}
+              </View>
+
+              <Surface style={styles.moodBarCard} elevation={2}>
+                {MOOD_OPTIONS.map((m) => {
+                  const isSelected = selectedMood === m.label;
+                  return (
+                    <TouchableOpacity
+                      key={m.label}
+                      style={[styles.moodItem, isSelected && { backgroundColor: `${m.color}25`, borderColor: m.color }]}
+                      onPress={() => handleQuickMoodSelect(m)}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={styles.moodEmoji}>{m.emoji}</Text>
+                      <Text style={[styles.moodLabel, isSelected && { color: m.color, fontWeight: 'bold' }]}>
+                        {m.label}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </Surface>
+            </View>
+
+            {/* Quick Action Navigation Grid */}
+            <View style={styles.sectionContainer}>
+              <Text style={styles.sectionTitle}>WELLNESS TOOLS</Text>
+              <View style={styles.quickGrid}>
+                {QUICK_ACTIONS.map((action) => {
+                  const IconComp = action.icon;
+                  return (
+                    <TouchableOpacity
+                      key={action.id}
+                      style={styles.gridCardWrapper}
+                      onPress={() => router.push(action.route as any)}
+                      activeOpacity={0.8}
+                    >
+                      <Surface style={styles.gridCard} elevation={2}>
+                        <View style={[styles.gridIconBg, { backgroundColor: `${action.color}15` }]}>
+                          <IconComp size={22} color={action.color} />
+                        </View>
+                        <Text style={styles.gridTitle}>{action.label}</Text>
+                        <Text style={styles.gridDesc}>{action.desc}</Text>
+                      </Surface>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </View>
+
+            {/* Breathing Exercise Card */}
+            <Surface style={styles.breathingCard} elevation={2}>
+              <View style={styles.breathingLeft}>
+                <View style={styles.windIconBg}>
+                  <Wind size={22} color={JUCOCH_GREEN} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.breathingTitle}>Guided Breathing Exercise</Text>
+                  <Text style={styles.breathingSub}>Take 2 minutes to calm your vagus nerve and reduce anxiety.</Text>
+                </View>
+              </View>
+
+              <TouchableOpacity 
+                style={styles.startBreatheBtn}
+                onPress={() => setShowBreathingModal(true)}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.startBreatheBtnText}>Start Breath</Text>
+              </TouchableOpacity>
+            </Surface>
+          </>
+        )}
+
       </ScrollView>
+
+      {/* MODAL: GUIDED BREATHING EXERCISE */}
+      <Portal>
+        <Modal
+          visible={showBreathingModal}
+          onDismiss={() => setShowBreathingModal(false)}
+          contentContainerStyle={{ padding: 20 }}
+        >
+          <Surface style={styles.breatheModalCard}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Guided Breathwork</Text>
+              <TouchableOpacity onPress={() => setShowBreathingModal(false)}>
+                <X size={20} color="#707571" />
+              </TouchableOpacity>
+            </View>
+            
+            <View style={styles.breatheCircleContainer}>
+              <LinearGradient
+                colors={['#2D6A4F', '#40916C']}
+                style={styles.breatheOuterCircle}
+              >
+                <View style={styles.breatheInnerCircle}>
+                  <Wind size={36} color={JUCOCH_GREEN} />
+                  <Text style={styles.breatheInstruction}>Inhale...</Text>
+                  <Text style={styles.breatheSub}>4 Seconds</Text>
+                </View>
+              </LinearGradient>
+            </View>
+
+            <Text style={styles.breatheTipText}>
+              Inhale through your nose for 4 seconds, hold for 4 seconds, and exhale slowly for 4 seconds.
+            </Text>
+
+            <TouchableOpacity 
+              style={styles.closeBreatheBtn}
+              onPress={() => setShowBreathingModal(false)}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.closeBreatheBtnText}>Complete Exercise</Text>
+            </TouchableOpacity>
+          </Surface>
+        </Modal>
+      </Portal>
     </View>
   );
-}
-
-function StatCard({ icon: Icon, value, label, color }: any) {
-  return (
-    <Surface style={styles.statCard} elevation={1}>
-      <View style={[styles.statIconBg, { backgroundColor: color + '15' }]}>
-        <Icon size={18} color={color} />
-      </View>
-      <Text style={styles.statValue}>{value}</Text>
-      <Text style={styles.statLabel}>{label}</Text>
-    </Surface>
-  );
-}
-
-function IconButton({ icon: Icon, onPress }: any) {
-    return (
-        <TouchableOpacity style={styles.iconButton} onPress={onPress}>
-            <Icon />
-        </TouchableOpacity>
-    );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8F9FA',
+    backgroundColor: '#F3F8F5',
   },
   scrollView: {
     flex: 1,
   },
   content: {
-    padding: 24,
-    paddingTop: 60,
-    paddingBottom: 40,
+    padding: 20,
+    paddingTop: Platform.OS === 'ios' ? 60 : 40,
+    paddingBottom: 110,
+    maxWidth: 550,
+    alignSelf: 'center',
+    width: '100%',
   },
   header: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
+    justifyContent: 'space-between',
     marginBottom: 20,
   },
   greetingText: {
-    color: '#666',
+    fontSize: 13,
+    color: '#707571',
     fontWeight: '500',
   },
   welcomeText: {
     fontWeight: 'bold',
-    color: '#1A1A1A',
+    color: '#1C1F1D',
+    marginTop: 2,
+  },
+  roleBadgeWrapper: {
     marginTop: 4,
   },
+  roleBadgeSurface: {
+    backgroundColor: '#E8F5E9',
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    borderRadius: 12,
+    alignSelf: 'flex-start',
+  },
+  roleBadgeText: {
+    fontSize: 11,
+    fontWeight: 'bold',
+    color: JUCOCH_GREEN,
+  },
   avatarSurface: {
-    borderRadius: 24,
+    borderRadius: 28,
+    padding: 2,
+    backgroundColor: '#FFF',
+    position: 'relative',
+    borderWidth: 2,
+    borderColor: '#D8F3DC',
   },
   onlineBadge: {
-    position: 'absolute',
-    bottom: 0,
-    right: 0,
     backgroundColor: '#48BB78',
+    position: 'absolute',
+    bottom: 2,
+    right: 2,
     borderWidth: 2,
     borderColor: '#FFF',
   },
   motivationCard: {
-    flexDirection: 'row',
     backgroundColor: '#FFF',
-    padding: 16,
     borderRadius: 20,
-    marginBottom: 24,
+    padding: 14,
+    marginBottom: 16,
+    flexDirection: 'row',
     alignItems: 'center',
+    borderLeftWidth: 4,
+    borderLeftColor: JUCOCH_GREEN,
     borderWidth: 1,
-    borderColor: '#F0F0F0',
+    borderColor: '#EBF2EE',
+  },
+  motivationIconBg: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    backgroundColor: '#E8F5E9',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 10,
   },
   motivationText: {
-    flex: 1,
-    marginLeft: 12,
     fontSize: 12,
-    color: '#666',
+    color: '#4A5568',
     fontStyle: 'italic',
+    flex: 1,
     lineHeight: 18,
   },
-  scoreCard: {
-    backgroundColor: JUCOCH_GREEN,
+  heroCardGradient: {
     borderRadius: 28,
-    padding: 24,
+    padding: 22,
     marginBottom: 24,
+    shadowColor: JUCOCH_GREEN,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.25,
+    shadowRadius: 16,
+    elevation: 6,
+  },
+  heroHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 14,
+  },
+  heroTag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  heroTagText: {
+    color: '#FFF',
+    fontSize: 10,
+    fontWeight: 'bold',
+    letterSpacing: 1,
+  },
+  streakTag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.25)',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  streakTagText: {
+    color: '#FFB703',
+    fontSize: 11,
+    fontWeight: 'bold',
+  },
+  heroMainRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -213,168 +409,259 @@ const styles = StyleSheet.create({
   scoreInfo: {
     flex: 1,
   },
-  scoreTitle: {
-    color: 'rgba(255,255,255,0.6)',
-    fontSize: 10,
-    fontWeight: 'bold',
-    letterSpacing: 1.5,
-  },
   scoreMain: {
     flexDirection: 'row',
-    alignItems: 'center',
-    marginVertical: 4,
+    alignItems: 'baseline',
   },
   scoreValue: {
-    color: '#FFF',
-    fontSize: 56,
+    fontSize: 48,
     fontWeight: 'bold',
-  },
-  trendBadge: {
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-    marginLeft: 12,
-  },
-  trendText: {
     color: '#FFF',
-    fontSize: 11,
+  },
+  scoreScale: {
+    fontSize: 16,
+    color: 'rgba(255, 255, 255, 0.7)',
     fontWeight: 'bold',
+    marginLeft: 4,
   },
   scoreSub: {
-    color: 'rgba(255,255,255,0.8)',
-    fontSize: 12,
+    color: 'rgba(255, 255, 255, 0.9)',
+    fontSize: 13,
     marginTop: 4,
+    lineHeight: 18,
   },
-  scoreVisual: {
-    marginLeft: 16,
+  scoreRingWrapper: {
+    marginLeft: 12,
   },
   outerCircle: {
-    width: 70,
-    height: 70,
-    borderRadius: 35,
-    backgroundColor: 'rgba(255,255,255,0.1)',
+    width: 68,
+    height: 68,
+    borderRadius: 34,
+    backgroundColor: 'rgba(255, 255, 255, 0.25)',
     justifyContent: 'center',
     alignItems: 'center',
   },
   innerCircle: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
+    width: 52,
+    height: 52,
+    borderRadius: 26,
     backgroundColor: '#FFF',
     justifyContent: 'center',
     alignItems: 'center',
   },
-  statsGrid: {
+  heroFooter: {
     flexDirection: 'row',
+    alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 24,
+    marginTop: 18,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255, 255, 255, 0.2)',
   },
-  statCard: {
-    width: '23%',
-    backgroundColor: '#FFF',
-    paddingVertical: 16,
-    borderRadius: 20,
-    alignItems: 'center',
-  },
-  statIconBg: {
-    width: 36,
-    height: 36,
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  statValue: {
-    fontWeight: 'bold',
-    fontSize: 16,
-    color: '#1A1A1A',
-  },
-  statLabel: {
-    fontSize: 10,
-    color: '#999',
-    marginTop: 2,
-  },
-  warningCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFF',
-    borderRadius: 20,
-    padding: 16,
-    marginBottom: 32,
-    borderLeftWidth: 4,
-    borderLeftColor: '#FF6B6B',
-  },
-  warningIconBg: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#FFF0F0',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 16,
-  },
-  warningTextContent: {
-    flex: 1,
-  },
-  warningTitle: {
-    color: '#FF6B6B',
-    fontWeight: 'bold',
-    fontSize: 14,
-  },
-  warningDesc: {
+  heroFooterText: {
+    color: '#FFF',
     fontSize: 12,
-    color: '#666',
-    marginTop: 2,
+    fontWeight: '600',
+  },
+  sectionContainer: {
+    marginBottom: 22,
   },
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 10,
+    paddingHorizontal: 2,
   },
   sectionTitle: {
-    fontSize: 18,
+    fontSize: 11,
     fontWeight: 'bold',
-    color: '#1A1A1A',
+    color: '#808983',
+    letterSpacing: 1.2,
   },
-  seeAll: {
+  sectionSub: {
+    fontSize: 11,
+    color: '#707571',
+  },
+  moodSavedText: {
+    fontSize: 11,
+    fontWeight: 'bold',
     color: JUCOCH_GREEN,
-    fontWeight: '600',
-    fontSize: 13,
   },
-  emojiRow: {
+  moodBarCard: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 32,
-  },
-  emojiItem: {
-    alignItems: 'center',
     backgroundColor: '#FFF',
-    width: '18%',
-    paddingVertical: 16,
-    borderRadius: 20,
+    borderRadius: 22,
+    padding: 10,
+    justifyContent: 'space-around',
     borderWidth: 1,
-    borderColor: '#F0F0F0',
+    borderColor: '#E2EFE7',
   },
-  emojiText: {
-    fontSize: 28,
+  moodItem: {
+    alignItems: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    borderRadius: 16,
+    borderWidth: 1.5,
+    borderColor: 'transparent',
+  },
+  moodEmoji: {
+    fontSize: 24,
     marginBottom: 4,
   },
-  emojiLabel: {
-    fontSize: 9,
-    color: '#999',
-    fontWeight: '600',
+  moodLabel: {
+    fontSize: 11,
+    color: '#707571',
+    fontWeight: '500',
   },
-  mainActionButton: {
-    borderRadius: 18,
+  quickGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+  },
+  gridCardWrapper: {
+    width: '48%',
+    flexGrow: 1,
+  },
+  gridCard: {
+    backgroundColor: '#FFF',
+    borderRadius: 22,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#EBF2EE',
+  },
+  gridIconBg: {
+    width: 44,
+    height: 44,
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  gridTitle: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#1C1F1D',
+  },
+  gridDesc: {
+    fontSize: 11,
+    color: '#707571',
+    marginTop: 2,
+  },
+  breathingCard: {
+    backgroundColor: '#FFF',
+    borderRadius: 24,
+    padding: 18,
+    marginBottom: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderWidth: 1.5,
+    borderColor: '#D8F3DC',
+  },
+  breathingLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    paddingRight: 12,
+  },
+  windIconBg: {
+    width: 44,
+    height: 44,
+    borderRadius: 16,
+    backgroundColor: '#E8F5E9',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  breathingTitle: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#1C1F1D',
+  },
+  breathingSub: {
+    fontSize: 11,
+    color: '#707571',
+    marginTop: 2,
+    lineHeight: 16,
+  },
+  startBreatheBtn: {
+    backgroundColor: JUCOCH_GREEN,
+    borderRadius: 16,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+  },
+  startBreatheBtnText: {
+    color: '#FFF',
+    fontWeight: 'bold',
+    fontSize: 12,
+  },
+  breatheModalCard: {
+    backgroundColor: '#FFF',
+    borderRadius: 28,
+    padding: 24,
+    alignItems: 'center',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    width: '100%',
+    marginBottom: 16,
+  },
+  modalTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#1C1F1D',
+  },
+  breatheCircleContainer: {
+    marginVertical: 20,
+    alignItems: 'center',
+  },
+  breatheOuterCircle: {
+    width: 140,
+    height: 140,
+    borderRadius: 70,
+    justifyContent: 'center',
+    alignItems: 'center',
     elevation: 4,
-    shadowColor: JUCOCH_GREEN,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 12,
   },
-  iconButton: {
-    padding: 8,
-  }
+  breatheInnerCircle: {
+    width: 116,
+    height: 116,
+    borderRadius: 58,
+    backgroundColor: '#FFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  breatheInstruction: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: JUCOCH_GREEN,
+    marginTop: 6,
+  },
+  breatheSub: {
+    fontSize: 11,
+    color: '#707571',
+    marginTop: 2,
+  },
+  breatheTipText: {
+    fontSize: 12,
+    color: '#707571',
+    textAlign: 'center',
+    lineHeight: 18,
+    marginBottom: 20,
+  },
+  closeBreatheBtn: {
+    backgroundColor: JUCOCH_GREEN,
+    borderRadius: 18,
+    paddingVertical: 14,
+    width: '100%',
+    alignItems: 'center',
+  },
+  closeBreatheBtnText: {
+    color: '#FFF',
+    fontWeight: 'bold',
+    fontSize: 14,
+  },
 });

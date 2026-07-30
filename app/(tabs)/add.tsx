@@ -1,6 +1,6 @@
 import React from 'react';
-import { View, StyleSheet, ScrollView, TouchableOpacity, Dimensions } from 'react-native';
-import { Text, Surface, IconButton } from 'react-native-paper';
+import { View, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { Text, Surface } from 'react-native-paper';
 import { useRouter } from 'expo-router';
 import { 
   LayoutDashboard, BarChart3, ClipboardCheck, 
@@ -8,7 +8,6 @@ import {
   Smile, Moon, Activity, BookText, ChevronRight
 } from 'lucide-react-native';
 
-const { width } = Dimensions.get('window');
 const JUCOCH_GREEN = '#2D6A4F';
 
 export default function FeaturesHub() {
@@ -92,6 +91,7 @@ const styles = StyleSheet.create({
   content: {
     padding: 24,
     paddingTop: 60,
+    paddingBottom: 110,
   },
   header: {
     marginBottom: 32,
