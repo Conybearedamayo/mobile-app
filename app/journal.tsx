@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, ScrollView, TouchableOpacity, TextInput } from 'react-native';
-import { Text, Button, Surface } from 'react-native-paper';
+import { View, StyleSheet, ScrollView, TouchableOpacity, Platform } from 'react-native';
+import { Text, Button, Surface, TextInput } from 'react-native-paper';
 import { ChevronLeft, Sparkles, X } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { useWellness } from '@/context/WellnessContext';
@@ -22,9 +22,15 @@ const JOURNAL_PROMPTS = [
 
 export default function JournalScreen() {
   const router = useRouter();
-  const { addJournalEntry } = useWellness();
+  const { addJournalEntry, isDarkMode } = useWellness();
   const [entry, setEntry] = useState('');
   const [selectedPrompt, setSelectedPrompt] = useState<string | null>(null);
+
+  const dynamicBg = isDarkMode ? '#121614' : '#FFF';
+  const dynamicCardBg = isDarkMode ? '#1C231F' : '#F8F9FA';
+  const dynamicText = isDarkMode ? '#EAF2EC' : '#1A1A1A';
+  const dynamicSub = isDarkMode ? '#9EB3A5' : '#999';
+  const dynamicBorder = isDarkMode ? '#2C3A31' : '#EEE';
 
   const handlePromptSelect = (prompt: string) => {
     setSelectedPrompt(prompt);
@@ -36,13 +42,10 @@ export default function JournalScreen() {
 
   const handleSave = () => {
     if (entry.trim()) {
-      // If a prompt was active, prepend or attach it to the log meta if desired.
-      // Here we combine them so it saves cleanly to your text field.
       const finalContent = selectedPrompt 
         ? `Prompt: ${selectedPrompt}\n\n${entry}`
         : entry;
 
-      // addJournalEntry expects a string (the entry content) — pass the combined content
       addJournalEntry(finalContent);
       
       setEntry('');
@@ -52,22 +55,21 @@ export default function JournalScreen() {
   };
 
   return (
-    <View style={styles.container}>
-      {/* KeyboardAvoidingView alternative approach: using flexGrow on ScrollView so input stays accessible */}
+    <View style={[styles.container, { backgroundColor: dynamicBg }]}>
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-            <ChevronLeft size={24} color="#333" />
+          <TouchableOpacity onPress={() => router.back()} style={[styles.backButton, { backgroundColor: dynamicCardBg }]}>
+            <ChevronLeft size={24} color={dynamicText} />
           </TouchableOpacity>
           <View>
-            <Text variant="headlineSmall" style={styles.title}>Daily Journal</Text>
-            <Text variant="bodySmall" style={styles.dateText}>
+            <Text variant="headlineSmall" style={[styles.title, { color: dynamicText }]}>Daily Journal</Text>
+            <Text variant="bodySmall" style={[styles.dateText, { color: dynamicSub }]}>
               {new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
             </Text>
           </View>
         </View>
 
-        <Surface style={styles.aiTip} elevation={0}>
+        <Surface style={[styles.aiTip, { backgroundColor: isDarkMode ? '#1E3A2B' : '#F0F5F2' }]} elevation={0}>
           <Sparkles size={18} color={JUCOCH_GREEN} />
           <Text style={styles.aiTipText}>
             Tip: Writing for just 5 minutes can help lower stress levels.
@@ -76,7 +78,7 @@ export default function JournalScreen() {
 
         {/* Journal Prompts Horizontal Scroll */}
         <View style={styles.promptsSection}>
-          <Text style={styles.promptsTitle}>Need inspiration?</Text>
+          <Text style={[styles.promptsTitle, { color: dynamicText }]}>Need inspiration?</Text>
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
@@ -89,12 +91,14 @@ export default function JournalScreen() {
                   key={index}
                   style={[
                     styles.promptButton,
+                    { backgroundColor: dynamicCardBg, borderColor: dynamicBorder },
                     isSelected && styles.selectedPromptButton
                   ]}
                   onPress={() => handlePromptSelect(prompt)}
                 >
                   <Text style={[
                     styles.promptText,
+                    { color: dynamicSub },
                     isSelected && styles.selectedPromptText
                   ]}>
                     {prompt}
@@ -107,14 +111,14 @@ export default function JournalScreen() {
 
         {/* Dynamic Context Header for Selected Prompt */}
         {selectedPrompt && (
-          <View style={styles.activePromptContainer}>
+          <View style={[styles.activePromptContainer, { backgroundColor: dynamicCardBg }]}>
             <View style={styles.activePromptHeader}>
               <Text style={styles.activePromptLabel}>WRITING PROMPT</Text>
               <TouchableOpacity onPress={handleClearPrompt}>
-                <X size={16} color="#999" />
+                <X size={16} color={dynamicSub} />
               </TouchableOpacity>
             </View>
-            <Text style={styles.activePromptText}>{selectedPrompt}</Text>
+            <Text style={[styles.activePromptText, { color: dynamicText }]}>{selectedPrompt}</Text>
           </View>
         )}
 
@@ -124,15 +128,20 @@ export default function JournalScreen() {
             placeholder={selectedPrompt ? "Write your response here..." : "How was your day? Write anything that's on your mind..."}
             value={entry}
             onChangeText={setEntry}
+            mode="flat"
             multiline
-            style={styles.journalInput}
-            placeholderTextColor="#999"
-            textAlignVertical="top"
+            textColor={isDarkMode ? '#FFFFFF' : '#1A1A1A'}
+            theme={{ colors: { onSurface: isDarkMode ? '#FFFFFF' : '#1A1A1A', text: isDarkMode ? '#FFFFFF' : '#1A1A1A', primary: JUCOCH_GREEN } }}
+            style={[styles.journalInput, { backgroundColor: dynamicBg, color: isDarkMode ? '#FFFFFF' : '#1A1A1A' }]}
+            underlineColor="transparent"
+            activeUnderlineColor="transparent"
+            placeholderTextColor={isDarkMode ? '#9EB3A5' : '#999999'}
+            selectionColor={JUCOCH_GREEN}
           />
         </View>
       </ScrollView>
 
-      <View style={styles.footer}>
+      <View style={[styles.footer, { backgroundColor: dynamicBg, borderTopColor: dynamicBorder }]}>
         <Button
           mode="contained"
           buttonColor={JUCOCH_GREEN}
@@ -149,36 +158,33 @@ export default function JournalScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#FFF' },
-  content: { padding: 24, paddingTop: 60, flexGrow: 1 },
+  container: { flex: 1 },
+  content: { padding: 24, paddingTop: Platform.OS === 'ios' ? 60 : 40, flexGrow: 1 },
   header: { flexDirection: 'row', alignItems: 'center', marginBottom: 24 },
-  backButton: { marginRight: 16, backgroundColor: '#F5F5F5', padding: 8, borderRadius: 12 },
-  title: { fontWeight: 'bold', color: '#1A1A1A' },
-  dateText: { color: '#999', marginTop: 2 },
-  aiTip: { flexDirection: 'row', backgroundColor: '#F0F5F2', padding: 14, borderRadius: 16, marginBottom: 24, alignItems: 'center' },
+  backButton: { marginRight: 16, padding: 8, borderRadius: 12 },
+  title: { fontWeight: 'bold' },
+  dateText: { marginTop: 2 },
+  aiTip: { flexDirection: 'row', padding: 14, borderRadius: 16, marginBottom: 24, alignItems: 'center' },
   aiTipText: { fontSize: 13, color: JUCOCH_GREEN, marginLeft: 10, flex: 1, fontWeight: '500' },
 
   promptsSection: { marginBottom: 24 },
-  promptsTitle: { fontSize: 15, fontWeight: '700', color: '#1A1A1A', marginBottom: 12 },
+  promptsTitle: { fontSize: 15, fontWeight: '700', marginBottom: 12 },
   promptsScrollPadding: { paddingRight: 24 },
   promptButton: {
-    backgroundColor: '#F8F9FA',
     paddingVertical: 10,
     paddingHorizontal: 16,
     borderRadius: 20,
     marginRight: 10,
     borderWidth: 1,
-    borderColor: '#E9ECEF'
   },
   selectedPromptButton: {
     backgroundColor: JUCOCH_GREEN,
     borderColor: JUCOCH_GREEN
   },
-  promptText: { fontSize: 13, color: '#555' },
+  promptText: { fontSize: 13 },
   selectedPromptText: { color: '#FFF', fontWeight: '600' },
 
   activePromptContainer: {
-    backgroundColor: '#F8F9FA',
     padding: 16,
     borderRadius: 16,
     marginBottom: 20,
@@ -187,10 +193,10 @@ const styles = StyleSheet.create({
   },
   activePromptHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 },
   activePromptLabel: { fontSize: 10, fontWeight: 'bold', color: JUCOCH_GREEN, letterSpacing: 1 },
-  activePromptText: { fontSize: 14, color: '#333', fontWeight: '500', lineHeight: 20 },
+  activePromptText: { fontSize: 14, fontWeight: '500', lineHeight: 20 },
 
   inputContainer: { flex: 1, minHeight: 250 },
-  journalInput: { flex: 1, fontSize: 16, color: '#333', lineHeight: 24, paddingTop: 0 },
-  footer: { padding: 24, borderTopWidth: 1, borderTopColor: '#EEE', backgroundColor: '#FFF' },
+  journalInput: { flex: 1, fontSize: 16, lineHeight: 24, paddingTop: 0 },
+  footer: { padding: 24, borderTopWidth: 1 },
   saveButton: { borderRadius: 16 },
 });

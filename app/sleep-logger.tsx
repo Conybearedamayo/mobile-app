@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { View, StyleSheet, ScrollView, TouchableOpacity, Platform } from 'react-native';
 import { Text, Surface } from 'react-native-paper';
 import { ChevronLeft, Moon, Star } from 'lucide-react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, Stack } from 'expo-router';
 import { useWellness } from '@/context/WellnessContext';
 import { LinearGradient } from 'expo-linear-gradient';
 
@@ -10,9 +10,15 @@ const JUCOCH_GREEN = '#2D6A4F';
 
 export default function SleepLoggerScreen() {
   const router = useRouter();
-  const { addSleepLog } = useWellness();
+  const { addSleepLog, isDarkMode } = useWellness();
   const [hours, setHours] = useState('7');
   const [quality, setQuality] = useState('Good');
+
+  const dynamicBg = isDarkMode ? '#121614' : '#F3F8F5';
+  const dynamicCardBg = isDarkMode ? '#1C231F' : '#FFFFFF';
+  const dynamicText = isDarkMode ? '#EAF2EC' : '#1C1F1D';
+  const dynamicSub = isDarkMode ? '#9EB3A5' : '#707571';
+  const dynamicBorder = isDarkMode ? '#2C3A31' : '#EBF2EE';
 
   const handleSave = () => {
     const numericHours = parseInt(hours.replace('+', ''), 10) || 7;
@@ -21,28 +27,35 @@ export default function SleepLoggerScreen() {
   };
 
   return (
-    <View style={styles.container}>
-      <ScrollView contentContainerStyle={styles.content}>
+    <View style={[styles.container, { backgroundColor: dynamicBg }]}>
+      <Stack.Screen options={{ headerShown: false }} />
+
+      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-            <ChevronLeft size={24} color="#1C1F1D" />
+          <TouchableOpacity onPress={() => router.back()} style={[styles.backButton, { backgroundColor: dynamicCardBg, borderColor: dynamicBorder }]}>
+            <ChevronLeft size={24} color={dynamicText} />
           </TouchableOpacity>
-          <Text variant="headlineSmall" style={styles.title}>Sleep Patterns</Text>
+          <Text variant="headlineSmall" style={[styles.title, { color: dynamicText }]}>Sleep Patterns</Text>
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionLabel}>HOW MANY HOURS DID YOU SLEEP?</Text>
+          <Text style={[styles.sectionLabel, { color: dynamicSub }]}>HOW MANY HOURS DID YOU SLEEP?</Text>
           <View style={styles.hoursRow}>
             {['4', '5', '6', '7', '8', '9+'].map(h => {
               const isSelected = hours === h;
               return (
                 <TouchableOpacity 
                   key={h} 
-                  style={[styles.hourCircle, isSelected && styles.selectedCircle]}
+                  style={[
+                    styles.hourCard, 
+                    { backgroundColor: dynamicCardBg, borderColor: dynamicBorder },
+                    isSelected && styles.selectedHourCard
+                  ]}
                   onPress={() => setHours(h)}
                   activeOpacity={0.8}
                 >
-                  <Text style={[styles.hourText, isSelected && styles.selectedText]}>{h}</Text>
+                  <Text style={[styles.hourText, { color: dynamicText }, isSelected && styles.selectedHourText]}>{h}</Text>
+                  <Text style={[styles.hourUnit, { color: dynamicSub }, isSelected && styles.selectedHourText]}>hrs</Text>
                 </TouchableOpacity>
               );
             })}
@@ -50,44 +63,46 @@ export default function SleepLoggerScreen() {
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionLabel}>SLEEP QUALITY</Text>
-          {['Poor', 'Alright', 'Good', 'Excellent'].map(q => {
-            const isSelected = quality === q;
-            return (
-              <TouchableOpacity 
-                key={q} 
-                style={[styles.qualityRow, isSelected && styles.selectedQuality]}
-                onPress={() => setQuality(q)}
-                activeOpacity={0.8}
-              >
-                <Text style={[styles.qualityText, isSelected && styles.selectedText]}>{q}</Text>
-                {isSelected && <Star size={18} color="#FFF" fill="#FFF" />}
-              </TouchableOpacity>
-            );
-          })}
+          <Text style={[styles.sectionLabel, { color: dynamicSub }]}>SLEEP QUALITY</Text>
+          <View style={styles.qualityGrid}>
+            {[
+              { label: 'Restless', icon: '😫', color: '#FF6B6B' },
+              { label: 'Poor', icon: '🙁', color: '#FF9F43' },
+              { label: 'Good', icon: '🙂', color: '#FBC531' },
+              { label: 'Excellent', icon: '😴', color: '#48BB78' }
+            ].map(q => {
+              const isSelected = quality === q.label;
+              return (
+                <TouchableOpacity
+                  key={q.label}
+                  style={[
+                    styles.qualityCard,
+                    { backgroundColor: dynamicCardBg, borderColor: dynamicBorder },
+                    isSelected && { borderColor: q.color, borderWidth: 2, backgroundColor: `${q.color}18` }
+                  ]}
+                  onPress={() => setQuality(q.label)}
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.qualityEmoji}>{q.icon}</Text>
+                  <Text style={[styles.qualityLabel, { color: dynamicSub }, isSelected && { color: q.color, fontWeight: 'bold' }]}>{q.label}</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
         </View>
 
-        <Surface style={styles.aiInsight} elevation={1}>
-          <View style={styles.insightIconBg}>
-            <Moon size={18} color={JUCOCH_GREEN} />
-          </View>
-          <Text style={styles.insightText}>
-            AI Note: Consistent 7-8 hours of sleep is linked to a 40% improvement in mood stability.
-          </Text>
-        </Surface>
-
         <TouchableOpacity 
+          style={styles.saveBtnWrapper}
           onPress={handleSave}
           activeOpacity={0.8}
-          style={styles.saveButtonWrapper}
         >
           <LinearGradient
             colors={[JUCOCH_GREEN, '#1B4332']}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
-            style={styles.gradientButton}
+            style={styles.saveBtnGradient}
           >
-            <Text style={styles.gradientButtonText}>Save Sleep Log</Text>
+            <Text style={styles.saveBtnText}>Save Sleep Record</Text>
           </LinearGradient>
         </TouchableOpacity>
       </ScrollView>
@@ -96,98 +111,24 @@ export default function SleepLoggerScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F3F8F5' },
-  content: { padding: 24, paddingTop: 60 },
-  header: { flexDirection: 'row', alignItems: 'center', marginBottom: 36 },
-  backButton: { 
-    marginRight: 16, 
-    backgroundColor: '#FFF', 
-    width: 44,
-    height: 44,
-    borderRadius: 14,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 1.5,
-    borderColor: '#EBF2EE',
-  },
-  title: { fontWeight: 'bold', color: '#1C1F1D' },
-  section: { marginBottom: 32 },
-  sectionLabel: { fontSize: 11, fontWeight: 'bold', color: '#909591', letterSpacing: 1.5, marginBottom: 16 },
+  container: { flex: 1 },
+  content: { padding: 24, paddingTop: Platform.OS === 'ios' ? 60 : 40 },
+  header: { flexDirection: 'row', alignItems: 'center', marginBottom: 28 },
+  backButton: { marginRight: 16, width: 44, height: 44, borderRadius: 14, justifyContent: 'center', alignItems: 'center', borderWidth: 1.5 },
+  title: { fontWeight: 'bold' },
+  section: { marginBottom: 28 },
+  sectionLabel: { fontSize: 11, fontWeight: 'bold', letterSpacing: 1.5, marginBottom: 16 },
   hoursRow: { flexDirection: 'row', justifyContent: 'space-between' },
-  hourCircle: { 
-    width: 48, 
-    height: 48, 
-    borderRadius: 16, 
-    backgroundColor: '#FFF', 
-    justifyContent: 'center', 
-    alignItems: 'center', 
-    borderWidth: 1.5, 
-    borderColor: '#EBF2EE',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.02,
-    shadowRadius: 6,
-  },
-  selectedCircle: { backgroundColor: JUCOCH_GREEN, borderColor: JUCOCH_GREEN },
-  hourText: { fontWeight: 'bold', color: '#707571', fontSize: 15 },
-  selectedText: { color: '#FFF' },
-  qualityRow: { 
-    flexDirection: 'row', 
-    justifyContent: 'space-between', 
-    alignItems: 'center', 
-    padding: 16, 
-    borderRadius: 20, 
-    backgroundColor: '#FFF', 
-    marginBottom: 12, 
-    borderWidth: 1.5, 
-    borderColor: '#EBF2EE',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.02,
-    shadowRadius: 6,
-  },
-  selectedQuality: { backgroundColor: JUCOCH_GREEN, borderColor: JUCOCH_GREEN },
-  qualityText: { fontWeight: '600', color: '#707571', fontSize: 15 },
-  aiInsight: { 
-    flexDirection: 'row', 
-    backgroundColor: '#FFF', 
-    padding: 16, 
-    borderRadius: 22, 
-    marginBottom: 28, 
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#EBF2EE',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.02,
-    shadowRadius: 8,
-  },
-  insightIconBg: {
-    width: 32,
-    height: 32,
-    borderRadius: 10,
-    backgroundColor: '#E8F5E9',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  insightText: { fontSize: 12, color: JUCOCH_GREEN, flex: 1, fontWeight: '500', lineHeight: 18 },
-  saveButtonWrapper: { marginTop: 12 },
-  gradientButton: {
-    height: 56,
-    borderRadius: 22,
-    justifyContent: 'center',
-    alignItems: 'center',
-    elevation: 6,
-    shadowColor: JUCOCH_GREEN,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.3,
-    shadowRadius: 12,
-  },
-  gradientButtonText: {
-    color: '#FFF',
-    fontSize: 16,
-    fontWeight: 'bold',
-    letterSpacing: 0.5,
-  },
+  hourCard: { width: '15%', paddingVertical: 14, borderRadius: 16, alignItems: 'center', borderWidth: 1.5 },
+  selectedHourCard: { backgroundColor: JUCOCH_GREEN, borderColor: JUCOCH_GREEN },
+  hourText: { fontSize: 16, fontWeight: 'bold' },
+  hourUnit: { fontSize: 10, marginTop: 2 },
+  selectedHourText: { color: '#FFF' },
+  qualityGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', gap: 10 },
+  qualityCard: { width: '48%', paddingVertical: 16, borderRadius: 20, alignItems: 'center', borderWidth: 1.5 },
+  qualityEmoji: { fontSize: 32, marginBottom: 6 },
+  qualityLabel: { fontSize: 13, fontWeight: '600' },
+  saveBtnWrapper: { marginTop: 12 },
+  saveBtnGradient: { height: 56, borderRadius: 22, justifyContent: 'center', alignItems: 'center', elevation: 4 },
+  saveBtnText: { color: '#FFF', fontSize: 16, fontWeight: 'bold', letterSpacing: 0.5 },
 });

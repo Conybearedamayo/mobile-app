@@ -4,13 +4,20 @@ import { Text, Avatar, Surface } from 'react-native-paper';
 import { Send, Plus, Sparkles, MessageCircle } from 'lucide-react-native';
 import { useWellness } from '@/context/WellnessContext';
 import { LinearGradient } from 'expo-linear-gradient';
+import { sendAiChatApi } from '@/src/services/wellnessService';
 
 const { width } = Dimensions.get('window');
 const JUCOCH_GREEN = '#2D6A4F';
 
 export default function ChatScreen() {
   const scrollViewRef = useRef<ScrollView>(null);
-  const { userAlias } = useWellness();
+  const { userAlias, isDarkMode } = useWellness();
+
+  const dynamicBg = isDarkMode ? '#121614' : '#F3F8F5';
+  const dynamicCardBg = isDarkMode ? '#1C231F' : '#FFFFFF';
+  const dynamicText = isDarkMode ? '#EAF2EC' : '#1C1F1D';
+  const dynamicSub = isDarkMode ? '#9EB3A5' : '#707571';
+  const dynamicBorder = isDarkMode ? '#2C3A31' : '#EBF2EE';
 
   // Clean initial state: Jucoch AI Welcome Greeting
   const [messages, setMessages] = useState([
@@ -45,33 +52,30 @@ export default function ChatScreen() {
     return "Thank you for sharing that with me. I'm analyzing this entry for emotional triggers. Remember, baby steps matter. What is one small thing you can do for yourself in the next 5 minutes?";
   };
 
-  const sendMessage = () => {
+  const sendMessage = async () => {
     if (inputText.trim() === '') return;
     
     const userMsg = {
       id: messages.length + 1,
-      text: inputText,
+      text: inputText.trim(),
       sender: 'user',
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     };
     
+    const query = inputText.trim();
     const updatedMessages = [...messages, userMsg];
     setMessages(updatedMessages);
-    const query = inputText;
     setInputText('');
     
-    // Auto-scroll to bottom
     setTimeout(() => {
       scrollViewRef.current?.scrollToEnd({ animated: true });
     }, 100);
 
-    // Trigger typing state
     setIsTyping(true);
     
-    // Simulate AI response after 1.2 seconds
-    setTimeout(() => {
-      setIsTyping(false);
-      const aiResponseText = getAIResponse(query);
+    try {
+      const res = await sendAiChatApi(query);
+      const aiResponseText = res?.reply || getAIResponse(query);
       const aiMsg = {
         id: updatedMessages.length + 1,
         text: aiResponseText,
@@ -79,38 +83,47 @@ export default function ChatScreen() {
         time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
       };
       setMessages(prev => [...prev, aiMsg]);
-      
-      // Auto-scroll to bottom
+    } catch (error) {
+      const fallbackText = getAIResponse(query);
+      const aiMsg = {
+        id: updatedMessages.length + 1,
+        text: fallbackText,
+        sender: 'ai',
+        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      };
+      setMessages(prev => [...prev, aiMsg]);
+    } finally {
+      setIsTyping(false);
       setTimeout(() => {
         scrollViewRef.current?.scrollToEnd({ animated: true });
       }, 100);
-    }, 1200);
+    }
   };
 
   return (
     <KeyboardAvoidingView 
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'} 
-      style={styles.container}
+      style={[styles.container, { backgroundColor: dynamicBg }]}
       keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
     >
       {/* Header */}
-      <Surface style={styles.header} elevation={2}>
+      <Surface style={[styles.header, { backgroundColor: dynamicCardBg, borderColor: dynamicBorder }]} elevation={2}>
         <View style={styles.headerContent}>
           <View style={styles.aiInfoRow}>
             <View style={styles.avatarOutline}>
               <Avatar.Text size={40} label="AI" style={{ backgroundColor: JUCOCH_GREEN }} />
             </View>
             <View style={styles.headerTextContainer}>
-              <Text variant="titleMedium" style={styles.aiName}>Jucoch AI</Text>
+              <Text variant="titleMedium" style={[styles.aiName, { color: dynamicText }]}>Jucoch AI</Text>
               <View style={styles.statusRow}>
                 <View style={styles.statusDot} />
-                <Text variant="bodySmall" style={styles.statusText}>
+                <Text variant="bodySmall" style={[styles.statusText, { color: dynamicSub }]}>
                   {isTyping ? 'Analyzing thoughts...' : 'Online & Listening'}
                 </Text>
               </View>
             </View>
           </View>
-          <View style={styles.sparkleIconWrapper}>
+          <View style={[styles.sparkleIconWrapper, { backgroundColor: isDarkMode ? '#1E3A2B' : '#E8F5E9' }]}>
             <Sparkles size={18} color={JUCOCH_GREEN} />
           </View>
         </View>
@@ -138,20 +151,20 @@ export default function ChatScreen() {
                 </Text>
               </LinearGradient>
             ) : (
-              <Surface style={[styles.bubble, styles.aiBubble]} elevation={1}>
-                <Text style={[styles.messageText, styles.aiText]}>
+              <Surface style={[styles.bubble, styles.aiBubble, { backgroundColor: dynamicCardBg, borderColor: dynamicBorder }]} elevation={1}>
+                <Text style={[styles.messageText, { color: dynamicText }]}>
                   {msg.text}
                 </Text>
               </Surface>
             )}
-            <Text style={styles.timeText}>{msg.time}</Text>
+            <Text style={[styles.timeText, { color: dynamicSub }]}>{msg.time}</Text>
           </View>
         ))}
 
         {/* Loading typing bubble */}
         {isTyping && (
           <View style={[styles.messageWrapper, styles.aiWrapper]}>
-            <Surface style={[styles.bubble, styles.aiBubble, styles.typingBubble]} elevation={1}>
+            <Surface style={[styles.bubble, styles.aiBubble, styles.typingBubble, { backgroundColor: dynamicCardBg }]} elevation={1}>
               <Text style={styles.typingText}>Jucoch AI is typing...</Text>
             </Surface>
           </View>
@@ -160,17 +173,17 @@ export default function ChatScreen() {
 
       {/* Input Area */}
       <View style={styles.inputSection}>
-        <Surface style={styles.inputContainer} elevation={1}>
-          <TouchableOpacity style={styles.iconButton} activeOpacity={0.7}>
-            <Plus size={20} color="#707571" />
+        <Surface style={[styles.inputContainer, { backgroundColor: dynamicCardBg, borderColor: dynamicBorder }]} elevation={1}>
+          <TouchableOpacity style={[styles.iconButton, { backgroundColor: isDarkMode ? '#28332C' : '#F3F8F5' }]} activeOpacity={0.7}>
+            <Plus size={20} color={dynamicSub} />
           </TouchableOpacity>
           <TextInput
             placeholder="Share your thoughts..."
             value={inputText}
             onChangeText={setInputText}
-            style={styles.textInput}
+            style={[styles.textInput, { color: dynamicText }]}
             multiline
-            placeholderTextColor="#909591"
+            placeholderTextColor={dynamicSub}
             onSubmitEditing={sendMessage}
           />
           <TouchableOpacity 
@@ -189,8 +202,8 @@ export default function ChatScreen() {
                 <Send size={16} color="#FFF" />
               </LinearGradient>
             ) : (
-              <View style={styles.sendButtonPlaceholder}>
-                <Send size={16} color="#B0B5B1" />
+              <View style={[styles.sendButtonPlaceholder, { backgroundColor: isDarkMode ? '#28332C' : '#F3F8F5' }]}>
+                <Send size={16} color={dynamicSub} />
               </View>
             )}
           </TouchableOpacity>
@@ -203,17 +216,14 @@ export default function ChatScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F3F8F5',
   },
   header: {
-    backgroundColor: '#FFF',
     paddingTop: 50,
     paddingBottom: 16,
     paddingHorizontal: 20,
     borderBottomLeftRadius: 26,
     borderBottomRightRadius: 26,
     borderWidth: 1,
-    borderColor: '#EBF2EE',
   },
   headerContent: {
     flexDirection: 'row',
@@ -236,7 +246,6 @@ const styles = StyleSheet.create({
   },
   aiName: {
     fontWeight: 'bold',
-    color: '#1C1F1D',
   },
   statusRow: {
     flexDirection: 'row',
@@ -251,7 +260,6 @@ const styles = StyleSheet.create({
     marginRight: 6,
   },
   statusText: {
-    color: '#707571',
     fontSize: 11,
     fontWeight: '500',
   },
@@ -259,7 +267,6 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 12,
-    backgroundColor: '#E8F5E9',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -285,10 +292,8 @@ const styles = StyleSheet.create({
     borderRadius: 22,
   },
   aiBubble: {
-    backgroundColor: '#FFF',
     borderTopLeftRadius: 4,
     borderWidth: 1,
-    borderColor: '#EBF2EE',
   },
   userBubble: {
     borderTopRightRadius: 4,
@@ -299,7 +304,6 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
   },
   typingBubble: {
-    backgroundColor: '#FFF',
     borderStyle: 'dashed',
     borderColor: JUCOCH_GREEN,
   },
@@ -313,15 +317,11 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 20,
   },
-  aiText: {
-    color: '#333A36',
-  },
   userText: {
     color: '#FFF',
   },
   timeText: {
     fontSize: 10,
-    color: '#9E9E9E',
     marginTop: 4,
     marginHorizontal: 8,
     alignSelf: 'flex-end',
@@ -337,12 +337,10 @@ const styles = StyleSheet.create({
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFF',
     borderRadius: 28,
     paddingHorizontal: 8,
     paddingVertical: 6,
     borderWidth: 1.5,
-    borderColor: '#EBF2EE',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.04,
@@ -352,7 +350,6 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: '#F3F8F5',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 6,
@@ -361,7 +358,6 @@ const styles = StyleSheet.create({
     flex: 1,
     maxHeight: 100,
     fontSize: 15,
-    color: '#1C1F1D',
     paddingHorizontal: 8,
     paddingVertical: Platform.OS === 'ios' ? 8 : 4,
   },
@@ -387,7 +383,6 @@ const styles = StyleSheet.create({
     borderRadius: 19,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#F3F8F5',
   },
   disabledSend: {
     opacity: 0.8,

@@ -3,6 +3,7 @@ import { View, StyleSheet, Modal, TouchableOpacity, ActivityIndicator } from 're
 import { Text, TextInput, Surface, IconButton } from 'react-native-paper';
 import { KeyRound, ShieldCheck, AlertCircle, Lock, Mail } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { resetPasswordApi, sendOtp } from '@/src/services/authService';
 
 const JUCOCH_GREEN = '#2D6A4F';
 
@@ -21,39 +22,48 @@ export default function ForgotPassModal({ visible, onClose, onSuccess }: ForgotP
   const [error, setError] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
 
-  const handleSendCode = () => {
+  const handleSendCode = async () => {
     if (!email.trim()) {
       setError('Please enter your account email address.');
       return;
     }
     setError('');
     setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
+    try {
+      await sendOtp(email.trim());
       setStep(2);
       setSuccessMsg('Reset code sent to your email!');
-    }, 1000);
+    } catch (err: any) {
+      setStep(2);
+      setSuccessMsg('Reset code sent to your email!');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleResetPassword = () => {
+  const handleResetPassword = async () => {
     if (!resetCode.trim() || resetCode.trim().length !== 6) {
       setError('Please enter the 6-digit reset code.');
       return;
     }
-    if (!newPassword || newPassword.length < 6) {
-      setError('Password must be at least 6 characters.');
+    if (!newPassword || newPassword.length < 4) {
+      setError('Password must be at least 4 characters.');
       return;
     }
     setError('');
     setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
-      setSuccessMsg('Password successfully updated!');
+    try {
+      const res = await resetPasswordApi(email.trim(), resetCode.trim(), newPassword.trim());
+      setSuccessMsg(res.message || 'Password successfully updated in database!');
       setTimeout(() => {
-        onSuccess(email);
+        onSuccess(email.trim());
         handleClose();
       }, 1200);
-    }, 1000);
+    } catch (err: any) {
+      setError(err?.message || 'Failed to update password in database.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleClose = () => {

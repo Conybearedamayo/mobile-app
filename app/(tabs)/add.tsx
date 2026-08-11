@@ -1,164 +1,227 @@
 import React from 'react';
-import { View, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
-import { Text, Surface } from 'react-native-paper';
+import { View, StyleSheet, ScrollView, TouchableOpacity, Dimensions, Platform } from 'react-native';
+import { Text, Surface, Divider } from 'react-native-paper';
 import { useRouter } from 'expo-router';
 import { 
   LayoutDashboard, BarChart3, ClipboardCheck, 
   MessageSquare, AlertTriangle, Lightbulb, Brain,
-  Smile, Moon, Activity, BookText, ChevronRight
+  Smile, Moon, Activity, BookText, ChevronRight, Sparkles, Wind, ShieldCheck
 } from 'lucide-react-native';
+import { useWellness } from '@/context/WellnessContext';
+import { LinearGradient } from 'expo-linear-gradient';
 
+const { width } = Dimensions.get('window');
 const JUCOCH_GREEN = '#2D6A4F';
 
 export default function FeaturesHub() {
   const router = useRouter();
+  const { isDarkMode } = useWellness();
+
+  const dynamicBg = isDarkMode ? '#121614' : '#F3F8F5';
+  const dynamicCardBg = isDarkMode ? '#1C231F' : '#FFFFFF';
+  const dynamicText = isDarkMode ? '#EAF2EC' : '#1C1F1D';
+  const dynamicSub = isDarkMode ? '#9EB3A5' : '#707571';
+  const dynamicBorder = isDarkMode ? '#2C3A31' : '#EBF2EE';
 
   const sections = [
     {
-      title: 'OVERVIEW',
+      title: 'SYSTEM OVERVIEW',
       items: [
-        { name: 'Dashboard', icon: LayoutDashboard, route: '/(tabs)' },
-        { name: 'Analytics', icon: BarChart3, route: '/(tabs)/insights' },
-        { name: 'Check-ins', icon: ClipboardCheck, route: '/(tabs)/insights' },
+        { name: 'Home Dashboard', desc: 'Main Wellness Hub & AI Score', icon: LayoutDashboard, route: '/(tabs)', color: JUCOCH_GREEN },
+        { name: 'AI Insights & Analytics', desc: 'Behavioral trends & mood charts', icon: BarChart3, route: '/(tabs)/insights', color: '#1E88E5' },
       ]
     },
     {
-      title: 'AI FEATURES',
+      title: 'AI POWERED FEATURES',
       items: [
-        { name: 'Ai-Companion', icon: MessageSquare, route: '/(tabs)/chat' },
-        { name: 'Early Warnings', icon: AlertTriangle, route: '/(tabs)/insights' },
-        { name: 'Recommendations', icon: Lightbulb, route: '/(tabs)/insights' },
-        { name: 'Behavioral Analysis', icon: Brain, route: '/(tabs)/insights' },
+        { name: 'Jucoch AI Companion', desc: '24/7 Anonymized Mental Health Chat', icon: Sparkles, route: '/(tabs)/chat', color: '#8E24AA' },
+        { name: 'Behavioral Correlators', desc: 'AI Sleep & Exercise correlations', icon: Brain, route: '/(tabs)/insights', color: '#FF9F43' },
+        { name: 'Early Warning System', desc: 'Automated distress detection', icon: AlertTriangle, route: '/(tabs)/insights', color: '#D90429' },
       ]
     },
     {
-      title: 'TRACKING',
+      title: 'DAILY WELLNESS TRACKING',
       items: [
-        { name: 'Mood Logger', icon: Smile, route: '/mood-logger' },
-        { name: 'Sleep Patterns', icon: Moon, route: '/sleep-logger' },
-        { name: 'Activity Log', icon: Activity, route: '/activity-logger' },
-        { name: 'Journal', icon: BookText, route: '/journal' },
+        { name: 'Mood Logger', desc: 'Express your daily emotions', icon: Smile, route: '/mood-logger', color: '#48BB78' },
+        { name: 'Sleep Tracker', desc: 'Monitor sleep duration & quality', icon: Moon, route: '/sleep-logger', color: '#5F27CD' },
+        { name: 'Gratitude Journal', desc: 'Private encrypted reflections', icon: BookText, route: '/journal-logger', color: '#FF9F43' },
       ]
     }
   ];
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-      <View style={styles.header}>
-        <Text variant="headlineSmall" style={styles.title}>System Control</Text>
-        <Text variant="bodySmall" style={styles.subtitle}>Access all JUCOCH features in one place</Text>
-      </View>
+    <View style={[styles.container, { backgroundColor: dynamicBg }]}>
+      <ScrollView 
+        style={styles.scrollView} 
+        contentContainerStyle={styles.scrollContent} 
+        showsVerticalScrollIndicator={false}
+        alwaysBounceVertical={true}
+      >
+        <View style={styles.responsiveWrapper}>
+          
+          {/* Header Banner */}
+          <LinearGradient
+            colors={['#1B4332', '#2D6A4F', '#40916C']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.headerGradient}
+          >
+            <View style={styles.headerIconBg}>
+              <Sparkles size={24} color="#FFF" />
+            </View>
+            <Text style={styles.headerTitle}>System Features & Tools Hub</Text>
+            <Text style={styles.headerSub}>Explore all modules of the Jucoch Wellness System in one place.</Text>
+          </LinearGradient>
 
-      {sections.map((section, sIdx) => (
-        <View key={section.title} style={styles.section}>
-          <Text style={styles.sectionLabel}>{section.title}</Text>
-          <View style={styles.grid}>
-            {section.items.map((item, iIdx) => {
-              const Icon = item.icon;
-              return (
-                <TouchableOpacity 
-                  key={item.name} 
-                  style={styles.featureItem}
-                  onPress={() => router.push(item.route as any)}
-                  activeOpacity={0.7}
-                >
-                  <Surface style={styles.iconSurface} elevation={1}>
-                    <Icon size={24} color={JUCOCH_GREEN} />
-                  </Surface>
-                  <View style={styles.featureTextContainer}>
-                    <Text style={styles.featureName}>{item.name}</Text>
-                    <ChevronRight size={16} color="#CCC" />
-                  </View>
-                </TouchableOpacity>
-              );
-            })}
+          {/* Section Modules */}
+          {sections.map((section) => (
+            <View key={section.title} style={styles.section}>
+              <Text style={styles.sectionLabel}>{section.title}</Text>
+              
+              <Surface style={[styles.gridCard, { backgroundColor: dynamicCardBg, borderColor: dynamicBorder }]} elevation={2}>
+                {section.items.map((item, index) => {
+                  const Icon = item.icon;
+                  return (
+                    <View key={item.name}>
+                      {index > 0 && <Divider style={[styles.divider, { backgroundColor: dynamicBorder }]} />}
+                      <TouchableOpacity 
+                        style={styles.featureItem}
+                        onPress={() => router.push(item.route as any)}
+                        activeOpacity={0.7}
+                      >
+                        <View style={[styles.iconSurface, { backgroundColor: `${item.color}18` }]}>
+                          <Icon size={22} color={item.color} />
+                        </View>
+
+                        <View style={styles.featureTextContainer}>
+                          <Text style={[styles.featureName, { color: dynamicText }]}>{item.name}</Text>
+                          <Text style={[styles.featureDesc, { color: dynamicSub }]}>{item.desc}</Text>
+                        </View>
+
+                        <ChevronRight size={18} color={dynamicSub} />
+                      </TouchableOpacity>
+                    </View>
+                  );
+                })}
+              </Surface>
+            </View>
+          ))}
+
+          <View style={styles.footer}>
+            <ShieldCheck size={16} color={JUCOCH_GREEN} style={{ marginBottom: 4 }} />
+            <Text style={[styles.versionText, { color: dynamicSub }]}>JUCOCH AI SYSTEM • BETA v1.0.0</Text>
           </View>
-        </View>
-      ))}
 
-      <View style={styles.footer}>
-          <Text style={styles.versionText}>JUCOCH AI System v1.0.0</Text>
-      </View>
-    </ScrollView>
+        </View>
+      </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8F9FA',
   },
-  content: {
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
+    paddingTop: Platform.OS === 'ios' ? 60 : 40,
+    paddingBottom: 140,
+    paddingHorizontal: 20,
+    alignItems: 'center',
+  },
+  responsiveWrapper: {
+    width: '100%',
+    maxWidth: 600,
+  },
+  headerGradient: {
+    borderRadius: 28,
     padding: 24,
-    paddingTop: 60,
-    paddingBottom: 110,
+    marginBottom: 24,
+    alignItems: 'center',
+    elevation: 4,
+    shadowColor: JUCOCH_GREEN,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.2,
+    shadowRadius: 12,
   },
-  header: {
-    marginBottom: 32,
+  headerIconBg: {
+    width: 48,
+    height: 48,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 12,
   },
-  title: {
+  headerTitle: {
+    fontSize: 18,
     fontWeight: 'bold',
-    color: '#1A1A1A',
+    color: '#FFF',
+    textAlign: 'center',
   },
-  subtitle: {
-    color: '#666',
+  headerSub: {
+    fontSize: 12,
+    color: 'rgba(255, 255, 255, 0.9)',
+    textAlign: 'center',
     marginTop: 4,
+    lineHeight: 18,
+    maxWidth: 320,
   },
   section: {
-    marginBottom: 32,
+    marginBottom: 22,
   },
   sectionLabel: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: 'bold',
-    color: '#999',
-    letterSpacing: 1.5,
-    marginBottom: 16,
+    color: '#808983',
+    letterSpacing: 1.2,
+    marginBottom: 10,
     marginLeft: 4,
   },
-  grid: {
-    backgroundColor: '#FFF',
+  gridCard: {
     borderRadius: 24,
-    padding: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 6,
     borderWidth: 1,
-    borderColor: '#EEE',
   },
   featureItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 12,
-    marginVertical: 4,
+    paddingVertical: 14,
   },
   iconSurface: {
-    width: 48,
-    height: 48,
+    width: 44,
+    height: 44,
     borderRadius: 16,
-    backgroundColor: '#F0F5F2',
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 16,
+    marginRight: 14,
   },
   featureTextContainer: {
     flex: 1,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    borderBottomWidth: 1,
-    borderBottomColor: '#F5F5F5',
-    paddingBottom: 8,
+    marginRight: 8,
   },
   featureName: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#333',
+    fontSize: 14,
+    fontWeight: 'bold',
+  },
+  featureDesc: {
+    fontSize: 11,
+    marginTop: 2,
+  },
+  divider: {
+    height: 1,
   },
   footer: {
-      marginTop: 20,
-      alignItems: 'center',
-      paddingBottom: 40,
+    marginTop: 10,
+    alignItems: 'center',
+    paddingBottom: 20,
   },
   versionText: {
-      color: '#CCC',
-      fontSize: 11,
-      fontWeight: 'bold',
-  }
+    fontSize: 11,
+    fontWeight: '600',
+  },
 });

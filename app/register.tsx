@@ -17,7 +17,7 @@ export default function RegisterScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [role, setRole] = useState('Individual');
-  const [teacherCode, setTeacherCode] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [showOtpModal, setShowOtpModal] = useState(false);
@@ -25,16 +25,36 @@ export default function RegisterScreen() {
   const router = useRouter();
 
   const handleRegister = async () => {
-    if (!alias.trim() || !email.trim() || !password) {
-      setError('Please fill in all required fields (alias, email, password).');
+    const trimmedAlias = alias.trim();
+    const trimmedEmail = email.trim();
+    const trimmedPassword = password.trim();
+
+    if (!trimmedAlias || !trimmedEmail || !trimmedPassword) {
+      setError('Invalid input: Alias, email, and password cannot be empty or contain only spaces.');
       return;
     }
+
+    if (trimmedAlias.length < 3) {
+      setError('Alias must be at least 3 characters long.');
+      return;
+    }
+
+    if (!trimmedEmail.includes('@') || !trimmedEmail.includes('.')) {
+      setError('Please enter a valid email address.');
+      return;
+    }
+
+    if (trimmedPassword.length < 4) {
+      setError('Password must be at least 4 characters long.');
+      return;
+    }
+
     setError('');
     setLoading(true);
     try {
-      const res = await registerUser(alias.trim(), email.trim(), password, role);
+      const res = await registerUser(trimmedAlias, trimmedEmail, password, role);
       if (res.requiresOtp) {
-        setOtpEmail(res.email || email.trim());
+        setOtpEmail(res.email || trimmedEmail);
         setShowOtpModal(true);
       } else if (res.user && res.token) {
         setUserAlias(res.user.alias);
@@ -62,7 +82,6 @@ export default function RegisterScreen() {
   const roles = [
     { name: 'Individual', icon: User },
     { name: 'Student', icon: GraduationCap },
-    { name: 'Teacher', icon: BookOpen },
   ];
 
   return (
@@ -140,21 +159,6 @@ export default function RegisterScreen() {
                 left={<TextInput.Icon icon="account-circle-outline" color={JUCOCH_GREEN} />}
               />
 
-              {role === 'Student' && (
-                <TextInput
-                  label="Classroom / Teacher Code"
-                  value={teacherCode}
-                  onChangeText={setTeacherCode}
-                  mode="outlined"
-                  outlineColor="#EBF2EE"
-                  activeOutlineColor={JUCOCH_GREEN}
-                  style={styles.input}
-                  outlineStyle={{ borderRadius: 16 }}
-                  placeholder="e.g. TEACH-10A"
-                  left={<TextInput.Icon icon="key-outline" color={JUCOCH_GREEN} />}
-                />
-              )}
-
               <TextInput
                 label="Email (For recovery only)"
                 value={email}
@@ -171,13 +175,20 @@ export default function RegisterScreen() {
                 label="Password"
                 value={password}
                 onChangeText={setPassword}
-                secureTextEntry
+                secureTextEntry={!showPassword}
                 mode="outlined"
                 outlineColor="#EBF2EE"
                 activeOutlineColor={JUCOCH_GREEN}
                 style={styles.input}
                 outlineStyle={{ borderRadius: 16 }}
                 left={<TextInput.Icon icon="lock-outline" color={JUCOCH_GREEN} />}
+                right={
+                  <TextInput.Icon 
+                    icon={showPassword ? "eye-off-outline" : "eye-outline"} 
+                    color={JUCOCH_GREEN}
+                    onPress={() => setShowPassword(!showPassword)} 
+                  />
+                }
               />
             </View>
 

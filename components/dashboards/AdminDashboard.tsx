@@ -1,7 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import { Text, Surface, Avatar, Divider, Searchbar, Portal, Modal, TextInput, ActivityIndicator } from 'react-native-paper';
-import { ShieldCheck, Users, GraduationCap, BookOpen, User, Activity, Clock, Smile, Moon, MessageCircle, Zap, UserPlus, CheckCircle, X, Inbox } from 'lucide-react-native';
+import { ShieldCheck, Users, GraduationCap, BookOpen, User, Activity, Clock, Smile, Moon, MessageCircle, Zap, UserPlus, CheckCircle, X, Inbox, RefreshCw } from 'lucide-react-native';
+import { useWellness } from '@/context/WellnessContext';
+import { API_BASE_URL } from '@/constants/apiConfig';
 
 const JUCOCH_GREEN = '#2D6A4F';
 
@@ -12,21 +14,85 @@ const OFFICIAL_ADMIN_GROUP = [
 ];
 
 export default function AdminDashboard() {
+  const { isDarkMode, userToken } = useWellness();
+
+  const dynamicCardBg = isDarkMode ? '#1C231F' : '#FFFFFF';
+  const dynamicText = isDarkMode ? '#EAF2EC' : '#1C1F1D';
+  const dynamicSub = isDarkMode ? '#9EB3A5' : '#707571';
+  const dynamicBorder = isDarkMode ? '#2C3A31' : '#E2EFE7';
+  const formatEventDate = (timestamp?: string) => {
+    if (!timestamp) return 'Just now';
+    try {
+      const d = new Date(timestamp);
+      if (isNaN(d.getTime())) return timestamp;
+      const month = d.toLocaleDateString('en-US', { month: 'short' });
+      const day = d.getDate();
+      const time = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+      return `${month} ${day} • ${time}`;
+    } catch (e) {
+      return timestamp;
+    }
+  };
+
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedRoleFilter, setSelectedRoleFilter] = useState('All');
   const [activeTab, setActiveTab] = useState<'activity' | 'users' | 'admins'>('users');
+  const [loading, setLoading] = useState(false);
 
-  // Clean real-time lists (Dummy accounts removed)
   const [registeredUsers, setRegisteredUsers] = useState<any[]>([]);
   const [dailyActivities, setDailyActivities] = useState<any[]>([]);
 
-  // Modal State for Creating Teacher Account
-  const [showCreateModal, setShowCreateModal] = useState(false);
-  const [teacherAlias, setTeacherAlias] = useState('');
-  const [teacherEmail, setTeacherEmail] = useState('');
-  const [teacherPassword, setTeacherPassword] = useState('');
-  const [classCode, setClassCode] = useState('TEACH-10A');
-  const [createdSuccess, setCreatedSuccess] = useState('');
+  useEffect(() => {
+    fetchAdminData();
+  }, [userToken]);
+
+  const fetchAdminData = async () => {
+    try {
+      setLoading(true);
+      const headers = {
+        'Authorization': `Bearer ${userToken || ''}`,
+        'Content-Type': 'application/json'
+      };
+
+      const [usersRes, actRes] = await Promise.all([
+        fetch(`${API_BASE_URL}/api/admin/users`, { headers }).catch(() => null),
+        fetch(`${API_BASE_URL}/api/admin/activities`, { headers }).catch(() => null),
+      ]);
+
+      if (usersRes && usersRes.ok) {
+        const data = await usersRes.json();
+        if (data.users) {
+          setRegisteredUsers(data.users.map((u: any) => ({
+            id: u.id,
+            alias: u.alias,
+            email: u.email,
+            role: u.role,
+            joined: formatEventDate(u.createdAt),
+          })));
+        }
+      }
+
+      if (actRes && actRes.ok) {
+        const data = await actRes.json();
+        if (data.activities) {
+          setDailyActivities(data.activities.map((a: any) => ({
+            id: a.id,
+            alias: a.alias,
+            role: a.role,
+            action: a.action,
+            detail: a.detail,
+            time: formatEventDate(a.createdAt),
+            icon: a.action.includes('Mood') ? Smile : a.action.includes('Sleep') ? Moon : Activity,
+            color: a.action.includes('Mood') ? '#48BB78' : a.action.includes('Sleep') ? '#5F27CD' : JUCOCH_GREEN,
+          })));
+        }
+      }
+    } catch (e) {
+      console.log('Fetch Admin Data error:', e);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const filteredUsers = registeredUsers.filter(u => {
     const matchesSearch = u.alias.toLowerCase().includes(searchQuery.toLowerCase()) || 
@@ -37,101 +103,66 @@ export default function AdminDashboard() {
 
   const countByRole = (r: string) => registeredUsers.filter(u => u.role === r).length;
 
-  const handleCreateTeacher = () => {
-    if (!teacherAlias || !teacherEmail || !teacherPassword) return;
-    const newTeacher = {
-      id: Date.now().toString(),
-      alias: teacherAlias.trim(),
-      role: 'Teacher',
-      email: teacherEmail.trim(),
-      status: 'Active',
-      joined: new Date().toISOString().split('T')[0],
-    };
-    setRegisteredUsers(prev => [newTeacher, ...prev]);
-    setCreatedSuccess(`Teacher account '${teacherAlias}' created successfully with Class Code: ${classCode}!`);
-    setTimeout(() => {
-      setShowCreateModal(false);
-      setCreatedSuccess('');
-      setTeacherAlias('');
-      setTeacherEmail('');
-      setTeacherPassword('');
-    }, 2000);
-  };
-
   return (
     <View style={styles.container}>
       {/* Master Admin Header */}
-      <View style={styles.adminHeaderCard}>
+      <View style={[styles.adminHeaderCard, { backgroundColor: isDarkMode ? '#3D171A' : '#FFE5E5', borderColor: isDarkMode ? '#682025' : '#FFC9C9' }]}>
         <View style={styles.iconBg}>
           <ShieldCheck size={22} color="#D90429" />
         </View>
         <View style={{ flex: 1 }}>
           <Text style={styles.headerTitle}>System Admin Master Panel</Text>
-          <Text style={styles.headerSub}>Official Creator Admins ({OFFICIAL_ADMIN_GROUP.length} Members)</Text>
+          <Text style={[styles.headerSub, { color: isDarkMode ? '#F8B4B8' : '#707571' }]}>Official Creator Admins ({OFFICIAL_ADMIN_GROUP.length} Members)</Text>
         </View>
       </View>
 
       {/* Overview Stat Counters */}
       <View style={styles.statsRow}>
-        <Surface style={styles.statCard} elevation={1}>
-          <Text style={styles.statNumber}>{registeredUsers.length + OFFICIAL_ADMIN_GROUP.length}</Text>
-          <Text style={styles.statLabel}>Total Users</Text>
+        <Surface style={[styles.statCard, { backgroundColor: dynamicCardBg, borderColor: dynamicBorder }]} elevation={1}>
+          <Text style={[styles.statNumber, { color: dynamicText }]}>{registeredUsers.length + OFFICIAL_ADMIN_GROUP.length}</Text>
+          <Text style={[styles.statLabel, { color: dynamicSub }]}>Total Users</Text>
         </Surface>
 
-        <Surface style={[styles.statCard, { borderColor: '#EBF2EE' }]} elevation={1}>
+        <Surface style={[styles.statCard, { backgroundColor: dynamicCardBg, borderColor: dynamicBorder }]} elevation={1}>
           <Text style={[styles.statNumber, { color: JUCOCH_GREEN }]}>{countByRole('Individual')}</Text>
-          <Text style={styles.statLabel}>Individuals</Text>
+          <Text style={[styles.statLabel, { color: dynamicSub }]}>Individuals</Text>
         </Surface>
 
-        <Surface style={[styles.statCard, { borderColor: '#BBDEFB' }]} elevation={1}>
+        <Surface style={[styles.statCard, { backgroundColor: dynamicCardBg, borderColor: dynamicBorder }]} elevation={1}>
           <Text style={[styles.statNumber, { color: '#1E88E5' }]}>{countByRole('Student')}</Text>
-          <Text style={styles.statLabel}>Students</Text>
+          <Text style={[styles.statLabel, { color: dynamicSub }]}>Students</Text>
         </Surface>
 
-        <Surface style={[styles.statCard, { borderColor: '#E1BEE7' }]} elevation={1}>
-          <Text style={[styles.statNumber, { color: '#8E24AA' }]}>{countByRole('Teacher')}</Text>
-          <Text style={styles.statLabel}>Teachers</Text>
-        </Surface>
       </View>
-
-      {/* Admin Action Bar */}
-      <TouchableOpacity 
-        style={styles.createTeacherBtn}
-        onPress={() => setShowCreateModal(true)}
-        activeOpacity={0.8}
-      >
-        <UserPlus size={16} color="#FFF" style={{ marginRight: 8 }} />
-        <Text style={styles.createTeacherBtnText}>+ Issue Teacher Account & Class Code</Text>
-      </TouchableOpacity>
 
       {/* Main Admin Navigation Switcher */}
       <View style={styles.switchRow}>
         <TouchableOpacity
-          style={[styles.switchBtn, activeTab === 'users' && styles.selectedSwitchBtn]}
+          style={[styles.switchBtn, { backgroundColor: dynamicCardBg, borderColor: dynamicBorder }, activeTab === 'users' && styles.selectedSwitchBtn]}
           onPress={() => setActiveTab('users')}
         >
-          <Users size={12} color={activeTab === 'users' ? '#FFF' : '#707571'} style={{ marginRight: 4 }} />
-          <Text style={[styles.switchText, activeTab === 'users' && styles.selectedSwitchText]}>
+          <Users size={12} color={activeTab === 'users' ? '#FFF' : dynamicSub} style={{ marginRight: 4 }} />
+          <Text style={[styles.switchText, { color: dynamicSub }, activeTab === 'users' && styles.selectedSwitchText]}>
             User Accounts ({registeredUsers.length})
           </Text>
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={[styles.switchBtn, activeTab === 'activity' && styles.selectedSwitchBtn]}
+          style={[styles.switchBtn, { backgroundColor: dynamicCardBg, borderColor: dynamicBorder }, activeTab === 'activity' && styles.selectedSwitchBtn]}
           onPress={() => setActiveTab('activity')}
         >
-          <Activity size={12} color={activeTab === 'activity' ? '#FFF' : '#707571'} style={{ marginRight: 4 }} />
-          <Text style={[styles.switchText, activeTab === 'activity' && styles.selectedSwitchText]}>
+          <Activity size={12} color={activeTab === 'activity' ? '#FFF' : dynamicSub} style={{ marginRight: 4 }} />
+          <Text style={[styles.switchText, { color: dynamicSub }, activeTab === 'activity' && styles.selectedSwitchText]}>
             Daily Activity ({dailyActivities.length})
           </Text>
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={[styles.switchBtn, activeTab === 'admins' && styles.selectedSwitchBtn]}
+          style={[styles.switchBtn, { backgroundColor: dynamicCardBg, borderColor: dynamicBorder }, activeTab === 'admins' && styles.selectedSwitchBtn]}
           onPress={() => setActiveTab('admins')}
         >
-          <ShieldCheck size={12} color={activeTab === 'admins' ? '#FFF' : '#707571'} style={{ marginRight: 4 }} />
-          <Text style={[styles.switchText, activeTab === 'admins' && styles.selectedSwitchText]}>
+          <ShieldCheck size={12} color={activeTab === 'admins' ? '#FFF' : dynamicSub} style={{ marginRight: 4 }} />
+          <Text style={[styles.switchText, { color: dynamicSub }, activeTab === 'admins' && styles.selectedSwitchText]}>
             Admins (2)
           </Text>
         </TouchableOpacity>
@@ -144,20 +175,20 @@ export default function AdminDashboard() {
             placeholder="Search user alias or email..."
             onChangeText={setSearchQuery}
             value={searchQuery}
-            style={styles.searchBar}
-            inputStyle={{ fontSize: 13, minHeight: 0 }}
+            style={[styles.searchBar, { backgroundColor: dynamicCardBg }]}
+            inputStyle={{ fontSize: 13, minHeight: 0, color: dynamicText }}
           />
 
           <View style={styles.filterChipRow}>
-            {['All', 'Individual', 'Student', 'Teacher'].map(roleOption => {
+            {['All', 'Individual', 'Student'].map(roleOption => {
               const isSelected = selectedRoleFilter === roleOption;
               return (
                 <TouchableOpacity
                   key={roleOption}
-                  style={[styles.filterChip, isSelected && styles.selectedFilterChip]}
+                  style={[styles.filterChip, { backgroundColor: dynamicCardBg, borderColor: dynamicBorder }, isSelected && styles.selectedFilterChip]}
                   onPress={() => setSelectedRoleFilter(roleOption)}
                 >
-                  <Text style={[styles.filterChipText, isSelected && styles.selectedFilterChipText]}>
+                  <Text style={[styles.filterChipText, { color: dynamicSub }, isSelected && styles.selectedFilterChipText]}>
                     {roleOption}
                   </Text>
                 </TouchableOpacity>
@@ -165,20 +196,26 @@ export default function AdminDashboard() {
             })}
           </View>
 
-          <Surface style={styles.listContainer} elevation={2}>
-            <Text style={styles.rosterTitle}>REGISTERED ACCOUNTS ({filteredUsers.length})</Text>
+          <Surface style={[styles.listContainer, { backgroundColor: dynamicCardBg, borderColor: dynamicBorder }]} elevation={2}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+              <Text style={styles.rosterTitle}>REGISTERED ACCOUNTS ({filteredUsers.length})</Text>
+              <TouchableOpacity onPress={fetchAdminData} style={{ flexDirection: 'row', alignItems: 'center' }}>
+                {loading ? <ActivityIndicator size={12} color={JUCOCH_GREEN} style={{ marginRight: 4 }} /> : <RefreshCw size={12} color={JUCOCH_GREEN} style={{ marginRight: 4 }} />}
+                <Text style={{ fontSize: 11, fontWeight: 'bold', color: JUCOCH_GREEN }}>Refresh List</Text>
+              </TouchableOpacity>
+            </View>
             <Divider style={{ marginVertical: 8 }} />
 
             {filteredUsers.length === 0 ? (
               <View style={styles.emptyStateContainer}>
-                <Inbox size={32} color="#A0A5A1" style={{ marginBottom: 8 }} />
-                <Text style={styles.emptyTitle}>No Registered Users Yet</Text>
-                <Text style={styles.emptySub}>New user signups (Individuals, Students, Teachers) will appear here in real-time.</Text>
+                <Inbox size={32} color={dynamicSub} style={{ marginBottom: 8 }} />
+                <Text style={[styles.emptyTitle, { color: dynamicText }]}>No Registered Users Yet</Text>
+                <Text style={[styles.emptySub, { color: dynamicSub }]}>New user signups (Individuals, Students) will appear here in real-time.</Text>
               </View>
             ) : (
               filteredUsers.map((u, index) => {
-                const RoleIcon = u.role === 'Student' ? GraduationCap : u.role === 'Teacher' ? BookOpen : User;
-                const roleColor = u.role === 'Student' ? '#1E88E5' : u.role === 'Teacher' ? '#8E24AA' : JUCOCH_GREEN;
+                const RoleIcon = u.role === 'Student' ? GraduationCap : User;
+                const roleColor = u.role === 'Student' ? '#1E88E5' : JUCOCH_GREEN;
 
                 return (
                   <View key={u.id}>
@@ -192,13 +229,13 @@ export default function AdminDashboard() {
                       
                       <View style={styles.userDetails}>
                         <View style={styles.nameRow}>
-                          <Text style={styles.userName}>{u.alias}</Text>
+                          <Text style={[styles.userName, { color: dynamicText }]}>{u.alias}</Text>
                           <Surface style={[styles.roleBadge, { backgroundColor: `${roleColor}18` }]} elevation={0}>
                             <RoleIcon size={12} color={roleColor} style={{ marginRight: 4 }} />
                             <Text style={[styles.roleBadgeText, { color: roleColor }]}>{u.role}</Text>
                           </Surface>
                         </View>
-                        <Text style={styles.emailText}>{u.email} • Joined {u.joined}</Text>
+                        <Text style={[styles.emailText, { color: dynamicSub }]}>{u.email} • Joined {u.joined}</Text>
                       </View>
                     </View>
                   </View>
@@ -211,19 +248,19 @@ export default function AdminDashboard() {
 
       {/* VIEW 2: DAILY USER ACTIVITY FEED */}
       {activeTab === 'activity' && (
-        <Surface style={styles.listContainer} elevation={2}>
+        <Surface style={[styles.listContainer, { backgroundColor: dynamicCardBg, borderColor: dynamicBorder }]} elevation={2}>
           <View style={styles.feedHeader}>
             <Text style={styles.rosterTitle}>LIVE DAILY USER ACTIVITY FEED</Text>
             <Text style={styles.liveBadge}>● LIVE UPDATES</Text>
           </View>
-          <Text style={styles.feedSubtitle}>Tracks real-time mood logs, sleep logs, and AI chats recorded by users today.</Text>
+          <Text style={[styles.feedSubtitle, { color: dynamicSub }]}>Tracks real-time mood logs, sleep logs, and AI chats recorded by users today.</Text>
           <Divider style={{ marginVertical: 10 }} />
 
           {dailyActivities.length === 0 ? (
             <View style={styles.emptyStateContainer}>
-              <Activity size={32} color="#A0A5A1" style={{ marginBottom: 8 }} />
-              <Text style={styles.emptyTitle}>No Daily Activity Logged Today</Text>
-              <Text style={styles.emptySub}>When users check in, log moods, or chat with AI, their live activities will display here.</Text>
+              <Activity size={32} color={dynamicSub} style={{ marginBottom: 8 }} />
+              <Text style={[styles.emptyTitle, { color: dynamicText }]}>No Daily Activity Logged Today</Text>
+              <Text style={[styles.emptySub, { color: dynamicSub }]}>When users check in, log moods, or chat with AI, their live activities will display here.</Text>
             </View>
           ) : (
             dailyActivities.map((act, index) => {
@@ -238,13 +275,13 @@ export default function AdminDashboard() {
 
                     <View style={styles.activityDetails}>
                       <View style={styles.nameRow}>
-                        <Text style={styles.userName}>{act.alias}</Text>
-                        <Text style={styles.activityTime}>{act.time}</Text>
+                        <Text style={[styles.userName, { color: dynamicText }]}>{act.alias}</Text>
+                        <Text style={[styles.activityTime, { color: dynamicSub }]}>{act.time}</Text>
                       </View>
-                      <Text style={styles.actionText}>
+                      <Text style={[styles.actionText, { color: dynamicText }]}>
                         <Text style={{ fontWeight: 'bold', color: act.color }}>{act.action}</Text>: {act.detail}
                       </Text>
-                      <Text style={styles.userRoleTag}>Account Role: {act.role}</Text>
+                      <Text style={[styles.userRoleTag, { color: dynamicSub }]}>Account Role: {act.role}</Text>
                     </View>
                   </View>
                 </View>
@@ -256,9 +293,9 @@ export default function AdminDashboard() {
 
       {/* VIEW 3: 2 OFFICIAL CREATOR ADMIN GMAIL ACCOUNTS */}
       {activeTab === 'admins' && (
-        <Surface style={styles.listContainer} elevation={2}>
+        <Surface style={[styles.listContainer, { backgroundColor: dynamicCardBg, borderColor: dynamicBorder }]} elevation={2}>
           <Text style={styles.rosterTitle}>AUTHORIZED SYSTEM CREATOR ADMINS (2 MEMBERS)</Text>
-          <Text style={styles.feedSubtitle}>Public signups cannot register as Admin. Reserved exclusively for designated creator Gmails.</Text>
+          <Text style={[styles.feedSubtitle, { color: dynamicSub }]}>Public signups cannot register as Admin. Reserved exclusively for designated creator Gmails.</Text>
           <Divider style={{ marginVertical: 10 }} />
 
           {OFFICIAL_ADMIN_GROUP.map((admin, index) => (
@@ -268,13 +305,13 @@ export default function AdminDashboard() {
                 <Avatar.Text size={40} label={`A${index + 1}`} style={{ backgroundColor: '#D90429' }} />
                 <View style={styles.userDetails}>
                   <View style={styles.nameRow}>
-                    <Text style={styles.userName}>{admin.name}</Text>
+                    <Text style={[styles.userName, { color: dynamicText }]}>{admin.name}</Text>
                     <Surface style={[styles.roleBadge, { backgroundColor: '#FFE5E5' }]} elevation={0}>
                       <ShieldCheck size={12} color="#D90429" style={{ marginRight: 4 }} />
                       <Text style={[styles.roleBadgeText, { color: '#D90429' }]}>Creator Admin</Text>
                     </Surface>
                   </View>
-                  <Text style={styles.emailText}>{admin.email} • Alias: {admin.alias}</Text>
+                  <Text style={[styles.emailText, { color: dynamicSub }]}>{admin.email} • Alias: {admin.alias}</Text>
                 </View>
               </View>
             </View>
@@ -282,84 +319,6 @@ export default function AdminDashboard() {
         </Surface>
       )}
 
-      {/* MODAL: CREATE TEACHER ACCOUNT */}
-      <Portal>
-        <Modal 
-          visible={showCreateModal} 
-          onDismiss={() => setShowCreateModal(false)}
-          contentContainerStyle={styles.modalContentStyle}
-        >
-          <Surface style={styles.createModalCard}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Issue Teacher Account</Text>
-              <TouchableOpacity onPress={() => setShowCreateModal(false)}>
-                <X size={20} color="#707571" />
-              </TouchableOpacity>
-            </View>
-            <Text style={styles.modalSub}>Admins issue teacher logins and assign classroom codes for students.</Text>
-
-            {createdSuccess ? (
-              <View style={styles.successBox}>
-                <CheckCircle size={20} color={JUCOCH_GREEN} style={{ marginRight: 8 }} />
-                <Text style={styles.successText}>{createdSuccess}</Text>
-              </View>
-            ) : (
-              <View style={{ marginTop: 12 }}>
-                <TextInput
-                  label="Teacher Name / Alias"
-                  value={teacherAlias}
-                  onChangeText={setTeacherAlias}
-                  mode="outlined"
-                  outlineColor="#EBF2EE"
-                  activeOutlineColor={JUCOCH_GREEN}
-                  style={styles.modalInput}
-                  placeholder="e.g. Prof_Johnson"
-                />
-
-                <TextInput
-                  label="Teacher Email"
-                  value={teacherEmail}
-                  onChangeText={setTeacherEmail}
-                  mode="outlined"
-                  outlineColor="#EBF2EE"
-                  activeOutlineColor={JUCOCH_GREEN}
-                  style={styles.modalInput}
-                  placeholder="johnson@school.edu"
-                />
-
-                <TextInput
-                  label="Temporary Password"
-                  value={teacherPassword}
-                  onChangeText={setTeacherPassword}
-                  secureTextEntry
-                  mode="outlined"
-                  outlineColor="#EBF2EE"
-                  activeOutlineColor={JUCOCH_GREEN}
-                  style={styles.modalInput}
-                />
-
-                <TextInput
-                  label="Classroom Code (For Students to Join)"
-                  value={classCode}
-                  onChangeText={setClassCode}
-                  mode="outlined"
-                  outlineColor="#EBF2EE"
-                  activeOutlineColor={JUCOCH_GREEN}
-                  style={styles.modalInput}
-                />
-
-                <TouchableOpacity 
-                  style={styles.submitModalBtn}
-                  onPress={handleCreateTeacher}
-                  activeOpacity={0.8}
-                >
-                  <Text style={styles.submitModalBtnText}>Generate & Issue Teacher Login</Text>
-                </TouchableOpacity>
-              </View>
-            )}
-          </Surface>
-        </Modal>
-      </Portal>
     </View>
   );
 }
@@ -372,11 +331,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 16,
-    backgroundColor: '#FFE5E5',
     padding: 14,
     borderRadius: 18,
     borderWidth: 1,
-    borderColor: '#FFC9C9',
   },
   iconBg: {
     width: 38,
@@ -394,7 +351,6 @@ const styles = StyleSheet.create({
   },
   headerSub: {
     fontSize: 11,
-    color: '#707571',
     marginTop: 2,
   },
   statsRow: {
@@ -404,38 +360,19 @@ const styles = StyleSheet.create({
   },
   statCard: {
     flex: 1,
-    backgroundColor: '#FFF',
     borderRadius: 16,
     padding: 10,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#EBF2EE',
   },
   statNumber: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#1C1F1D',
   },
   statLabel: {
     fontSize: 9,
-    color: '#707571',
     marginTop: 2,
     fontWeight: '600',
-  },
-  createTeacherBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: JUCOCH_GREEN,
-    borderRadius: 16,
-    paddingVertical: 12,
-    marginBottom: 14,
-    elevation: 2,
-  },
-  createTeacherBtnText: {
-    color: '#FFF',
-    fontWeight: 'bold',
-    fontSize: 13,
   },
   switchRow: {
     flexDirection: 'row',
@@ -447,8 +384,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#FFF',
-    borderColor: '#EBF2EE',
     borderWidth: 1.5,
     borderRadius: 14,
     paddingVertical: 9,
@@ -460,13 +395,11 @@ const styles = StyleSheet.create({
   switchText: {
     fontSize: 10,
     fontWeight: 'bold',
-    color: '#707571',
   },
   selectedSwitchText: {
     color: '#FFF',
   },
   searchBar: {
-    backgroundColor: '#FFF',
     borderRadius: 16,
     height: 44,
     marginBottom: 12,
@@ -481,9 +414,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 16,
-    backgroundColor: '#FFF',
     borderWidth: 1,
-    borderColor: '#EBF2EE',
   },
   selectedFilterChip: {
     backgroundColor: JUCOCH_GREEN,
@@ -491,7 +422,6 @@ const styles = StyleSheet.create({
   },
   filterChipText: {
     fontSize: 12,
-    color: '#707571',
     fontWeight: '600',
   },
   selectedFilterChipText: {
@@ -499,11 +429,9 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   listContainer: {
-    backgroundColor: '#FFF',
     borderRadius: 22,
     padding: 16,
     borderWidth: 1,
-    borderColor: '#E2EFE7',
   },
   feedHeader: {
     flexDirection: 'row',
@@ -523,7 +451,6 @@ const styles = StyleSheet.create({
   },
   feedSubtitle: {
     fontSize: 11,
-    color: '#707571',
     marginTop: 4,
   },
   activityRow: {
@@ -550,20 +477,16 @@ const styles = StyleSheet.create({
   userName: {
     fontSize: 13,
     fontWeight: 'bold',
-    color: '#1C1F1D',
   },
   activityTime: {
     fontSize: 10,
-    color: '#909591',
   },
   actionText: {
     fontSize: 12,
-    color: '#4A5568',
     marginTop: 2,
   },
   userRoleTag: {
     fontSize: 10,
-    color: '#808983',
     marginTop: 2,
   },
   userRow: {
@@ -577,7 +500,6 @@ const styles = StyleSheet.create({
   },
   emailText: {
     fontSize: 11,
-    color: '#707571',
     marginTop: 2,
   },
   roleBadge: {
@@ -602,11 +524,9 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: 14,
     fontWeight: 'bold',
-    color: '#1C1F1D',
   },
   emptySub: {
     fontSize: 11,
-    color: '#707571',
     textAlign: 'center',
     marginTop: 4,
     maxWidth: 280,
@@ -615,7 +535,6 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   createModalCard: {
-    backgroundColor: '#FFF',
     borderRadius: 24,
     padding: 20,
   },
@@ -627,17 +546,14 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#1C1F1D',
   },
   modalSub: {
     fontSize: 12,
-    color: '#707571',
     marginTop: 4,
     marginBottom: 8,
   },
   modalInput: {
     marginBottom: 12,
-    backgroundColor: '#FFF',
   },
   submitModalBtn: {
     backgroundColor: JUCOCH_GREEN,

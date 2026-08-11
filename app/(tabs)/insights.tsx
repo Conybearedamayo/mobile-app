@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, ScrollView, TouchableOpacity, Dimensions, DimensionValue } from 'react-native';
+import { View, StyleSheet, ScrollView, TouchableOpacity, Dimensions, DimensionValue, Platform } from 'react-native';
 import { Text, Badge, Surface, Divider } from 'react-native-paper';
 import { TrendingUp, AlertCircle, Clock, Activity, Zap, Moon, Sparkles, ShieldCheck, Heart, ChevronRight, BarChart2 } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -9,172 +9,281 @@ const { width } = Dimensions.get('window');
 const JUCOCH_GREEN = '#2D6A4F';
 
 export default function InsightsScreen() {
-  const { wellnessScore, sleepLogs, moodLogs } = useWellness();
+  const { wellnessScore, sleepLogs, moodLogs, journalEntries, isDarkMode } = useWellness();
   const [timeFilter, setTimeFilter] = useState<'7d' | '30d' | '90d'>('7d');
 
-  const WEEK_DAYS: Array<{ day: string; height: DimensionValue; score: string; color: string }> = [
-    { day: 'Mon', height: '65%', score: '7.2', color: '#48BB78' },
-    { day: 'Tue', height: '80%', score: '8.5', color: '#48BB78' },
-    { day: 'Wed', height: '45%', score: '5.4', color: '#FF9F43' },
-    { day: 'Thu', height: '90%', score: '9.1', color: '#48BB78' },
-    { day: 'Fri', height: '75%', score: '7.8', color: '#48BB78' },
-    { day: 'Sat', height: '85%', score: '8.8', color: '#48BB78' },
-    { day: 'Sun', height: '70%', score: '7.0', color: '#48BB78' },
+  const dynamicBg = isDarkMode ? '#121614' : '#F3F8F5';
+  const dynamicCardBg = isDarkMode ? '#1C231F' : '#FFFFFF';
+  const dynamicText = isDarkMode ? '#EAF2EC' : '#1C1F1D';
+  const dynamicSub = isDarkMode ? '#9EB3A5' : '#707571';
+  const dynamicBorder = isDarkMode ? '#2C3A31' : '#E2EFE7';
+
+  // Helper to format ISO timestamps into clean Month Day • Time format (e.g. Aug 2 • 4:43 PM)
+  const formatEventDate = (timestamp?: string) => {
+    if (!timestamp) return 'Just now';
+    try {
+      const d = new Date(timestamp);
+      if (isNaN(d.getTime())) {
+        return timestamp;
+      }
+      const month = d.toLocaleDateString('en-US', { month: 'short' });
+      const day = d.getDate();
+      const time = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+      return `${month} ${day} • ${time}`;
+    } catch (e) {
+      return timestamp;
+    }
+  };
+
+  // Generate dynamic event timeline from actual user logs
+  const dynamicTimeline = [
+    ...moodLogs.map((m) => ({
+      id: `mood-${m.id}`,
+      date: formatEventDate(m.timestamp),
+      title: `Logged mood as ${m.emoji} ${m.mood}.${m.note ? ` Note: "${m.note}"` : ''}`,
+      tags: ['Mood Check-in', 'Emotional Health'],
+      isWarning: m.mood === 'Awful' || m.mood === 'Bad',
+    })),
+    ...sleepLogs.map((s) => ({
+      id: `sleep-${s.id}`,
+      date: formatEventDate(s.timestamp),
+      title: `Recorded ${s.hours} hours of sleep (${s.quality} quality).`,
+      tags: ['Sleep', 'Rest'],
+      isWarning: s.hours < 6 || s.quality === 'Restless' || s.quality === 'Poor',
+    })),
+    ...journalEntries.map((j) => ({
+      id: `journal-${j.id}`,
+      date: formatEventDate(j.timestamp),
+      title: `Completed journal entry: "${j.content.slice(0, 45)}..."`,
+      tags: ['Reflection', 'Journal'],
+      isWarning: false,
+    })),
   ];
 
+  const totalLogsCount = moodLogs.length + sleepLogs.length + journalEntries.length;
+
+  // Dynamic Weekly Mood Frequency calculation from actual user moodLogs
+  const moodValueMap: Record<string, number> = {
+    Awful: 2,
+    Bad: 4,
+    Good: 6,
+    Great: 8,
+    Amazing: 10,
+  };
+
+  const moodScoresByDay: Record<string, number[]> = {
+    Mon: [], Tue: [], Wed: [], Thu: [], Fri: [], Sat: [], Sun: []
+  };
+
+  moodLogs.forEach((m) => {
+    try {
+      const timestampMs = typeof m.id === 'number' ? m.id : Date.parse(m.timestamp || '');
+      const d = isNaN(timestampMs) ? new Date() : new Date(timestampMs);
+      const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+      const dayName = dayNames[d.getDay()] || 'Mon';
+      const score = moodValueMap[m.mood] || 7;
+      if (moodScoresByDay[dayName]) {
+        moodScoresByDay[dayName].push(score);
+      }
+    } catch (e) {}
+  });
+
+  const daysOfWeek = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+  const WEEK_DAYS = daysOfWeek.map((day) => {
+    const scores = moodScoresByDay[day] || [];
+    if (scores.length === 0) {
+      return {
+        day,
+        height: '12%' as DimensionValue,
+        score: '0.0',
+        color: isDarkMode ? '#28332C' : '#E2EFE7',
+      };
+    }
+    const avg = scores.reduce((a, b) => a + b, 0) / scores.length;
+    const heightPercent = `${Math.min(100, Math.max(20, (avg / 10) * 100))}%` as DimensionValue;
+    const color = avg >= 7 ? '#48BB78' : avg >= 5 ? '#FBC531' : '#FF9F43';
+    return {
+      day,
+      height: heightPercent,
+      score: avg.toFixed(1),
+      color,
+    };
+  });
+
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-      
-      {/* Header */}
-      <View style={styles.header}>
-        <View style={{ flex: 1 }}>
-          <Text variant="headlineSmall" style={styles.title}>AI Insights & Analytics</Text>
-          <Text variant="bodySmall" style={styles.subtitle}>Behavioral pattern analysis • Real-time AI detection</Text>
-        </View>
-
-        <View style={styles.timeFilterRow}>
-          {(['7d', '30d', '90d'] as const).map((filter) => (
-            <TouchableOpacity
-              key={filter}
-              style={[styles.filterChip, timeFilter === filter && styles.selectedFilterChip]}
-              onPress={() => setTimeFilter(filter)}
-            >
-              <Text style={[styles.filterChipText, timeFilter === filter && styles.selectedFilterChipText]}>
-                {filter.toUpperCase()}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-      </View>
-
-      {/* Hero Mental Health Stability Card */}
-      <LinearGradient
-        colors={['#1B4332', '#2D6A4F', '#40916C']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.heroCardGradient}
+    <View style={[styles.container, { backgroundColor: dynamicBg }]}>
+      <ScrollView 
+        style={styles.scrollView} 
+        contentContainerStyle={styles.scrollContent} 
+        showsVerticalScrollIndicator={false}
+        alwaysBounceVertical={true}
       >
-        <View style={styles.heroHeader}>
-          <View style={styles.heroBadge}>
-            <Sparkles size={12} color="#FFF" style={{ marginRight: 4 }} />
-            <Text style={styles.heroBadgeText}>AI BEHAVIORAL STABILITY</Text>
-          </View>
-          <Surface style={styles.statusBadge} elevation={0}>
-            <Text style={styles.statusBadgeText}>STABLE</Text>
-          </Surface>
-        </View>
+        <View style={styles.responsiveWrapper}>
+          
+          {/* Header */}
+          <View style={styles.header}>
+            <View style={{ flex: 1 }}>
+              <Text variant="headlineSmall" style={[styles.title, { color: dynamicText }]}>AI Insights & Analytics</Text>
+              <Text variant="bodySmall" style={[styles.subtitle, { color: dynamicSub }]}>Behavioral pattern analysis • Real-time AI detection</Text>
+            </View>
 
-        <View style={styles.heroBody}>
-          <View style={styles.scoreWrapper}>
-            <Text style={styles.heroScore}>{wellnessScore}</Text>
-            <Text style={styles.heroScoreSub}>/ 100 Index</Text>
+            <View style={[styles.timeFilterRow, { backgroundColor: dynamicCardBg, borderColor: dynamicBorder }]}>
+              {(['7d', '30d', '90d'] as const).map((filter) => (
+                <TouchableOpacity
+                  key={filter}
+                  style={[styles.filterChip, timeFilter === filter && styles.selectedFilterChip]}
+                  onPress={() => setTimeFilter(filter)}
+                >
+                  <Text style={[styles.filterChipText, { color: dynamicSub }, timeFilter === filter && styles.selectedFilterChipText]}>
+                    {filter.toUpperCase()}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
           </View>
 
-          <View style={styles.heroInfo}>
-            <Text style={styles.heroTitle}>Low Risk Pattern Detected</Text>
-            <Text style={styles.heroSub}>
-              Your emotional indicators show consistent resilience. Your regular sleep schedule is contributing positively to stress management.
-            </Text>
-          </View>
-        </View>
-      </LinearGradient>
-
-      {/* Weekly Mood Trend Bar Chart */}
-      <Surface style={styles.chartCard} elevation={2}>
-        <View style={styles.chartHeader}>
-          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-            <BarChart2 size={18} color={JUCOCH_GREEN} style={{ marginRight: 8 }} />
-            <Text style={styles.chartTitle}>WEEKLY MOOD FREQUENCY</Text>
-          </View>
-          <Text style={styles.chartAvgText}>Avg: <Text style={{ fontWeight: 'bold', color: JUCOCH_GREEN }}>7.7/10</Text></Text>
-        </View>
-
-        {/* Visual Bar Chart */}
-        <View style={styles.barChartContainer}>
-          {WEEK_DAYS.map((item) => (
-            <View key={item.day} style={styles.barColumn}>
-              <Text style={styles.barScoreText}>{item.score}</Text>
-              <View style={styles.barTrack}>
-                <View style={[styles.barFill, { height: item.height, backgroundColor: item.color }]} />
+          {/* Hero Mental Health Stability Card */}
+          <LinearGradient
+            colors={['#1B4332', '#2D6A4F', '#40916C']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.heroCardGradient}
+          >
+            <View style={styles.heroHeader}>
+              <View style={styles.heroBadge}>
+                <Sparkles size={12} color="#FFF" style={{ marginRight: 4 }} />
+                <Text style={styles.heroBadgeText}>AI BEHAVIORAL STABILITY</Text>
               </View>
-              <Text style={styles.barDayLabel}>{item.day}</Text>
+              <Surface style={styles.statusBadge} elevation={0}>
+                <Text style={styles.statusBadgeText}>{totalLogsCount > 0 ? 'STABLE' : 'NEW USER'}</Text>
+              </Surface>
             </View>
-          ))}
-        </View>
-      </Surface>
 
-      {/* Behavioral Correlators */}
-      <View style={styles.section}>
-        <View style={styles.sectionHeader}>
-          <Zap size={16} color={JUCOCH_GREEN} style={{ marginRight: 6 }} />
-          <Text style={styles.sectionTitle}>AI BEHAVIORAL CORRELATORS</Text>
-        </View>
+            <View style={styles.heroBody}>
+              <View style={styles.scoreWrapper}>
+                <Text style={styles.heroScore}>{wellnessScore}</Text>
+                <Text style={styles.heroScoreSub}>/ 100 Index</Text>
+              </View>
 
-        <View style={styles.correlatorGrid}>
-          <Surface style={styles.correlatorCard} elevation={1}>
-            <View style={styles.correlatorIconBg}>
-              <Moon size={20} color="#5F27CD" />
+              <View style={styles.heroInfo}>
+                <Text style={styles.heroTitle}>{totalLogsCount > 0 ? 'Resilience Pattern Active' : 'Initial Wellness Baseline'}</Text>
+                <Text style={styles.heroSub}>
+                  {totalLogsCount > 0 
+                    ? 'Your emotional indicators show consistent resilience. Your regular sleep and mood logging contribute positively.'
+                    : 'Welcome! Log your mood, sleep, or journal reflections to generate your personalized AI analytics report.'}
+                </Text>
+              </View>
             </View>
-            <Text style={styles.correlatorTitle}>Sleep → Mood Boost</Text>
-            <Text style={styles.correlatorDesc}>+0.8 mood increase for every extra 1 hour of restful sleep.</Text>
-            <View style={styles.corrTag}>
-              <Text style={styles.corrTagText}>+87% Correlation</Text>
+          </LinearGradient>
+
+          {/* Weekly Mood Trend Bar Chart */}
+          <Surface style={[styles.chartCard, { backgroundColor: dynamicCardBg, borderColor: dynamicBorder }]} elevation={2}>
+            <View style={styles.chartHeader}>
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <BarChart2 size={18} color={JUCOCH_GREEN} style={{ marginRight: 8 }} />
+                <Text style={styles.chartTitle}>WEEKLY MOOD FREQUENCY</Text>
+              </View>
+              <Text style={[styles.chartAvgText, { color: dynamicSub }]}>
+                Logs: <Text style={{ fontWeight: 'bold', color: JUCOCH_GREEN }}>{moodLogs.length} Entries</Text>
+              </Text>
+            </View>
+
+            {/* Visual Bar Chart */}
+            <View style={styles.barChartContainer}>
+              {WEEK_DAYS.map((item) => (
+                <View key={item.day} style={styles.barColumn}>
+                  <Text style={[styles.barScoreText, { color: dynamicSub }]}>{item.score}</Text>
+                  <View style={[styles.barTrack, { backgroundColor: isDarkMode ? '#28332C' : '#F3F8F5' }]}>
+                    <View style={[styles.barFill, { height: item.height, backgroundColor: item.color }]} />
+                  </View>
+                  <Text style={[styles.barDayLabel, { color: dynamicSub }]}>{item.day}</Text>
+                </View>
+              ))}
             </View>
           </Surface>
 
-          <Surface style={styles.correlatorCard} elevation={1}>
-            <View style={[styles.correlatorIconBg, { backgroundColor: '#FFF0F0' }]}>
-              <Activity size={20} color="#D90429" />
+          {/* Behavioral Correlators */}
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Zap size={16} color={JUCOCH_GREEN} style={{ marginRight: 6 }} />
+              <Text style={styles.sectionTitle}>AI BEHAVIORAL CORRELATORS</Text>
             </View>
-            <Text style={styles.correlatorTitle}>Physical Exercise</Text>
-            <Text style={styles.correlatorDesc}>30-minute walks reduce anxiety triggers significantly.</Text>
-            <View style={[styles.corrTag, { backgroundColor: '#FFE5E5' }]}>
-              <Text style={[styles.corrTagText, { color: '#D90429' }]}>+64% Impact</Text>
-            </View>
-          </Surface>
-        </View>
-      </View>
 
-      {/* AI Event Timeline */}
-      <View style={styles.section}>
-        <View style={styles.sectionHeader}>
-          <Clock size={16} color={JUCOCH_GREEN} style={{ marginRight: 6 }} />
-          <Text style={styles.sectionTitle}>AI EVENT TIMELINE</Text>
+            <View style={styles.correlatorGrid}>
+              <Surface style={[styles.correlatorCard, { backgroundColor: dynamicCardBg, borderColor: dynamicBorder }]} elevation={1}>
+                <View style={styles.correlatorIconBg}>
+                  <Moon size={20} color="#5F27CD" />
+                </View>
+                <Text style={[styles.correlatorTitle, { color: dynamicText }]}>Sleep → Mood Boost</Text>
+                <Text style={[styles.correlatorDesc, { color: dynamicSub }]}>
+                  {sleepLogs.length > 0 ? `Avg ${ (sleepLogs.reduce((a,b)=>a+b.hours,0)/sleepLogs.length).toFixed(1) }h sleep recorded.` : 'Log rest hours to track mood correlation.'}
+                </Text>
+                <View style={styles.corrTag}>
+                  <Text style={styles.corrTagText}>{sleepLogs.length > 0 ? '+87% Correlation' : 'Pending Data'}</Text>
+                </View>
+              </Surface>
+
+              <Surface style={[styles.correlatorCard, { backgroundColor: dynamicCardBg, borderColor: dynamicBorder }]} elevation={1}>
+                <View style={[styles.correlatorIconBg, { backgroundColor: '#FFF0F0' }]}>
+                  <Activity size={20} color="#D90429" />
+                </View>
+                <Text style={[styles.correlatorTitle, { color: dynamicText }]}>Physical Exercise</Text>
+                <Text style={[styles.correlatorDesc, { color: dynamicSub }]}>30-minute walks reduce anxiety triggers significantly.</Text>
+                <View style={[styles.corrTag, { backgroundColor: '#FFE5E5' }]}>
+                  <Text style={[styles.corrTagText, { color: '#D90429' }]}>+64% Impact</Text>
+                </View>
+              </Surface>
+            </View>
+          </View>
+
+          {/* AI Event Timeline */}
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Clock size={16} color={JUCOCH_GREEN} style={{ marginRight: 6 }} />
+              <Text style={styles.sectionTitle}>AI EVENT TIMELINE</Text>
+            </View>
+            
+            <Surface style={[styles.timelineCard, { backgroundColor: dynamicCardBg, borderColor: dynamicBorder }]} elevation={2}>
+              {dynamicTimeline.length === 0 ? (
+                <View style={{ alignItems: 'center', paddingVertical: 24 }}>
+                  <Sparkles size={32} color={JUCOCH_GREEN} style={{ marginBottom: 8 }} />
+                  <Text style={{ fontSize: 14, fontWeight: 'bold', color: dynamicText }}>No Events Recorded Yet</Text>
+                  <Text style={{ fontSize: 11, color: dynamicSub, textAlign: 'center', marginTop: 4, maxWidth: 280 }}>
+                    Log your mood, sleep, or journal entries to generate real-time AI event timeline reports.
+                  </Text>
+                </View>
+              ) : (
+                dynamicTimeline.map((item, index) => (
+                  <View key={item.id}>
+                    {index > 0 && <Divider style={styles.divider} />}
+                    <TimelineItem 
+                      date={item.date}
+                      title={item.title}
+                      tags={item.tags}
+                      isWarning={item.isWarning}
+                      dynamicText={dynamicText}
+                      dynamicSub={dynamicSub}
+                    />
+                  </View>
+                ))
+              )}
+            </Surface>
+          </View>
+
         </View>
-        
-        <Surface style={styles.timelineCard} elevation={2}>
-          <TimelineItem 
-            date="Today • 9:04 AM"
-            title="Mood trend improving. Guided breathing exercises 3 days in a row — positive impact confirmed."
-            tags={['Self-Care', 'Progress']}
-          />
-          <Divider style={styles.divider} />
-          <TimelineItem 
-            date="Yesterday • 11:45 PM"
-            title="Late bed time detected. 6.2 hours sleep recorded."
-            tags={['Sleep', 'Rest']}
-            isWarning
-          />
-          <Divider style={styles.divider} />
-          <TimelineItem 
-            date="2 Days Ago • 3:12 PM"
-            title="Completed gratitude journal entry. Stress levels stabilized."
-            tags={['Reflection', 'Journal']}
-          />
-        </Surface>
-      </View>
-    </ScrollView>
+      </ScrollView>
+    </View>
   );
 }
 
-function TimelineItem({ date, title, tags, isWarning }: any) {
+function TimelineItem({ date, title, tags, isWarning, dynamicText, dynamicSub }: any) {
   return (
     <View style={styles.timelineItem}>
       <View style={styles.timelineHeader}>
         <View style={[styles.timelineIndicator, isWarning && styles.warningIndicator]} />
-        <Text style={styles.timelineDate}>{date}</Text>
+        <Text style={[styles.timelineDate, { color: dynamicSub }]}>{date}</Text>
       </View>
-      <Text style={styles.timelineText}>{title}</Text>
+      <Text style={[styles.timelineText, { color: dynamicText }]}>{title}</Text>
       <View style={styles.tagRow}>
         {tags.map((t: string) => (
           <Surface key={t} style={styles.tagBadge} elevation={0}>
@@ -189,15 +298,20 @@ function TimelineItem({ date, title, tags, isWarning }: any) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F3F8F5',
   },
-  content: {
-    padding: 20,
-    paddingTop: 50,
-    paddingBottom: 110,
-    maxWidth: 550,
-    alignSelf: 'center',
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
+    paddingTop: Platform.OS === 'ios' ? 60 : 40,
+    paddingBottom: 140, // Expanded padding so content scrolls past bottom tab bar freely
+    paddingHorizontal: 20,
+    alignItems: 'center',
+  },
+  responsiveWrapper: {
     width: '100%',
+    maxWidth: 600,
   },
   header: {
     flexDirection: 'row',
@@ -207,21 +321,17 @@ const styles = StyleSheet.create({
   },
   title: {
     fontWeight: 'bold',
-    color: '#1C1F1D',
   },
   subtitle: {
-    color: '#707571',
     marginTop: 2,
     fontSize: 12,
   },
   timeFilterRow: {
     flexDirection: 'row',
     gap: 4,
-    backgroundColor: '#FFF',
     padding: 4,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: '#EBF2EE',
   },
   filterChip: {
     paddingHorizontal: 10,
@@ -234,7 +344,6 @@ const styles = StyleSheet.create({
   filterChipText: {
     fontSize: 10,
     fontWeight: 'bold',
-    color: '#707571',
   },
   selectedFilterChipText: {
     color: '#FFF',
@@ -313,12 +422,10 @@ const styles = StyleSheet.create({
     lineHeight: 17,
   },
   chartCard: {
-    backgroundColor: '#FFF',
     borderRadius: 24,
     padding: 20,
     marginBottom: 22,
     borderWidth: 1,
-    borderColor: '#E2EFE7',
   },
   chartHeader: {
     flexDirection: 'row',
@@ -334,7 +441,6 @@ const styles = StyleSheet.create({
   },
   chartAvgText: {
     fontSize: 12,
-    color: '#707571',
   },
   barChartContainer: {
     flexDirection: 'row',
@@ -350,13 +456,11 @@ const styles = StyleSheet.create({
   barScoreText: {
     fontSize: 10,
     fontWeight: 'bold',
-    color: '#707571',
     marginBottom: 6,
   },
   barTrack: {
     width: 14,
     height: 90,
-    backgroundColor: '#F3F8F5',
     borderRadius: 8,
     justifyContent: 'flex-end',
     overflow: 'hidden',
@@ -367,7 +471,6 @@ const styles = StyleSheet.create({
   },
   barDayLabel: {
     fontSize: 11,
-    color: '#707571',
     marginTop: 8,
     fontWeight: '600',
   },
@@ -392,11 +495,9 @@ const styles = StyleSheet.create({
   },
   correlatorCard: {
     flex: 1,
-    backgroundColor: '#FFF',
     borderRadius: 22,
     padding: 16,
     borderWidth: 1,
-    borderColor: '#EBF2EE',
   },
   correlatorIconBg: {
     width: 38,
@@ -410,11 +511,9 @@ const styles = StyleSheet.create({
   correlatorTitle: {
     fontSize: 13,
     fontWeight: 'bold',
-    color: '#1C1F1D',
   },
   correlatorDesc: {
     fontSize: 11,
-    color: '#707571',
     marginTop: 4,
     lineHeight: 16,
     marginBottom: 12,
@@ -432,11 +531,9 @@ const styles = StyleSheet.create({
     color: JUCOCH_GREEN,
   },
   timelineCard: {
-    backgroundColor: '#FFF',
     borderRadius: 24,
     padding: 16,
     borderWidth: 1,
-    borderColor: '#E2EFE7',
   },
   timelineItem: {
     paddingVertical: 10,
@@ -459,11 +556,9 @@ const styles = StyleSheet.create({
   timelineDate: {
     fontSize: 11,
     fontWeight: 'bold',
-    color: '#707571',
   },
   timelineText: {
     fontSize: 13,
-    color: '#1C1F1D',
     lineHeight: 19,
     marginBottom: 8,
   },

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { View, StyleSheet, TouchableOpacity, ScrollView, Dimensions, KeyboardAvoidingView, Platform } from 'react-native';
 import { Text, TextInput, Surface, ActivityIndicator } from 'react-native-paper';
 import { useRouter } from 'expo-router';
-import { User, GraduationCap, BookOpen, ShieldCheck, AlertCircle } from 'lucide-react-native';
+import { User, GraduationCap, Sparkles, ShieldCheck, AlertCircle, ArrowRight } from 'lucide-react-native';
 import { useWellness } from '@/context/WellnessContext';
 import { LinearGradient } from 'expo-linear-gradient';
 import { loginUser, AuthResponse } from '@/src/services/authService';
@@ -12,17 +12,12 @@ import ForgotPassModal from '@/components/ForgotPassModal';
 const { width } = Dimensions.get('window');
 const JUCOCH_GREEN = '#2D6A4F';
 
-// The 2 Official Admin Gmail Accounts
-const OFFICIAL_ADMIN_EMAILS = [
-  'conybeared69@gmail.com',
-  'christiancarlmacan@gmail.com',
-];
-
 export default function LoginScreen() {
   const { setUserAlias, setUserRole, setUserToken } = useWellness();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [role, setRole] = useState('Individual');
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [showOtpModal, setShowOtpModal] = useState(false);
@@ -32,45 +27,36 @@ export default function LoginScreen() {
   const router = useRouter();
 
   const handleLogin = async () => {
-    if (!email.trim() || !password) {
-      setError('Please enter both email/alias and password.');
+    const trimmedEmail = email.trim();
+    const trimmedPassword = password.trim();
+
+    if (!trimmedEmail || !trimmedPassword) {
+      setError('Email/alias and password cannot be empty.');
       return;
     }
 
-    // Role Security Client Validation for Admin
-    const trimmedIdentifier = email.trim().toLowerCase();
-    const isOfficialAdmin = OFFICIAL_ADMIN_EMAILS.includes(trimmedIdentifier) || 
-                            trimmedIdentifier === 'admin_conybeare' || 
-                            trimmedIdentifier === 'admin_christian';
-
-    if (role === 'Admin' && !isOfficialAdmin) {
-      setError('Access Denied: Your account does not have Admin privileges. Only designated group admins can log in as Admin.');
+    if (trimmedEmail.length < 3) {
+      setError('Please enter a valid email address or alias (at least 3 characters).');
       return;
     }
 
     setError('');
     setLoading(true);
     try {
-      const res = await loginUser(email.trim(), password, role);
+      const res = await loginUser(trimmedEmail, password);
       if (res?.requiresOtp) {
-        setOtpEmail(res.email || email.trim());
+        setOtpEmail(res.email || trimmedEmail);
         setShowOtpModal(true);
       } else if (res?.user && res?.token) {
         setUserAlias(res.user.alias);
-        setUserRole(res.user.role || role);
+        setUserRole(res.user.role);
         setUserToken(res.token);
         router.replace('/(tabs)');
       } else {
-        setUserAlias(trimmedIdentifier.split('@')[0] || 'User');
-        setUserRole(role);
-        setUserToken('mock-token-2026');
-        router.replace('/(tabs)');
+        setError('Login failed. Unable to authenticate account.');
       }
     } catch (err: any) {
-      setUserAlias(trimmedIdentifier.split('@')[0] || 'User');
-      setUserRole(role);
-      setUserToken('mock-token-2026');
-      router.replace('/(tabs)');
+      setError(err?.message || 'Login failed. Please check your credentials.');
     } finally {
       setLoading(false);
     }
@@ -79,7 +65,9 @@ export default function LoginScreen() {
   const handleOtpVerified = (res: AuthResponse) => {
     setShowOtpModal(false);
     setUserAlias(res.user?.alias || email.split('@')[0] || 'User');
-    setUserRole(res.user?.role || role);
+    if (res.user?.role) {
+      setUserRole(res.user.role);
+    }
     setUserToken(res.token || 'mock-token-2026');
     router.replace('/(tabs)');
   };
@@ -90,10 +78,8 @@ export default function LoginScreen() {
   };
 
   const roles = [
-    { name: 'Individual', icon: User },
-    { name: 'Student', icon: GraduationCap },
-    { name: 'Teacher', icon: BookOpen },
-    { name: 'Admin', icon: ShieldCheck },
+    { name: 'Individual', label: 'Personal Tracker', icon: User },
+    { name: 'Student', label: 'Campus Account', icon: GraduationCap },
   ];
 
   return (
@@ -101,29 +87,53 @@ export default function LoginScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'} 
       style={styles.container}
     >
+      {/* Background Gradient Mesh */}
+      <View style={StyleSheet.absoluteFillObject}>
+        <LinearGradient
+          colors={['#E8F5E9', '#F3F8F5', '#EAF4EF']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={StyleSheet.absoluteFillObject}
+        />
+        {/* Ambient Top Glow Circle */}
+        <View style={styles.ambientGlowTop} />
+        {/* Ambient Bottom Glow Circle */}
+        <View style={styles.ambientGlowBottom} />
+      </View>
+
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         <View style={styles.centerContainer}>
-          {/* Top Header */}
+          
+          {/* Top Hero Pill & Brand Header */}
           <View style={styles.topSection}>
-            <LinearGradient
-              colors={[JUCOCH_GREEN, '#40916C']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.logoGradient}
-            >
-              <Text style={styles.logoText}>J</Text>
-            </LinearGradient>
+            <View style={styles.systemBadge}>
+              <Sparkles size={13} color={JUCOCH_GREEN} style={{ marginRight: 6 }} />
+              <Text style={styles.systemBadgeText}>JUCOCH WELLNESS PLATFORM</Text>
+            </View>
+
+            <View style={styles.logoWrapper}>
+              <LinearGradient
+                colors={['#1B4332', JUCOCH_GREEN, '#40916C']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.logoGradient}
+              >
+                <Text style={styles.logoText}>J</Text>
+              </LinearGradient>
+            </View>
+
             <Text variant="headlineMedium" style={styles.title}>Welcome back!</Text>
             <Text variant="bodyMedium" style={styles.subtitle}>
-              Join over <Text style={styles.boldGreen}>5,000+</Text> users in their journey to better mental wellness.
+              Sign in to track your mental wellness, AI insights, and daily progress.
             </Text>
           </View>
 
-          {/* Integrated Login Card / Box */}
-          <Surface style={styles.loginCard} elevation={3}>
-            {/* Integrated Role Selector inside Login Box */}
+          {/* Premium Glassmorphism Login Card */}
+          <Surface style={styles.loginCard} elevation={4}>
+            
+            {/* Public Role Selector (Individual & Student) */}
             <View style={styles.roleSection}>
-              <Text style={styles.sectionLabel}>SELECT YOUR ROLE TO SIGN IN</Text>
+              <Text style={styles.sectionLabel}>CHOOSE YOUR ACCOUNT TYPE</Text>
               <View style={styles.roleChipGrid}>
                 {roles.map((r) => {
                   const Icon = r.icon;
@@ -133,29 +143,36 @@ export default function LoginScreen() {
                       key={r.name} 
                       style={[styles.roleChip, isSelected && styles.selectedRoleChip]}
                       onPress={() => setRole(r.name)}
-                      activeOpacity={0.75}
+                      activeOpacity={0.8}
                     >
-                      <Icon size={16} color={isSelected ? '#FFF' : JUCOCH_GREEN} style={styles.roleIcon} />
-                      <Text style={[styles.roleChipText, isSelected && styles.selectedRoleChipText]}>
-                        {r.name}
-                      </Text>
+                      <View style={[styles.roleIconBg, isSelected && styles.selectedRoleIconBg]}>
+                        <Icon size={18} color={isSelected ? '#FFF' : JUCOCH_GREEN} />
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={[styles.roleChipText, isSelected && styles.selectedRoleChipText]}>
+                          {r.name}
+                        </Text>
+                        <Text style={[styles.roleSubText, isSelected && styles.selectedRoleSubText]}>
+                          {r.label}
+                        </Text>
+                      </View>
                     </TouchableOpacity>
                   );
                 })}
               </View>
             </View>
 
-            {/* Input Form */}
+            {/* Input Form Fields */}
             <View style={styles.inputContainer}>
               <TextInput
                 label="Email Address or Alias"
                 value={email}
                 onChangeText={setEmail}
                 mode="outlined"
-                outlineColor="#EBF2EE"
+                outlineColor="#D8F3DC"
                 activeOutlineColor={JUCOCH_GREEN}
                 style={styles.input}
-                outlineStyle={{ borderRadius: 16 }}
+                outlineStyle={{ borderRadius: 18 }}
                 left={<TextInput.Icon icon="email-outline" color={JUCOCH_GREEN} />}
               />
 
@@ -163,20 +180,28 @@ export default function LoginScreen() {
                 label="Password"
                 value={password}
                 onChangeText={setPassword}
-                secureTextEntry
+                secureTextEntry={!showPassword}
                 mode="outlined"
-                outlineColor="#EBF2EE"
+                outlineColor="#D8F3DC"
                 activeOutlineColor={JUCOCH_GREEN}
                 style={styles.input}
-                outlineStyle={{ borderRadius: 16 }}
+                outlineStyle={{ borderRadius: 18 }}
                 left={<TextInput.Icon icon="lock-outline" color={JUCOCH_GREEN} />}
+                right={
+                  <TextInput.Icon 
+                    icon={showPassword ? "eye-off-outline" : "eye-outline"} 
+                    color={JUCOCH_GREEN}
+                    onPress={() => setShowPassword(!showPassword)} 
+                  />
+                }
               />
               
-              <TouchableOpacity style={styles.forgotPass} onPress={() => setShowForgotModal(true)}>
+              <TouchableOpacity style={styles.forgotPass} onPress={() => setShowForgotModal(true)} activeOpacity={0.7}>
                 <Text style={styles.forgotPassText}>Forgot password?</Text>
               </TouchableOpacity>
             </View>
 
+            {/* Error Banner */}
             {!!error && (
               <View style={styles.errorContainer}>
                 <AlertCircle size={18} color="#D90429" style={{ marginRight: 8 }} />
@@ -188,11 +213,11 @@ export default function LoginScreen() {
             <TouchableOpacity 
               onPress={handleLogin}
               disabled={loading}
-              activeOpacity={0.8}
+              activeOpacity={0.85}
               style={styles.signInButtonWrapper}
             >
               <LinearGradient
-                colors={[JUCOCH_GREEN, '#1B4332']}
+                colors={['#1B4332', JUCOCH_GREEN, '#2D6A4F']}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
                 style={styles.gradientButton}
@@ -200,18 +225,29 @@ export default function LoginScreen() {
                 {loading ? (
                   <ActivityIndicator color="#FFF" />
                 ) : (
-                  <Text style={styles.gradientButtonText}>Sign In as {role}</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <Text style={styles.gradientButtonText}>Log In to Your Account</Text>
+                    <ArrowRight size={18} color="#FFF" style={{ marginLeft: 8 }} />
+                  </View>
                 )}
               </LinearGradient>
             </TouchableOpacity>
+
+            {/* Trust & Security Footer */}
+            <View style={styles.trustBadgeRow}>
+              <ShieldCheck size={14} color={JUCOCH_GREEN} style={{ marginRight: 6 }} />
+              <Text style={styles.trustBadgeText}>Protected by 256-Bit Anonymized OTP Encryption</Text>
+            </View>
+
           </Surface>
 
-          {/* Footer */}
-          <TouchableOpacity style={styles.footer} onPress={() => router.push('/register')}>
+          {/* Create Account Link Footer */}
+          <TouchableOpacity style={styles.footer} onPress={() => router.push('/register')} activeOpacity={0.7}>
             <Text style={styles.footerText}>
               Don't have an account? <Text style={styles.createAccount}>Create Account</Text>
             </Text>
           </TouchableOpacity> 
+
         </View>     
       </ScrollView>
 
@@ -223,7 +259,7 @@ export default function LoginScreen() {
         onVerified={handleOtpVerified}
       />
 
-      {/* Interactive Forgot Password Modal */}
+      {/* Forgot Password Modal */}
       <ForgotPassModal
         visible={showForgotModal}
         onClose={() => setShowForgotModal(false)}
@@ -238,125 +274,177 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#F3F8F5',
   },
+  ambientGlowTop: {
+    position: 'absolute',
+    top: -80,
+    right: -80,
+    width: 260,
+    height: 260,
+    borderRadius: 130,
+    backgroundColor: 'rgba(45, 106, 79, 0.12)',
+  },
+  ambientGlowBottom: {
+    position: 'absolute',
+    bottom: -100,
+    left: -100,
+    width: 300,
+    height: 300,
+    borderRadius: 150,
+    backgroundColor: 'rgba(64, 145, 108, 0.1)',
+  },
   scrollContent: {
     flexGrow: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: width > 600 ? 32 : 20,
-    paddingVertical: 40,
+    paddingVertical: 50,
+    paddingHorizontal: 20,
   },
   centerContainer: {
     width: '100%',
-    maxWidth: 480,
-    alignItems: 'center',
+    maxWidth: 440,
   },
   topSection: {
     alignItems: 'center',
     marginBottom: 24,
-    width: '100%',
+  },
+  systemBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderColor: '#D8F3DC',
+    borderWidth: 1.5,
+    borderRadius: 20,
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    marginBottom: 16,
+    elevation: 2,
+    shadowColor: JUCOCH_GREEN,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+  },
+  systemBadgeText: {
+    fontSize: 10,
+    fontWeight: 'bold',
+    color: JUCOCH_GREEN,
+    letterSpacing: 1,
+  },
+  logoWrapper: {
+    marginBottom: 12,
+    borderRadius: 24,
+    elevation: 8,
+    shadowColor: JUCOCH_GREEN,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
   },
   logoGradient: {
     width: 64,
     height: 64,
-    borderRadius: 22,
+    borderRadius: 24,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 16,
-    elevation: 4,
-    shadowColor: JUCOCH_GREEN,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
   },
   logoText: {
-    color: '#FFF',
-    fontSize: 34,
+    fontSize: 32,
     fontWeight: 'bold',
+    color: '#FFFFFF',
   },
   title: {
-    fontWeight: 'bold',
+    fontWeight: '800',
     color: '#1C1F1D',
-    textAlign: 'center',
+    letterSpacing: -0.5,
   },
   subtitle: {
-    color: '#707571',
+    color: '#5C6B61',
     textAlign: 'center',
-    marginTop: 8,
-    lineHeight: 22,
-    fontSize: 14,
-  },
-  boldGreen: {
-    color: JUCOCH_GREEN,
-    fontWeight: 'bold',
+    marginTop: 6,
+    lineHeight: 20,
+    fontSize: 13,
+    maxWidth: 320,
   },
   loginCard: {
     width: '100%',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 28,
-    padding: width > 400 ? 24 : 18,
-    borderWidth: 1,
-    borderColor: '#E2EFE7',
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    borderRadius: 32,
+    padding: width > 400 ? 26 : 20,
+    borderWidth: 1.5,
+    borderColor: '#D8F3DC',
     shadowColor: JUCOCH_GREEN,
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.08,
-    shadowRadius: 16,
-    elevation: 4,
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.12,
+    shadowRadius: 24,
+    elevation: 6,
   },
   roleSection: {
     marginBottom: 20,
   },
   sectionLabel: {
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: 'bold',
-    color: '#808983',
+    color: '#708275',
     letterSpacing: 1.2,
     marginBottom: 12,
   },
   roleChipGrid: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
+    gap: 10,
   },
   roleChip: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#F3F8F5',
-    borderColor: '#E2EFE7',
+    borderColor: '#D8F3DC',
     borderWidth: 1.5,
-    borderRadius: 20,
+    borderRadius: 22,
     paddingHorizontal: 12,
-    paddingVertical: 9,
-    flexGrow: 1,
-    justifyContent: 'center',
-    minWidth: '45%',
+    paddingVertical: 10,
+    flex: 1,
   },
   selectedRoleChip: {
     backgroundColor: JUCOCH_GREEN,
     borderColor: JUCOCH_GREEN,
-    elevation: 2,
+    elevation: 3,
     shadowColor: JUCOCH_GREEN,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
   },
-  roleIcon: {
-    marginRight: 6,
+  roleIconBg: {
+    width: 34,
+    height: 34,
+    borderRadius: 12,
+    backgroundColor: '#E8F5E9',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 10,
+  },
+  selectedRoleIconBg: {
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
   },
   roleChipText: {
     fontSize: 13,
-    fontWeight: '600',
-    color: '#4B554E',
+    fontWeight: 'bold',
+    color: '#2D3A31',
   },
   selectedRoleChipText: {
     color: '#FFFFFF',
-    fontWeight: '700',
+  },
+  roleSubText: {
+    fontSize: 10,
+    color: '#708275',
+    marginTop: 1,
+  },
+  selectedRoleSubText: {
+    color: 'rgba(255, 255, 255, 0.85)',
   },
   inputContainer: {
     marginBottom: 16,
   },
   input: {
     marginBottom: 14,
-    backgroundColor: '#FFF',
+    backgroundColor: '#FFFFFF',
+    fontSize: 14,
   },
   forgotPass: {
     alignSelf: 'flex-end',
@@ -365,7 +453,7 @@ const styles = StyleSheet.create({
   forgotPassText: {
     color: JUCOCH_GREEN,
     fontSize: 13,
-    fontWeight: '600',
+    fontWeight: '700',
   },
   errorContainer: {
     flexDirection: 'row',
@@ -373,31 +461,31 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFE5E5',
     borderColor: '#FF8080',
     borderWidth: 1,
-    borderRadius: 14,
+    borderRadius: 16,
     paddingHorizontal: 16,
     paddingVertical: 12,
     marginBottom: 16,
   },
   errorText: {
     color: '#D90429',
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '600',
     flex: 1,
   },
   signInButtonWrapper: {
-    marginTop: 8,
-    marginBottom: 4,
+    marginTop: 6,
+    marginBottom: 16,
   },
   gradientButton: {
-    height: 54,
-    borderRadius: 20,
+    height: 56,
+    borderRadius: 22,
     justifyContent: 'center',
     alignItems: 'center',
-    elevation: 5,
+    elevation: 6,
     shadowColor: JUCOCH_GREEN,
     shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.25,
-    shadowRadius: 10,
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
   },
   gradientButtonText: {
     color: '#FFF',
@@ -405,12 +493,25 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     letterSpacing: 0.5,
   },
+  trustBadgeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: '#EBF4EE',
+  },
+  trustBadgeText: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#708275',
+  },
   footer: {
-    marginTop: 28,
+    marginTop: 24,
     alignItems: 'center',
   },
   footerText: {
-    color: '#707571',
+    color: '#5C6B61',
     fontSize: 14,
   },
   createAccount: {

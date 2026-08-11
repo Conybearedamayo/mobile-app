@@ -18,8 +18,27 @@ export interface AuthResponse {
   alias?: string;
 }
 
+const fetchWithTimeout = async (url: string, options: RequestInit = {}, timeoutMs = 8000): Promise<Response> => {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const response = await fetch(url, {
+      ...options,
+      signal: controller.signal,
+    });
+    return response;
+  } catch (err: any) {
+    if (err.name === 'AbortError') {
+      throw new Error(`Connection timed out (${timeoutMs/1000}s). Make sure your backend server (npm run dev in backend-api) is running.`);
+    }
+    throw new Error(`Unable to reach backend server at ${url}. Please verify backend server is running.`);
+  } finally {
+    clearTimeout(timer);
+  }
+};
+
 export const loginUser = async (email: string, password: string, role?: string): Promise<AuthResponse> => {
-  const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
+  const response = await fetchWithTimeout(`${API_BASE_URL}/api/auth/login`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -42,7 +61,7 @@ export const registerUser = async (
   password: string,
   role: string
 ): Promise<AuthResponse> => {
-  const response = await fetch(`${API_BASE_URL}/api/auth/register`, {
+  const response = await fetchWithTimeout(`${API_BASE_URL}/api/auth/register`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -60,7 +79,7 @@ export const registerUser = async (
 };
 
 export const sendOtp = async (email: string): Promise<{ message: string }> => {
-  const response = await fetch(`${API_BASE_URL}/api/auth/send-otp`, {
+  const response = await fetchWithTimeout(`${API_BASE_URL}/api/auth/send-otp`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -78,7 +97,7 @@ export const sendOtp = async (email: string): Promise<{ message: string }> => {
 };
 
 export const verifyOtp = async (email: string, code: string): Promise<AuthResponse> => {
-  const response = await fetch(`${API_BASE_URL}/api/auth/verify-otp`, {
+  const response = await fetchWithTimeout(`${API_BASE_URL}/api/auth/verify-otp`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -90,6 +109,24 @@ export const verifyOtp = async (email: string, code: string): Promise<AuthRespon
 
   if (!response.ok) {
     throw new Error(data.error || 'Verification failed. Please check the code.');
+  }
+
+  return data;
+};
+
+export const resetPasswordApi = async (email: string, code: string, newPassword: string): Promise<{ message: string }> => {
+  const response = await fetchWithTimeout(`${API_BASE_URL}/api/auth/reset-password`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ email, code, newPassword }),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.error || 'Failed to reset password.');
   }
 
   return data;

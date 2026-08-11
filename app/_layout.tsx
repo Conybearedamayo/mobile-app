@@ -59,6 +59,7 @@ function RootLayoutNav() {
           <Stack.Screen name="mood-logger" options={{ headerShown: false }} />
           <Stack.Screen name="sleep-logger" options={{ headerShown: false }} />
           <Stack.Screen name="activity-logger" options={{ headerShown: false }} />
+          <Stack.Screen name="journal-logger" options={{ headerShown: false }} />
           <Stack.Screen name="journal" options={{ headerShown: false }} />
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
           <Stack.Screen name="modal" options={{ presentation: 'modal' }} />

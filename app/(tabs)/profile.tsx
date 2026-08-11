@@ -1,200 +1,150 @@
 import React, { useState } from 'react';
 import { View, StyleSheet, ScrollView, TouchableOpacity, Platform } from 'react-native';
-import { Text, Avatar, Button, Surface, Divider, Portal, Modal, TextInput } from 'react-native-paper';
-import { ChevronRight, Settings, Shield, Bell, LogOut, Award, Zap, BookOpen, Users, Star, ShieldCheck, Key, CheckCircle, GraduationCap } from 'lucide-react-native';
+import { Text, Avatar, Button, Surface, Divider, Portal, Modal, TextInput, Switch } from 'react-native-paper';
+import { ChevronRight, Settings, Shield, Bell, LogOut, Award, Zap, BookOpen, Users, Star, ShieldCheck, Key, CheckCircle, GraduationCap, Moon, Sun } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { useWellness } from '@/context/WellnessContext';
-import TeacherDashboard from '@/components/dashboards/TeacherDashboard';
 import AdminDashboard from '@/components/dashboards/AdminDashboard';
 
 const JUCOCH_GREEN = '#2D6A4F';
 
 export default function ProfileScreen() {
   const router = useRouter();
-  const { userAlias, userRole, sleepLogs, journalEntries, getCurrentStreak } = useWellness();
+  const { userAlias, userRole, sleepLogs, journalEntries, getCurrentStreak, isDarkMode, toggleDarkMode } = useWellness();
 
   const displayName = userAlias || 'PeacefulUser';
   const displayRole = userRole || 'Individual';
   const isAdmin = displayRole === 'Admin';
-  const isTeacher = displayRole === 'Teacher';
   const isStudent = displayRole === 'Student';
-  const isGeneralUser = !isAdmin && !isTeacher;
-
-  // Student class code state
-  const [classCode, setClassCode] = useState('TEACH-10A');
-  const [showCodeModal, setShowCodeModal] = useState(false);
-  const [newCodeInput, setNewCodeInput] = useState('');
-  const [codeSuccessMsg, setCodeSuccessMsg] = useState('');
+  const isGeneralUser = !isAdmin;
 
   const avgSleep = sleepLogs.length > 0 
     ? (sleepLogs.reduce((sum, log) => sum + log.hours, 0) / sleepLogs.length).toFixed(1)
     : '0.0';
 
-  const handleUpdateCode = () => {
-    if (!newCodeInput.trim()) return;
-    setClassCode(newCodeInput.trim().toUpperCase());
-    setCodeSuccessMsg(`Successfully linked to Classroom Code: ${newCodeInput.trim().toUpperCase()}!`);
-    setTimeout(() => {
-      setShowCodeModal(false);
-      setCodeSuccessMsg('');
-      setNewCodeInput('');
-    }, 1800);
-  };
+  const dynamicBg = isDarkMode ? '#121614' : '#F3F8F5';
+  const dynamicCardBg = isDarkMode ? '#1C231F' : '#FFFFFF';
+  const dynamicText = isDarkMode ? '#EAF2EC' : '#1C1F1D';
+  const dynamicSub = isDarkMode ? '#9EB3A5' : '#707571';
+  const dynamicBorder = isDarkMode ? '#2C3A31' : '#EBF2EE';
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-      
-      {/* Polished Profile Header */}
-      <View style={styles.header}>
-        <Surface style={styles.avatarOutline} elevation={4}>
-          <Avatar.Text size={96} label={displayName.slice(0, 2).toUpperCase()} style={{ backgroundColor: JUCOCH_GREEN }} />
-          <TouchableOpacity style={styles.editBadge}>
-            <Settings size={14} color="#FFF" />
-          </TouchableOpacity>
-        </Surface>
-        
-        <Text variant="headlineSmall" style={styles.userName}>{displayName}</Text>
-        <Text variant="bodyMedium" style={styles.userBio}>{displayRole} Account • Jucoch System</Text>
-        
-        <View style={styles.badgeRow}>
-          {isAdmin ? (
-            <Surface style={[styles.statusBadge, { backgroundColor: '#FFE5E5' }]} elevation={0}>
-              <ShieldCheck size={12} color="#D90429" />
-              <Text style={[styles.statusText, { color: '#D90429' }]}>System Administrator</Text>
+    <View style={[styles.container, { backgroundColor: dynamicBg }]}>
+      <ScrollView 
+        style={styles.scrollView} 
+        contentContainerStyle={styles.scrollContent} 
+        showsVerticalScrollIndicator={false}
+        alwaysBounceVertical={true}
+      >
+        <View style={styles.responsiveWrapper}>
+          
+          {/* Polished Profile Header */}
+          <View style={styles.header}>
+            <Surface style={[styles.avatarOutline, { backgroundColor: dynamicCardBg, borderColor: dynamicBorder }]} elevation={4}>
+              <Avatar.Text size={96} label={displayName.slice(0, 2).toUpperCase()} style={{ backgroundColor: JUCOCH_GREEN }} />
+              <TouchableOpacity style={styles.editBadge}>
+                <Settings size={14} color="#FFF" />
+              </TouchableOpacity>
             </Surface>
-          ) : isTeacher ? (
-            <Surface style={[styles.statusBadge, { backgroundColor: '#E3F2FD' }]} elevation={0}>
-              <BookOpen size={12} color="#1E88E5" />
-              <Text style={[styles.statusText, { color: '#1E88E5' }]}>Classroom Educator</Text>
-            </Surface>
-          ) : isStudent ? (
-            <Surface style={[styles.statusBadge, { backgroundColor: '#E3F2FD' }]} elevation={0}>
-              <GraduationCap size={12} color="#1E88E5" />
-              <Text style={[styles.statusText, { color: '#1E88E5' }]}>Classroom Student</Text>
-            </Surface>
-          ) : (
-            <Surface style={styles.statusBadge} elevation={0}>
-              <Star size={12} color={JUCOCH_GREEN} fill={JUCOCH_GREEN} />
-              <Text style={styles.statusText}>Wellness Member</Text>
-            </Surface>
-          )}
-        </View>
-      </View>
-
-      {/* ROLE-SPECIFIC EXCLUSIVE DASHBOARDS */}
-      {isAdmin && <AdminDashboard />}
-      {isTeacher && <TeacherDashboard />}
-
-      {/* STUDENT CLASSROOM CODE SECTION */}
-      {isStudent && (
-        <Surface style={styles.studentCodeCard} elevation={2}>
-          <View style={styles.codeCardHeader}>
-            <Key size={18} color="#1E88E5" style={{ marginRight: 8 }} />
-            <Text style={styles.codeCardTitle}>MY CLASSROOM / TEACHER CODE</Text>
+            
+            <Text variant="headlineSmall" style={[styles.userName, { color: dynamicText }]}>{displayName}</Text>
+            <Text variant="bodyMedium" style={[styles.userBio, { color: dynamicSub }]}>{displayRole} Account • Jucoch System</Text>
+            
+            <View style={styles.badgeRow}>
+              {isAdmin ? (
+                <Surface style={[styles.statusBadge, { backgroundColor: '#FFE5E5' }]} elevation={0}>
+                  <ShieldCheck size={12} color="#D90429" />
+                  <Text style={[styles.statusText, { color: '#D90429' }]}>System Administrator</Text>
+                </Surface>
+              ) : isStudent ? (
+                <Surface style={[styles.statusBadge, { backgroundColor: '#E3F2FD' }]} elevation={0}>
+                  <GraduationCap size={12} color="#1E88E5" />
+                  <Text style={[styles.statusText, { color: '#1E88E5' }]}>Student Account</Text>
+                </Surface>
+              ) : (
+                <Surface style={styles.statusBadge} elevation={0}>
+                  <Star size={12} color={JUCOCH_GREEN} fill={JUCOCH_GREEN} />
+                  <Text style={styles.statusText}>Wellness Member</Text>
+                </Surface>
+              )}
+            </View>
           </View>
-          <Text style={styles.codeCardDesc}>
-            Currently linked to Teacher Code: <Text style={styles.codeHighlight}>{classCode}</Text>
-          </Text>
+
+          {/* ROLE-SPECIFIC EXCLUSIVE DASHBOARD */}
+          {isAdmin && <AdminDashboard />}
+
+          {/* PERSONAL WELLNESS SECTIONS FOR STUDENT AND INDIVIDUAL ONLY */}
+          {isGeneralUser && (
+            <>
+              {/* Quick Stats */}
+              <Surface style={[styles.statsContainer, { backgroundColor: dynamicCardBg, borderColor: dynamicBorder }]} elevation={1}>
+                <StatBox value={getCurrentStreak().toString()} label="Day Streak" color={JUCOCH_GREEN} />
+                <View style={[styles.statDivider, { backgroundColor: dynamicBorder }]} />
+                <StatBox value={`${avgSleep}h`} label="Avg Sleep" color="#5F27CD" />
+                <View style={[styles.statDivider, { backgroundColor: dynamicBorder }]} />
+                <StatBox value={journalEntries.length.toString()} label="Journals" color="#FF9F43" />
+              </Surface>
+
+              {/* Wellness Section */}
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>MY WELLNESS JOURNEY</Text>
+                <Surface style={[styles.menuCard, { backgroundColor: dynamicCardBg, borderColor: dynamicBorder }]} elevation={1}>
+                  <MenuItem icon={BookOpen} title="Progress Reports" subtitle="Weekly and Monthly summaries" dynamicText={dynamicText} dynamicSub={dynamicSub} />
+                  <Divider style={styles.divider} />
+                  <MenuItem icon={Award} title="My Achievements" subtitle={`${getCurrentStreak()} active streak badges`} dynamicText={dynamicText} dynamicSub={dynamicSub} />
+                  <Divider style={styles.divider} />
+                  <MenuItem icon={Users} title="Wellness Circle" subtitle="Connect with professionals" dynamicText={dynamicText} dynamicSub={dynamicSub} />
+                </Surface>
+              </View>
+            </>
+          )}
+
+          {/* Preferences & System Settings (Includes Theme Switch) */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>SYSTEM & PREFERENCES</Text>
+            <Surface style={[styles.menuCard, { backgroundColor: dynamicCardBg, borderColor: dynamicBorder }]} elevation={1}>
+              {/* DARK MODE / LIGHT MODE TOGGLE */}
+              <View style={styles.themeToggleItem}>
+                <View style={styles.menuIconWrapper}>
+                  {isDarkMode ? <Moon size={18} color="#FFD166" /> : <Sun size={18} color={JUCOCH_GREEN} />}
+                </View>
+                <View style={styles.menuTextWrapper}>
+                  <Text style={[styles.menuTitle, { color: dynamicText }]}>
+                    {isDarkMode ? 'Dark Theme' : 'Light Theme'}
+                  </Text>
+                  <Text style={[styles.menuSubtitle, { color: dynamicSub }]}>
+                    {isDarkMode ? 'Dark UI mode enabled' : 'Light UI mode enabled'}
+                  </Text>
+                </View>
+                <Switch 
+                  value={isDarkMode} 
+                  onValueChange={toggleDarkMode} 
+                  color={JUCOCH_GREEN} 
+                />
+              </View>
+
+              <Divider style={styles.divider} />
+              <MenuItem icon={Shield} title="Privacy Control" subtitle="Anonymous alias & encryption" dynamicText={dynamicText} dynamicSub={dynamicSub} />
+              <Divider style={styles.divider} />
+              <MenuItem icon={Bell} title="Smart Notifications" subtitle="Early warning alerts" dynamicText={dynamicText} dynamicSub={dynamicSub} />
+            </Surface>
+          </View>
+
           <TouchableOpacity 
-            style={styles.updateCodeBtn} 
-            onPress={() => setShowCodeModal(true)}
+            style={styles.logoutButton}
+            onPress={() => router.replace('/login')}
             activeOpacity={0.8}
           >
-            <Text style={styles.updateCodeBtnText}>Enter / Change Teacher Code</Text>
+            <LogOut size={18} color="#FF6B6B" style={{ marginRight: 8 }} />
+            <Text style={styles.logoutText}>Sign Out Securely</Text>
           </TouchableOpacity>
-        </Surface>
-      )}
 
-      {/* PERSONAL WELLNESS SECTIONS FOR STUDENT AND INDIVIDUAL ONLY */}
-      {isGeneralUser && (
-        <>
-          {/* Quick Stats */}
-          <Surface style={styles.statsContainer} elevation={1}>
-            <StatBox value={getCurrentStreak().toString()} label="Day Streak" color={JUCOCH_GREEN} />
-            <View style={styles.statDivider} />
-            <StatBox value={`${avgSleep}h`} label="Avg Sleep" color="#5F27CD" />
-            <View style={styles.statDivider} />
-            <StatBox value={journalEntries.length.toString()} label="Journals" color="#FF9F43" />
-          </Surface>
+          <Text style={styles.versionText}>JUCOCH AI SYSTEM • BETA v1.0.0</Text>
 
-          {/* Wellness Section */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>MY WELLNESS JOURNEY</Text>
-            <Surface style={styles.menuCard} elevation={1}>
-              <MenuItem icon={BookOpen} title="Progress Reports" subtitle="Weekly and Monthly summaries" />
-              <Divider style={styles.divider} />
-              <MenuItem icon={Award} title="My Achievements" subtitle="7 badges earned this month" />
-              <Divider style={styles.divider} />
-              <MenuItem icon={Users} title="Wellness Circle" subtitle="Connect with professionals" />
-            </Surface>
-          </View>
-        </>
-      )}
+        </View>
+      </ScrollView>
 
-      {/* Security & Settings (For All Roles) */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>SYSTEM & SECURITY</Text>
-        <Surface style={styles.menuCard} elevation={1}>
-          <MenuItem icon={Shield} title="Privacy Control" subtitle="Anonymous alias & encryption" />
-          <Divider style={styles.divider} />
-          <MenuItem icon={Bell} title="Smart Notifications" subtitle="Early warning alerts" />
-        </Surface>
-      </View>
-
-      <TouchableOpacity 
-        style={styles.logoutButton}
-        onPress={() => router.replace('/login')}
-        activeOpacity={0.8}
-      >
-        <LogOut size={18} color="#FF6B6B" style={{ marginRight: 8 }} />
-        <Text style={styles.logoutText}>Sign Out Securely</Text>
-      </TouchableOpacity>
-
-      <Text style={styles.versionText}>JUCOCH AI SYSTEM • BETA v1.0.0</Text>
-
-      {/* MODAL: ENTER / CHANGE TEACHER CODE */}
-      <Portal>
-        <Modal 
-          visible={showCodeModal} 
-          onDismiss={() => setShowCodeModal(false)}
-          contentContainerStyle={{ padding: 20 }}
-        >
-          <Surface style={styles.codeModalCard}>
-            <Text style={styles.modalTitle}>Join Classroom / Teacher Code</Text>
-            <Text style={styles.modalSub}>Enter the code provided by your teacher (e.g. TEACH-10A) to link your account.</Text>
-
-            {codeSuccessMsg ? (
-              <View style={styles.successBox}>
-                <CheckCircle size={20} color={JUCOCH_GREEN} style={{ marginRight: 8 }} />
-                <Text style={styles.successText}>{codeSuccessMsg}</Text>
-              </View>
-            ) : (
-              <View style={{ marginTop: 12 }}>
-                <TextInput
-                  label="Teacher / Classroom Code"
-                  value={newCodeInput}
-                  onChangeText={setNewCodeInput}
-                  mode="outlined"
-                  outlineColor="#EBF2EE"
-                  activeOutlineColor={JUCOCH_GREEN}
-                  style={styles.modalInput}
-                  placeholder="e.g. TEACH-10A"
-                  left={<TextInput.Icon icon="key-outline" color={JUCOCH_GREEN} />}
-                />
-
-                <TouchableOpacity 
-                  style={styles.submitModalBtn}
-                  onPress={handleUpdateCode}
-                  activeOpacity={0.8}
-                >
-                  <Text style={styles.submitModalBtnText}>Link to Teacher Classroom</Text>
-                </TouchableOpacity>
-              </View>
-            )}
-          </Surface>
-        </Modal>
-      </Portal>
-    </ScrollView>
+    </View>
   );
 }
 
@@ -207,15 +157,15 @@ function StatBox({ value, label, color }: any) {
   );
 }
 
-function MenuItem({ icon: Icon, title, subtitle }: any) {
+function MenuItem({ icon: Icon, title, subtitle, dynamicText, dynamicSub }: any) {
   return (
     <TouchableOpacity style={styles.menuItem} activeOpacity={0.6}>
       <View style={styles.menuIconWrapper}>
         <Icon size={18} color={JUCOCH_GREEN} />
       </View>
       <View style={styles.menuTextWrapper}>
-        <Text style={styles.menuTitle}>{title}</Text>
-        <Text style={styles.menuSubtitle}>{subtitle}</Text>
+        <Text style={[styles.menuTitle, dynamicText && { color: dynamicText }]}>{title}</Text>
+        <Text style={[styles.menuSubtitle, dynamicSub && { color: dynamicSub }]}>{subtitle}</Text>
       </View>
       <ChevronRight size={16} color="#CCC" />
     </TouchableOpacity>
@@ -225,15 +175,20 @@ function MenuItem({ icon: Icon, title, subtitle }: any) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F3F8F5',
   },
-  content: {
-    padding: 20,
-    paddingTop: 50,
-    paddingBottom: 110,
-    maxWidth: 500,
-    alignSelf: 'center',
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
+    paddingTop: Platform.OS === 'ios' ? 60 : 40,
+    paddingBottom: 140, // Expanded padding so content scrolls past bottom tab bar freely
+    paddingHorizontal: 20,
+    alignItems: 'center',
+  },
+  responsiveWrapper: {
     width: '100%',
+    maxWidth: 600,
   },
   header: {
     alignItems: 'center',
@@ -242,9 +197,7 @@ const styles = StyleSheet.create({
   avatarOutline: {
     borderRadius: 52,
     padding: 4,
-    backgroundColor: '#FFF',
     borderWidth: 2,
-    borderColor: '#D8F3DC',
     marginBottom: 14,
     position: 'relative',
     elevation: 4,
@@ -268,10 +221,8 @@ const styles = StyleSheet.create({
   },
   userName: {
     fontWeight: 'bold',
-    color: '#1C1F1D',
   },
   userBio: {
-    color: '#707571',
     marginTop: 2,
     marginBottom: 10,
   },
@@ -294,12 +245,10 @@ const styles = StyleSheet.create({
     marginLeft: 4,
   },
   studentCodeCard: {
-    backgroundColor: '#FFF',
     borderRadius: 20,
     padding: 16,
     marginBottom: 20,
     borderWidth: 1.5,
-    borderColor: '#BBDEFB',
   },
   codeCardHeader: {
     flexDirection: 'row',
@@ -314,7 +263,6 @@ const styles = StyleSheet.create({
   },
   codeCardDesc: {
     fontSize: 12,
-    color: '#707571',
     marginBottom: 12,
   },
   codeHighlight: {
@@ -334,7 +282,6 @@ const styles = StyleSheet.create({
   },
   statsContainer: {
     flexDirection: 'row',
-    backgroundColor: '#FFF',
     borderRadius: 20,
     paddingVertical: 14,
     paddingHorizontal: 16,
@@ -342,7 +289,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-around',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#EBF2EE',
   },
   statBox: {
     alignItems: 'center',
@@ -359,7 +305,6 @@ const styles = StyleSheet.create({
   statDivider: {
     width: 1,
     height: 24,
-    backgroundColor: '#EBF2EE',
   },
   section: {
     marginBottom: 20,
@@ -373,17 +318,20 @@ const styles = StyleSheet.create({
     marginLeft: 4,
   },
   menuCard: {
-    backgroundColor: '#FFF',
     borderRadius: 20,
     paddingVertical: 6,
     paddingHorizontal: 14,
     borderWidth: 1,
-    borderColor: '#EBF2EE',
   },
   menuItem: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: 12,
+  },
+  themeToggleItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
   },
   menuIconWrapper: {
     width: 36,
@@ -400,11 +348,9 @@ const styles = StyleSheet.create({
   menuTitle: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#1C1F1D',
   },
   menuSubtitle: {
     fontSize: 12,
-    color: '#707571',
     marginTop: 2,
   },
   divider: {

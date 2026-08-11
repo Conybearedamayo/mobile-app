@@ -1,24 +1,27 @@
 import React from 'react';
-import { View, Platform } from 'react-native';
+import { View, Platform, Dimensions } from 'react-native';
 import { Home, BarChart2, PlusCircle, MessageCircle, User } from 'lucide-react-native';
 import { Tabs } from 'expo-router';
-import { useColorScheme } from '@/components/useColorScheme';
 import { useWellness } from '@/context/WellnessContext';
 
+const { width } = Dimensions.get('window');
 const JUCOCH_GREEN = '#2D6A4F';
 
 export default function TabLayout() {
-  const colorScheme = useColorScheme();
-  const { userRole } = useWellness();
+  const { userRole, isDarkMode } = useWellness();
 
-  // Hide non-management tabs for Admin and Teacher
-  const isAdminOrTeacher = userRole === 'Admin' || userRole === 'Teacher';
+  // Hide non-management tabs for Admin
+  const isAdmin = userRole === 'Admin';
+
+  const tabBg = isDarkMode ? '#1C231F' : '#FFFFFF';
+  const tabBorder = isDarkMode ? '#2C3A31' : '#EBF2EE';
+  const inactiveColor = isDarkMode ? '#9EB3A5' : '#888888';
 
   return (
     <Tabs
       screenOptions={{
         tabBarActiveTintColor: JUCOCH_GREEN,
-        tabBarInactiveTintColor: '#999',
+        tabBarInactiveTintColor: inactiveColor,
         headerShown: false,
         tabBarShowLabel: true,
         tabBarLabelStyle: {
@@ -29,17 +32,19 @@ export default function TabLayout() {
         tabBarStyle: {
           position: 'absolute',
           bottom: 20,
-          left: 16,
-          right: 16,
+          left: width > 600 ? '25%' : 16,
+          right: width > 600 ? '25%' : 16,
+          maxWidth: 600,
           height: 68,
-          borderRadius: 24,
-          backgroundColor: '#FFF',
+          borderRadius: 26,
+          backgroundColor: tabBg,
+          borderColor: tabBorder,
+          borderWidth: 1.5,
           elevation: 8,
-          shadowColor: '#000',
+          shadowColor: JUCOCH_GREEN,
           shadowOffset: { width: 0, height: 6 },
-          shadowOpacity: 0.1,
+          shadowOpacity: 0.15,
           shadowRadius: 16,
-          borderTopWidth: 0,
           paddingTop: 8,
           paddingBottom: Platform.OS === 'ios' ? 12 : 8,
         }
@@ -55,7 +60,7 @@ export default function TabLayout() {
         name="insights"
         options={{
           title: 'Insights',
-          href: isAdminOrTeacher ? null : undefined,
+          href: isAdmin ? null : undefined,
           tabBarIcon: ({ color }) => <BarChart2 size={22} color={color} />,
         }}
       />
@@ -63,7 +68,7 @@ export default function TabLayout() {
         name="add"
         options={{
           title: '',
-          href: isAdminOrTeacher ? null : undefined,
+          href: isAdmin ? null : undefined,
           tabBarIcon: () => (
             <View style={{
               width: 50,
@@ -88,7 +93,7 @@ export default function TabLayout() {
         name="chat"
         options={{
           title: 'Chat',
-          href: isAdminOrTeacher ? null : undefined,
+          href: isAdmin ? null : undefined,
           tabBarIcon: ({ color }) => <MessageCircle size={22} color={color} />,
         }}
       />
