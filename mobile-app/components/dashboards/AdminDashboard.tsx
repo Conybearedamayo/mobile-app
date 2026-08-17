@@ -106,13 +106,13 @@ export default function AdminDashboard() {
   return (
     <View style={styles.container}>
       {/* Master Admin Header */}
-      <View style={[styles.adminHeaderCard, { backgroundColor: isDarkMode ? '#3D171A' : '#FFE5E5', borderColor: isDarkMode ? '#682025' : '#FFC9C9' }]}>
+      <View style={[styles.adminHeaderCard, { backgroundColor: isDarkMode ? '#172B20' : '#E8F5EE', borderColor: isDarkMode ? '#244D38' : '#C2E6D1' }]}>
         <View style={styles.iconBg}>
-          <ShieldCheck size={22} color="#D90429" />
+          <ShieldCheck size={22} color={JUCOCH_GREEN} />
         </View>
         <View style={{ flex: 1 }}>
-          <Text style={styles.headerTitle}>System Admin Master Panel</Text>
-          <Text style={[styles.headerSub, { color: isDarkMode ? '#F8B4B8' : '#707571' }]}>Official Creator Admins ({OFFICIAL_ADMIN_GROUP.length} Members)</Text>
+          <Text style={[styles.headerTitle, { color: JUCOCH_GREEN }]}>System Admin Master Panel</Text>
+          <Text style={[styles.headerSub, { color: dynamicSub }]}>Official Creator Admins ({OFFICIAL_ADMIN_GROUP.length} Members)</Text>
         </View>
       </View>
 
@@ -302,13 +302,13 @@ export default function AdminDashboard() {
             <View key={admin.email}>
               {index > 0 && <Divider style={styles.divider} />}
               <View style={styles.userRow}>
-                <Avatar.Text size={40} label={`A${index + 1}`} style={{ backgroundColor: '#D90429' }} />
+                <Avatar.Text size={40} label={`A${index + 1}`} style={{ backgroundColor: JUCOCH_GREEN }} />
                 <View style={styles.userDetails}>
                   <View style={styles.nameRow}>
                     <Text style={[styles.userName, { color: dynamicText }]}>{admin.name}</Text>
-                    <Surface style={[styles.roleBadge, { backgroundColor: '#FFE5E5' }]} elevation={0}>
-                      <ShieldCheck size={12} color="#D90429" style={{ marginRight: 4 }} />
-                      <Text style={[styles.roleBadgeText, { color: '#D90429' }]}>Creator Admin</Text>
+                    <Surface style={[styles.roleBadge, { backgroundColor: isDarkMode ? '#244D38' : '#D0E8D8' }]} elevation={0}>
+                      <ShieldCheck size={12} color={JUCOCH_GREEN} style={{ marginRight: 4 }} />
+                      <Text style={[styles.roleBadgeText, { color: JUCOCH_GREEN }]}>Creator Admin</Text>
                     </Surface>
                   </View>
                   <Text style={[styles.emailText, { color: dynamicSub }]}>{admin.email} • Alias: {admin.alias}</Text>
@@ -347,7 +347,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 15,
     fontWeight: 'bold',
-    color: '#D90429',
+    color: JUCOCH_GREEN,
   },
   headerSub: {
     fontSize: 11,
@@ -389,8 +389,8 @@ const styles = StyleSheet.create({
     paddingVertical: 9,
   },
   selectedSwitchBtn: {
-    backgroundColor: '#D90429',
-    borderColor: '#D90429',
+    backgroundColor: JUCOCH_GREEN,
+    borderColor: JUCOCH_GREEN,
   },
   switchText: {
     fontSize: 10,
@@ -447,7 +447,7 @@ const styles = StyleSheet.create({
   liveBadge: {
     fontSize: 10,
     fontWeight: 'bold',
-    color: '#D90429',
+    color: JUCOCH_GREEN,
   },
   feedSubtitle: {
     fontSize: 11,

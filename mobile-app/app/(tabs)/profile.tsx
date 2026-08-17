@@ -52,9 +52,9 @@ export default function ProfileScreen() {
             
             <View style={styles.badgeRow}>
               {isAdmin ? (
-                <Surface style={[styles.statusBadge, { backgroundColor: '#FFE5E5' }]} elevation={0}>
-                  <ShieldCheck size={12} color="#D90429" />
-                  <Text style={[styles.statusText, { color: '#D90429' }]}>System Administrator</Text>
+                <Surface style={[styles.statusBadge, { backgroundColor: isDarkMode ? '#244D38' : '#D0E8D8' }]} elevation={0}>
+                  <ShieldCheck size={12} color={JUCOCH_GREEN} />
+                  <Text style={[styles.statusText, { color: JUCOCH_GREEN }]}>System Administrator</Text>
                 </Surface>
               ) : isStudent ? (
                 <Surface style={[styles.statusBadge, { backgroundColor: '#E3F2FD' }]} elevation={0}>
