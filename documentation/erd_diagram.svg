@@ -1,0 +1,387 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 700" width="100%" height="100%">
+  <defs>
+    <!-- Drop shadow filter for professional floating cards -->
+    <filter id="shadow" x="-5%" y="-5%" width="110%" height="115%" filterUnits="userSpaceOnUse">
+      <feDropShadow dx="0" dy="6" stdDeviation="6" flood-color="#1B4332" flood-opacity="0.08"/>
+      <feDropShadow dx="0" dy="1" stdDeviation="2" flood-color="#1B4332" flood-opacity="0.04"/>
+    </filter>
+    
+    <!-- Background subtle grid pattern to resemble design tools (Figma/Miro) -->
+    <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+      <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#E5EFE9" stroke-width="1"/>
+    </pattern>
+
+    <!-- Connector line gradient -->
+    <linearGradient id="lineGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#40916C" stop-opacity="0.8"/>
+      <stop offset="50%" stop-color="#2D6A4F" stop-opacity="1"/>
+      <stop offset="100%" stop-color="#40916C" stop-opacity="0.8"/>
+    </linearGradient>
+
+    <!-- Connection markers -->
+    <marker id="dot" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6">
+      <circle cx="5" cy="5" r="4" fill="#2D6A4F" stroke="#FFFFFF" stroke-width="1.5"/>
+    </marker>
+  </defs>
+
+  <!-- Background Canvas -->
+  <rect width="100%" height="100%" fill="#F3F8F5" />
+  <rect width="100%" height="100%" fill="url(#grid)" />
+
+  <!-- MAIN HEADER BANNER -->
+  <g transform="translate(420, 25)">
+    <!-- Pill container -->
+    <rect width="360" height="46" rx="23" fill="#ffffff" stroke="#2D6A4F" stroke-width="1.5" filter="url(#shadow)"/>
+    <!-- Icon representation -->
+    <circle cx="28" cy="23" r="14" fill="#2D6A4F" />
+    <text x="28" y="27" fill="#FFFFFF" font-family="system-ui, -apple-system, sans-serif" font-weight="bold" font-size="14" text-anchor="middle">J</text>
+    <!-- Title Text -->
+    <text x="195" y="28" fill="#1A3B2A" font-family="system-ui, -apple-system, sans-serif" font-weight="700" font-size="14" text-anchor="middle">JUCOCH - WELLNESS ERD</text>
+  </g>
+
+  <!-- ==================== RELATIONSHIPS (CONNECTOR LINES) ==================== -->
+  <!-- MoodEntries -> Users -->
+  <path d="M 340 140 C 395 140, 395 240, 450 240" fill="none" stroke="url(#lineGrad)" stroke-width="2.5" marker-start="url(#dot)" marker-end="url(#dot)"/>
+  
+  <!-- SleepEntries -> Users -->
+  <path d="M 340 345 C 395 345, 395 340, 450 340" fill="none" stroke="url(#lineGrad)" stroke-width="2.5" marker-start="url(#dot)" marker-end="url(#dot)"/>
+  
+  <!-- ActivityEntries -> Users -->
+  <path d="M 340 545 C 395 545, 395 440, 450 440" fill="none" stroke="url(#lineGrad)" stroke-width="2.5" marker-start="url(#dot)" marker-end="url(#dot)"/>
+
+  <!-- JournalEntries -> Users -->
+  <path d="M 860 115 C 805 115, 805 240, 750 240" fill="none" stroke="url(#lineGrad)" stroke-width="2.5" marker-start="url(#dot)" marker-end="url(#dot)"/>
+
+  <!-- ChatMessages -> Users -->
+  <path d="M 860 295 C 805 295, 805 340, 750 340" fill="none" stroke="url(#lineGrad)" stroke-width="2.5" marker-start="url(#dot)" marker-end="url(#dot)"/>
+
+  <!-- AIInsights -> Users -->
+  <path d="M 860 520 C 805 520, 805 440, 750 440" fill="none" stroke="url(#lineGrad)" stroke-width="2.5" marker-start="url(#dot)" marker-end="url(#dot)"/>
+
+  <!-- Multiplicity & Label Annotations -->
+  <!-- Left Side Annotations -->
+  <text x="355" y="133" fill="#4A7C59" font-family="system-ui, -apple-system, sans-serif" font-size="11" font-weight="bold">0..*</text>
+  <text x="355" y="338" fill="#4A7C59" font-family="system-ui, -apple-system, sans-serif" font-size="11" font-weight="bold">0..*</text>
+  <text x="355" y="538" fill="#4A7C59" font-family="system-ui, -apple-system, sans-serif" font-size="11" font-weight="bold">0..*</text>
+  <text x="435" y="233" fill="#2D6A4F" font-family="system-ui, -apple-system, sans-serif" font-size="11" font-weight="bold">1</text>
+  <text x="435" y="333" fill="#2D6A4F" font-family="system-ui, -apple-system, sans-serif" font-size="11" font-weight="bold">1</text>
+  <text x="435" y="433" fill="#2D6A4F" font-family="system-ui, -apple-system, sans-serif" font-size="11" font-weight="bold">1</text>
+
+  <!-- Right Side Annotations -->
+  <text x="840" y="108" fill="#4A7C59" font-family="system-ui, -apple-system, sans-serif" font-size="11" font-weight="bold">0..*</text>
+  <text x="840" y="288" fill="#4A7C59" font-family="system-ui, -apple-system, sans-serif" font-size="11" font-weight="bold">0..*</text>
+  <text x="840" y="513" fill="#4A7C59" font-family="system-ui, -apple-system, sans-serif" font-size="11" font-weight="bold">0..*</text>
+  <text x="760" y="233" fill="#2D6A4F" font-family="system-ui, -apple-system, sans-serif" font-size="11" font-weight="bold">1</text>
+  <text x="760" y="333" fill="#2D6A4F" font-family="system-ui, -apple-system, sans-serif" font-size="11" font-weight="bold">1</text>
+  <text x="760" y="433" fill="#2D6A4F" font-family="system-ui, -apple-system, sans-serif" font-size="11" font-weight="bold">1</text>
+
+
+  <!-- ==================== COLUMN 1: USER LOGS / INPUTS (LEFT) ==================== -->
+
+  <!-- MOOD ENTRIES TABLE -->
+  <g transform="translate(60, 40)" filter="url(#shadow)">
+    <!-- Base Card -->
+    <rect width="280" height="200" rx="12" fill="#FFFFFF" stroke="#E1EFE6" stroke-width="1.5"/>
+    <!-- Header with rounded top corners only -->
+    <path d="M12,0 L268,0 A12,12 0 0,1 280,12 L280,40 L0,40 L0,12 A12,12 0 0,1 12,0 Z" fill="#2D6A4F" />
+    <text x="16" y="25" fill="#FFFFFF" font-family="system-ui, -apple-system, sans-serif" font-weight="600" font-size="13">MoodEntries</text>
+    
+    <!-- Table Rows (Columns) -->
+    <!-- Row 0: ID (PK) -->
+    <text x="16" y="60" fill="#2D6A4F" font-family="system-ui, -apple-system, sans-serif" font-size="12" font-weight="bold">🔑</text>
+    <text x="36" y="60" fill="#1C1F1D" font-family="system-ui, -apple-system, sans-serif" font-size="12" font-weight="600">id</text>
+    <text x="264" y="60" fill="#72847A" font-family="system-ui, -apple-system, sans-serif" font-size="11" text-anchor="end">UUID / INT</text>
+    <line x1="12" y1="69" x2="268" y2="69" stroke="#F1F6F3" stroke-width="1" />
+
+    <!-- Row 1: User ID (FK) -->
+    <text x="16" y="85" fill="#4A7C59" font-family="system-ui, -apple-system, sans-serif" font-size="12" font-weight="bold">🔗</text>
+    <text x="36" y="85" fill="#1C1F1D" font-family="system-ui, -apple-system, sans-serif" font-size="12" font-weight="500">user_id</text>
+    <text x="264" y="85" fill="#72847A" font-family="system-ui, -apple-system, sans-serif" font-size="11" text-anchor="end">UUID / INT</text>
+    <line x1="12" y1="94" x2="268" y2="94" stroke="#F1F6F3" stroke-width="1" />
+
+    <!-- Row 2: Mood -->
+    <text x="36" y="110" fill="#1C1F1D" font-family="system-ui, -apple-system, sans-serif" font-size="12">mood</text>
+    <text x="264" y="110" fill="#72847A" font-family="system-ui, -apple-system, sans-serif" font-size="11" text-anchor="end">VARCHAR(50)</text>
+    <line x1="12" y1="119" x2="268" y2="119" stroke="#F1F6F3" stroke-width="1" />
+
+    <!-- Row 3: Emoji -->
+    <text x="36" y="135" fill="#1C1F1D" font-family="system-ui, -apple-system, sans-serif" font-size="12">emoji</text>
+    <text x="264" y="135" fill="#72847A" font-family="system-ui, -apple-system, sans-serif" font-size="11" text-anchor="end">VARCHAR(10)</text>
+    <line x1="12" y1="144" x2="268" y2="144" stroke="#F1F6F3" stroke-width="1" />
+
+    <!-- Row 4: Note -->
+    <text x="36" y="160" fill="#1C1F1D" font-family="system-ui, -apple-system, sans-serif" font-size="12">note</text>
+    <text x="264" y="160" fill="#72847A" font-family="system-ui, -apple-system, sans-serif" font-size="11" text-anchor="end">TEXT (NULL)</text>
+    <line x1="12" y1="169" x2="268" y2="169" stroke="#F1F6F3" stroke-width="1" />
+
+    <!-- Row 5: Timestamp -->
+    <text x="36" y="185" fill="#1C1F1D" font-family="system-ui, -apple-system, sans-serif" font-size="12">timestamp</text>
+    <text x="264" y="185" fill="#72847A" font-family="system-ui, -apple-system, sans-serif" font-size="11" text-anchor="end">TIMESTAMP</text>
+  </g>
+
+  <!-- SLEEP ENTRIES TABLE -->
+  <g transform="translate(60, 260)" filter="url(#shadow)">
+    <!-- Base Card -->
+    <rect width="280" height="175" rx="12" fill="#FFFFFF" stroke="#E1EFE6" stroke-width="1.5"/>
+    <!-- Header with rounded top corners only -->
+    <path d="M12,0 L268,0 A12,12 0 0,1 280,12 L280,40 L0,40 L0,12 A12,12 0 0,1 12,0 Z" fill="#2D6A4F" />
+    <text x="16" y="25" fill="#FFFFFF" font-family="system-ui, -apple-system, sans-serif" font-weight="600" font-size="13">SleepEntries</text>
+    
+    <!-- Table Rows (Columns) -->
+    <!-- Row 0: ID (PK) -->
+    <text x="16" y="60" fill="#2D6A4F" font-family="system-ui, -apple-system, sans-serif" font-size="12" font-weight="bold">🔑</text>
+    <text x="36" y="60" fill="#1C1F1D" font-family="system-ui, -apple-system, sans-serif" font-size="12" font-weight="600">id</text>
+    <text x="264" y="60" fill="#72847A" font-family="system-ui, -apple-system, sans-serif" font-size="11" text-anchor="end">UUID / INT</text>
+    <line x1="12" y1="69" x2="268" y2="69" stroke="#F1F6F3" stroke-width="1" />
+
+    <!-- Row 1: User ID (FK) -->
+    <text x="16" y="85" fill="#4A7C59" font-family="system-ui, -apple-system, sans-serif" font-size="12" font-weight="bold">🔗</text>
+    <text x="36" y="85" fill="#1C1F1D" font-family="system-ui, -apple-system, sans-serif" font-size="12" font-weight="500">user_id</text>
+    <text x="264" y="85" fill="#72847A" font-family="system-ui, -apple-system, sans-serif" font-size="11" text-anchor="end">UUID / INT</text>
+    <line x1="12" y1="94" x2="268" y2="94" stroke="#F1F6F3" stroke-width="1" />
+
+    <!-- Row 2: Hours -->
+    <text x="36" y="110" fill="#1C1F1D" font-family="system-ui, -apple-system, sans-serif" font-size="12">hours</text>
+    <text x="264" y="110" fill="#72847A" font-family="system-ui, -apple-system, sans-serif" font-size="11" text-anchor="end">DECIMAL(4,2)</text>
+    <line x1="12" y1="119" x2="268" y2="119" stroke="#F1F6F3" stroke-width="1" />
+
+    <!-- Row 3: Quality -->
+    <text x="36" y="135" fill="#1C1F1D" font-family="system-ui, -apple-system, sans-serif" font-size="12">quality</text>
+    <text x="264" y="135" fill="#72847A" font-family="system-ui, -apple-system, sans-serif" font-size="11" text-anchor="end">VARCHAR(50)</text>
+    <line x1="12" y1="144" x2="268" y2="144" stroke="#F1F6F3" stroke-width="1" />
+
+    <!-- Row 4: Timestamp -->
+    <text x="36" y="160" fill="#1C1F1D" font-family="system-ui, -apple-system, sans-serif" font-size="12">timestamp</text>
+    <text x="264" y="160" fill="#72847A" font-family="system-ui, -apple-system, sans-serif" font-size="11" text-anchor="end">TIMESTAMP</text>
+  </g>
+
+  <!-- ACTIVITY ENTRIES TABLE -->
+  <g transform="translate(60, 460)" filter="url(#shadow)">
+    <!-- Base Card -->
+    <rect width="280" height="175" rx="12" fill="#FFFFFF" stroke="#E1EFE6" stroke-width="1.5"/>
+    <!-- Header with rounded top corners only -->
+    <path d="M12,0 L268,0 A12,12 0 0,1 280,12 L280,40 L0,40 L0,12 A12,12 0 0,1 12,0 Z" fill="#2D6A4F" />
+    <text x="16" y="25" fill="#FFFFFF" font-family="system-ui, -apple-system, sans-serif" font-weight="600" font-size="13">ActivityEntries</text>
+    
+    <!-- Table Rows (Columns) -->
+    <!-- Row 0: ID (PK) -->
+    <text x="16" y="60" fill="#2D6A4F" font-family="system-ui, -apple-system, sans-serif" font-size="12" font-weight="bold">🔑</text>
+    <text x="36" y="60" fill="#1C1F1D" font-family="system-ui, -apple-system, sans-serif" font-size="12" font-weight="600">id</text>
+    <text x="264" y="60" fill="#72847A" font-family="system-ui, -apple-system, sans-serif" font-size="11" text-anchor="end">UUID / INT</text>
+    <line x1="12" y1="69" x2="268" y2="69" stroke="#F1F6F3" stroke-width="1" />
+
+    <!-- Row 1: User ID (FK) -->
+    <text x="16" y="85" fill="#4A7C59" font-family="system-ui, -apple-system, sans-serif" font-size="12" font-weight="bold">🔗</text>
+    <text x="36" y="85" fill="#1C1F1D" font-family="system-ui, -apple-system, sans-serif" font-size="12" font-weight="500">user_id</text>
+    <text x="264" y="85" fill="#72847A" font-family="system-ui, -apple-system, sans-serif" font-size="11" text-anchor="end">UUID / INT</text>
+    <line x1="12" y1="94" x2="268" y2="94" stroke="#F1F6F3" stroke-width="1" />
+
+    <!-- Row 2: Type -->
+    <text x="36" y="110" fill="#1C1F1D" font-family="system-ui, -apple-system, sans-serif" font-size="12">type</text>
+    <text x="264" y="110" fill="#72847A" font-family="system-ui, -apple-system, sans-serif" font-size="11" text-anchor="end">VARCHAR(100)</text>
+    <line x1="12" y1="119" x2="268" y2="119" stroke="#F1F6F3" stroke-width="1" />
+
+    <!-- Row 3: Duration -->
+    <text x="36" y="135" fill="#1C1F1D" font-family="system-ui, -apple-system, sans-serif" font-size="12">duration</text>
+    <text x="264" y="135" fill="#72847A" font-family="system-ui, -apple-system, sans-serif" font-size="11" text-anchor="end">INT (MINUTES)</text>
+    <line x1="12" y1="144" x2="268" y2="144" stroke="#F1F6F3" stroke-width="1" />
+
+    <!-- Row 4: Timestamp -->
+    <text x="36" y="160" fill="#1C1F1D" font-family="system-ui, -apple-system, sans-serif" font-size="12">timestamp</text>
+    <text x="264" y="160" fill="#72847A" font-family="system-ui, -apple-system, sans-serif" font-size="11" text-anchor="end">TIMESTAMP</text>
+  </g>
+
+
+  <!-- ==================== COLUMN 2: CORE ENTITY (CENTER) ==================== -->
+
+  <!-- USERS TABLE (Core) -->
+  <g transform="translate(450, 210)" filter="url(#shadow)">
+    <!-- Base Card (Emphasized core size) -->
+    <rect width="300" height="250" rx="12" fill="#FFFFFF" stroke="#1B4332" stroke-width="2"/>
+    <!-- Header with rounded top corners only (Deep Forest Theme) -->
+    <path d="M12,0 L288,0 A12,12 0 0,1 300,12 L300,42 L0,42 L0,12 A12,12 0 0,1 12,0 Z" fill="#1B4332" />
+    <text x="16" y="26" fill="#FFFFFF" font-family="system-ui, -apple-system, sans-serif" font-weight="bold" font-size="14">Users (Wellness Profiles)</text>
+    
+    <!-- Table Rows (Columns) -->
+    <!-- Row 0: ID (PK) -->
+    <text x="16" y="62" fill="#2D6A4F" font-family="system-ui, -apple-system, sans-serif" font-size="12" font-weight="bold">🔑</text>
+    <text x="36" y="62" fill="#1C1F1D" font-family="system-ui, -apple-system, sans-serif" font-size="12" font-weight="bold">id</text>
+    <text x="284" y="62" fill="#72847A" font-family="system-ui, -apple-system, sans-serif" font-size="11" font-weight="bold" text-anchor="end">UUID / INT (PK)</text>
+    <line x1="12" y1="71" x2="288" y2="71" stroke="#E1EFE6" stroke-width="1.2" />
+
+    <!-- Row 1: Alias -->
+    <text x="36" y="87" fill="#1C1F1D" font-family="system-ui, -apple-system, sans-serif" font-size="12" font-weight="500">alias</text>
+    <text x="284" y="87" fill="#4A7C59" font-family="system-ui, -apple-system, sans-serif" font-size="11" font-weight="bold" text-anchor="end">VARCHAR(100) UNIQUE</text>
+    <line x1="12" y1="96" x2="288" y2="96" stroke="#E1EFE6" stroke-width="1.2" />
+
+    <!-- Row 2: Email -->
+    <text x="36" y="112" fill="#1C1F1D" font-family="system-ui, -apple-system, sans-serif" font-size="12">email</text>
+    <text x="284" y="112" fill="#72847A" font-family="system-ui, -apple-system, sans-serif" font-size="11" text-anchor="end">VARCHAR(255) NULL</text>
+    <line x1="12" y1="121" x2="288" y2="121" stroke="#E1EFE6" stroke-width="1.2" />
+
+    <!-- Row 3: Password Hash -->
+    <text x="36" y="137" fill="#1C1F1D" font-family="system-ui, -apple-system, sans-serif" font-size="12">password_hash</text>
+    <text x="284" y="137" fill="#72847A" font-family="system-ui, -apple-system, sans-serif" font-size="11" text-anchor="end">VARCHAR(255)</text>
+    <line x1="12" y1="146" x2="288" y2="146" stroke="#E1EFE6" stroke-width="1.2" />
+
+    <!-- Row 4: Role -->
+    <text x="36" y="162" fill="#1C1F1D" font-family="system-ui, -apple-system, sans-serif" font-size="12">role</text>
+    <text x="284" y="162" fill="#72847A" font-family="system-ui, -apple-system, sans-serif" font-size="11" text-anchor="end">ENUM ('Individual', 'Student', 'Admin',...)</text>
+    <line x1="12" y1="171" x2="288" y2="171" stroke="#E1EFE6" stroke-width="1.2" />
+
+    <!-- Row 5: Wellness Score -->
+    <text x="36" y="187" fill="#1C1F1D" font-family="system-ui, -apple-system, sans-serif" font-size="12">wellness_score</text>
+    <text x="284" y="187" fill="#72847A" font-family="system-ui, -apple-system, sans-serif" font-size="11" text-anchor="end">INT DEFAULT 0</text>
+    <line x1="12" y1="196" x2="288" y2="196" stroke="#E1EFE6" stroke-width="1.2" />
+
+    <!-- Row 6: Current Streak -->
+    <text x="36" y="212" fill="#1C1F1D" font-family="system-ui, -apple-system, sans-serif" font-size="12">current_streak</text>
+    <text x="284" y="212" fill="#72847A" font-family="system-ui, -apple-system, sans-serif" font-size="11" text-anchor="end">INT DEFAULT 0</text>
+    <line x1="12" y1="221" x2="288" y2="221" stroke="#E1EFE6" stroke-width="1.2" />
+
+    <!-- Row 7: Created At -->
+    <text x="36" y="237" fill="#1C1F1D" font-family="system-ui, -apple-system, sans-serif" font-size="12">created_at</text>
+    <text x="284" y="237" fill="#72847A" font-family="system-ui, -apple-system, sans-serif" font-size="11" text-anchor="end">TIMESTAMP DEFAULT NOW()</text>
+  </g>
+
+
+  <!-- ==================== COLUMN 3: DIALOGS, REFLECTIONS & AI (RIGHT) ==================== -->
+
+  <!-- JOURNAL ENTRIES TABLE -->
+  <g transform="translate(860, 40)" filter="url(#shadow)">
+    <!-- Base Card -->
+    <rect width="280" height="150" rx="12" fill="#FFFFFF" stroke="#E1EFE6" stroke-width="1.5"/>
+    <!-- Header with rounded top corners only -->
+    <path d="M12,0 L268,0 A12,12 0 0,1 280,12 L280,40 L0,40 L0,12 A12,12 0 0,1 12,0 Z" fill="#2D6A4F" />
+    <text x="16" y="25" fill="#FFFFFF" font-family="system-ui, -apple-system, sans-serif" font-weight="600" font-size="13">JournalEntries</text>
+    
+    <!-- Table Rows (Columns) -->
+    <!-- Row 0: ID (PK) -->
+    <text x="16" y="60" fill="#2D6A4F" font-family="system-ui, -apple-system, sans-serif" font-size="12" font-weight="bold">🔑</text>
+    <text x="36" y="60" fill="#1C1F1D" font-family="system-ui, -apple-system, sans-serif" font-size="12" font-weight="600">id</text>
+    <text x="264" y="60" fill="#72847A" font-family="system-ui, -apple-system, sans-serif" font-size="11" text-anchor="end">UUID / INT</text>
+    <line x1="12" y1="69" x2="268" y2="69" stroke="#F1F6F3" stroke-width="1" />
+
+    <!-- Row 1: User ID (FK) -->
+    <text x="16" y="85" fill="#4A7C59" font-family="system-ui, -apple-system, sans-serif" font-size="12" font-weight="bold">🔗</text>
+    <text x="36" y="85" fill="#1C1F1D" font-family="system-ui, -apple-system, sans-serif" font-size="12" font-weight="500">user_id</text>
+    <text x="264" y="85" fill="#72847A" font-family="system-ui, -apple-system, sans-serif" font-size="11" text-anchor="end">UUID / INT</text>
+    <line x1="12" y1="94" x2="268" y2="94" stroke="#F1F6F3" stroke-width="1" />
+
+    <!-- Row 2: Content -->
+    <text x="36" y="110" fill="#1C1F1D" font-family="system-ui, -apple-system, sans-serif" font-size="12">content</text>
+    <text x="264" y="110" fill="#72847A" font-family="system-ui, -apple-system, sans-serif" font-size="11" text-anchor="end">TEXT</text>
+    <line x1="12" y1="119" x2="268" y2="119" stroke="#F1F6F3" stroke-width="1" />
+
+    <!-- Row 3: Timestamp -->
+    <text x="36" y="140" fill="#1C1F1D" font-family="system-ui, -apple-system, sans-serif" font-size="12">timestamp</text>
+    <text x="264" y="140" fill="#72847A" font-family="system-ui, -apple-system, sans-serif" font-size="11" text-anchor="end">TIMESTAMP</text>
+  </g>
+
+  <!-- CHAT MESSAGES TABLE -->
+  <g transform="translate(860, 210)" filter="url(#shadow)">
+    <!-- Base Card -->
+    <rect width="280" height="175" rx="12" fill="#FFFFFF" stroke="#E1EFE6" stroke-width="1.5"/>
+    <!-- Header with rounded top corners only -->
+    <path d="M12,0 L268,0 A12,12 0 0,1 280,12 L280,40 L0,40 L0,12 A12,12 0 0,1 12,0 Z" fill="#2D6A4F" />
+    <text x="16" y="25" fill="#FFFFFF" font-family="system-ui, -apple-system, sans-serif" font-weight="600" font-size="13">ChatMessages</text>
+    
+    <!-- Table Rows (Columns) -->
+    <!-- Row 0: ID (PK) -->
+    <text x="16" y="60" fill="#2D6A4F" font-family="system-ui, -apple-system, sans-serif" font-size="12" font-weight="bold">🔑</text>
+    <text x="36" y="60" fill="#1C1F1D" font-family="system-ui, -apple-system, sans-serif" font-size="12" font-weight="600">id</text>
+    <text x="264" y="60" fill="#72847A" font-family="system-ui, -apple-system, sans-serif" font-size="11" text-anchor="end">UUID / INT</text>
+    <line x1="12" y1="69" x2="268" y2="69" stroke="#F1F6F3" stroke-width="1" />
+
+    <!-- Row 1: User ID (FK) -->
+    <text x="16" y="85" fill="#4A7C59" font-family="system-ui, -apple-system, sans-serif" font-size="12" font-weight="bold">🔗</text>
+    <text x="36" y="85" fill="#1C1F1D" font-family="system-ui, -apple-system, sans-serif" font-size="12" font-weight="500">user_id</text>
+    <text x="264" y="85" fill="#72847A" font-family="system-ui, -apple-system, sans-serif" font-size="11" text-anchor="end">UUID / INT</text>
+    <line x1="12" y1="94" x2="268" y2="94" stroke="#F1F6F3" stroke-width="1" />
+
+    <!-- Row 2: Sender -->
+    <text x="36" y="110" fill="#1C1F1D" font-family="system-ui, -apple-system, sans-serif" font-size="12">sender</text>
+    <text x="264" y="110" fill="#72847A" font-family="system-ui, -apple-system, sans-serif" font-size="11" text-anchor="end">ENUM ('user', 'ai')</text>
+    <line x1="12" y1="119" x2="268" y2="119" stroke="#F1F6F3" stroke-width="1" />
+
+    <!-- Row 3: Text -->
+    <text x="36" y="135" fill="#1C1F1D" font-family="system-ui, -apple-system, sans-serif" font-size="12">text</text>
+    <text x="264" y="135" fill="#72847A" font-family="system-ui, -apple-system, sans-serif" font-size="11" text-anchor="end">TEXT</text>
+    <line x1="12" y1="144" x2="268" y2="144" stroke="#F1F6F3" stroke-width="1" />
+
+    <!-- Row 4: Timestamp -->
+    <text x="36" y="160" fill="#1C1F1D" font-family="system-ui, -apple-system, sans-serif" font-size="12">timestamp</text>
+    <text x="264" y="160" fill="#72847A" font-family="system-ui, -apple-system, sans-serif" font-size="11" text-anchor="end">TIMESTAMP</text>
+  </g>
+
+  <!-- AI INSIGHTS TABLE -->
+  <g transform="translate(860, 410)" filter="url(#shadow)">
+    <!-- Base Card -->
+    <rect width="280" height="225" rx="12" fill="#FFFFFF" stroke="#E1EFE6" stroke-width="1.5"/>
+    <!-- Header with rounded top corners only -->
+    <path d="M12,0 L268,0 A12,12 0 0,1 280,12 L280,40 L0,40 L0,12 A12,12 0 0,1 12,0 Z" fill="#2D6A4F" />
+    <text x="16" y="25" fill="#FFFFFF" font-family="system-ui, -apple-system, sans-serif" font-weight="600" font-size="13">AIInsights</text>
+    
+    <!-- Table Rows (Columns) -->
+    <!-- Row 0: ID (PK) -->
+    <text x="16" y="60" fill="#2D6A4F" font-family="system-ui, -apple-system, sans-serif" font-size="12" font-weight="bold">🔑</text>
+    <text x="36" y="60" fill="#1C1F1D" font-family="system-ui, -apple-system, sans-serif" font-size="12" font-weight="600">id</text>
+    <text x="264" y="60" fill="#72847A" font-family="system-ui, -apple-system, sans-serif" font-size="11" text-anchor="end">UUID / INT</text>
+    <line x1="12" y1="69" x2="268" y2="69" stroke="#F1F6F3" stroke-width="1" />
+
+    <!-- Row 1: User ID (FK) -->
+    <text x="16" y="85" fill="#4A7C59" font-family="system-ui, -apple-system, sans-serif" font-size="12" font-weight="bold">🔗</text>
+    <text x="36" y="85" fill="#1C1F1D" font-family="system-ui, -apple-system, sans-serif" font-size="12" font-weight="500">user_id</text>
+    <text x="264" y="85" fill="#72847A" font-family="system-ui, -apple-system, sans-serif" font-size="11" text-anchor="end">UUID / INT</text>
+    <line x1="12" y1="94" x2="268" y2="94" stroke="#F1F6F3" stroke-width="1" />
+
+    <!-- Row 2: Risk Score -->
+    <text x="36" y="110" fill="#1C1F1D" font-family="system-ui, -apple-system, sans-serif" font-size="12">risk_score</text>
+    <text x="264" y="110" fill="#72847A" font-family="system-ui, -apple-system, sans-serif" font-size="11" text-anchor="end">INT</text>
+    <line x1="12" y1="119" x2="268" y2="119" stroke="#F1F6F3" stroke-width="1" />
+
+    <!-- Row 3: Risk Level -->
+    <text x="36" y="135" fill="#1C1F1D" font-family="system-ui, -apple-system, sans-serif" font-size="12">risk_level</text>
+    <text x="264" y="135" fill="#72847A" font-family="system-ui, -apple-system, sans-serif" font-size="11" text-anchor="end">VARCHAR(20)</text>
+    <line x1="12" y1="144" x2="268" y2="144" stroke="#F1F6F3" stroke-width="1" />
+
+    <!-- Row 4: Title -->
+    <text x="36" y="160" fill="#1C1F1D" font-family="system-ui, -apple-system, sans-serif" font-size="12">title</text>
+    <text x="264" y="160" fill="#72847A" font-family="system-ui, -apple-system, sans-serif" font-size="11" text-anchor="end">VARCHAR(255)</text>
+    <line x1="12" y1="169" x2="268" y2="169" stroke="#F1F6F3" stroke-width="1" />
+
+    <!-- Row 5: Tags -->
+    <text x="36" y="185" fill="#1C1F1D" font-family="system-ui, -apple-system, sans-serif" font-size="12">tags</text>
+    <text x="264" y="185" fill="#72847A" font-family="system-ui, -apple-system, sans-serif" font-size="11" text-anchor="end">JSON / VARCHAR(255)</text>
+    <line x1="12" y1="194" x2="268" y2="194" stroke="#F1F6F3" stroke-width="1" />
+
+    <!-- Row 6: Timestamp -->
+    <text x="36" y="210" fill="#1C1F1D" font-family="system-ui, -apple-system, sans-serif" font-size="12">timestamp</text>
+    <text x="264" y="210" fill="#72847A" font-family="system-ui, -apple-system, sans-serif" font-size="11" text-anchor="end">TIMESTAMP</text>
+  </g>
+
+  <!-- LEGEND (Bottom Center) -->
+  <g transform="translate(450, 480)">
+    <!-- Base Box -->
+    <rect width="300" height="155" rx="12" fill="#FFFFFF" stroke="#E1EFE6" stroke-width="1.5" filter="url(#shadow)" />
+    <!-- Header -->
+    <path d="M12,0 L288,0 A12,12 0 0,1 300,12 L300,32 L0,32 L0,12 A12,12 0 0,1 12,0 Z" fill="#4A7C59" />
+    <text x="150" y="20" fill="#FFFFFF" font-family="system-ui, -apple-system, sans-serif" font-weight="600" font-size="11" text-anchor="middle">ERD NOTATION LEGEND</text>
+    
+    <!-- Legend content -->
+    <text x="25" y="55" fill="#2D6A4F" font-family="system-ui, -apple-system, sans-serif" font-size="12" font-weight="bold">🔑</text>
+    <text x="45" y="55" fill="#1C1F1D" font-family="system-ui, -apple-system, sans-serif" font-size="11" font-weight="600">Primary Key (PK)</text>
+
+    <text x="25" y="80" fill="#4A7C59" font-family="system-ui, -apple-system, sans-serif" font-size="12" font-weight="bold">🔗</text>
+    <text x="45" y="80" fill="#1C1F1D" font-family="system-ui, -apple-system, sans-serif" font-size="11" font-weight="600">Foreign Key (FK)</text>
+
+    <path d="M 25 105 L 65 105" fill="none" stroke="#2D6A4F" stroke-width="2" marker-start="url(#dot)" marker-end="url(#dot)"/>
+    <text x="75" y="108" fill="#1C1F1D" font-family="system-ui, -apple-system, sans-serif" font-size="11" font-weight="500">1-to-Many Relationship</text>
+
+    <!-- Multiplicity legend -->
+    <text x="25" y="135" fill="#2D6A4F" font-family="system-ui, -apple-system, sans-serif" font-size="11" font-weight="bold">1</text>
+    <text x="40" y="135" fill="#72847A" font-family="system-ui, -apple-system, sans-serif" font-size="11">One</text>
+    <text x="80" y="135" fill="#2D6A4F" font-family="system-ui, -apple-system, sans-serif" font-size="11" font-weight="bold">0..*</text>
+    <text x="110" y="135" fill="#72847A" font-family="system-ui, -apple-system, sans-serif" font-size="11">Zero or Many (Logs)</text>
+  </g>
+</svg>

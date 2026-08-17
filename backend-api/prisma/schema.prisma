@@ -1,0 +1,63 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id              String         @id @default(uuid())
+  alias           String         @unique
+  email           String         @unique
+  password        String
+  role            String         @default("Individual") // Individual, Student, Admin
+  otpCode         String?
+  otpExpiresAt    DateTime?
+  isVerified      Boolean        @default(false)
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  // Relations
+  moodLogs        MoodLog[]
+  sleepLogs       SleepLog[]
+  activityLogs    ActivityLog[]
+  journalEntries  JournalEntry[]
+}
+
+model MoodLog {
+  id        String   @id @default(uuid())
+  mood      String   // Awful, Bad, Good, Great, Amazing
+  emoji     String   // 😫, ☹️, 🙂, 😊, 🤩
+  note      String?
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+}
+
+model SleepLog {
+  id        String   @id @default(uuid())
+  hours     Float
+  quality   String   // Poor, Fair, Good, Excellent
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+}
+
+model ActivityLog {
+  id        String   @id @default(uuid())
+  type      String   // Exercise, Meditation, Reading, Walking, etc.
+  duration  Int      // Duration in minutes
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+}
+
+model JournalEntry {
+  id        String   @id @default(uuid())
+  content   String
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+}

@@ -43,7 +43,7 @@ export default function LoginScreen() {
     setError('');
     setLoading(true);
     try {
-      const res = await loginUser(trimmedEmail, password);
+      const res = await loginUser(trimmedEmail, password, role);
       if (res?.requiresOtp) {
         setOtpEmail(res.email || trimmedEmail);
         setShowOtpModal(true);
