@@ -33,5 +33,7 @@ Thumbs.db
 .vscode/
 .idea/
 
-# Local docs
+# Local docs & internal specs
 documentation/
+AGENTS.md
+ARCHITECTURE.md
