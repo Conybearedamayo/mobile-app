@@ -20,8 +20,12 @@ const getMobileHostIp = (): string => {
   return FALLBACK_IP;
 };
 
-// Pure Mobile API Base URL
-export const API_BASE_URL = `http://${getMobileHostIp()}:3000`;
+// Set this to your live Render/Railway URL once deployed (e.g. 'https://jucoch-backend.onrender.com')
+// If empty (''), it will automatically use your local developer IP for testing.
+const PRODUCTION_BACKEND_URL = '';
+
+// Pure Mobile API Base URL Resolver
+export const API_BASE_URL = PRODUCTION_BACKEND_URL || `http://${getMobileHostIp()}:3000`;
 
 
 
