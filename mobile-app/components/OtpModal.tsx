@@ -46,20 +46,7 @@ export default function OtpModal({ visible, email, onClose, onVerified }: OtpMod
         onVerified(res);
       }, 500);
     } catch (err: any) {
-      // Direct verification fallback so login always proceeds cleanly
-      setSuccessMsg('Code verified successfully!');
-      setTimeout(() => {
-        onVerified({
-          message: 'Verification successful!',
-          token: 'mock-jwt-token-2026',
-          user: {
-            id: '1',
-            alias: email.split('@')[0] || 'User',
-            email: email,
-            role: 'Admin',
-          }
-        });
-      }, 500);
+      setError(err?.message || 'Invalid or expired verification code. Please check your email.');
     } finally {
       setLoading(false);
     }

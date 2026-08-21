@@ -65,10 +65,8 @@ export default function LoginScreen() {
   const handleOtpVerified = (res: AuthResponse) => {
     setShowOtpModal(false);
     setUserAlias(res.user?.alias || email.split('@')[0] || 'User');
-    if (res.user?.role) {
-      setUserRole(res.user.role);
-    }
-    setUserToken(res.token || 'mock-token-2026');
+    setUserRole(res.user?.role || role);
+    setUserToken(res.token || null);
     router.replace('/(tabs)');
   };
 

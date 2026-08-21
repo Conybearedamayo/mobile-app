@@ -10,7 +10,7 @@ const JUCOCH_GREEN = '#2D6A4F';
 
 export default function ProfileScreen() {
   const router = useRouter();
-  const { userAlias, userRole, sleepLogs, journalEntries, getCurrentStreak, isDarkMode, toggleDarkMode } = useWellness();
+  const { userAlias, userRole, setUserAlias, setUserRole, setUserToken, sleepLogs, journalEntries, getCurrentStreak, isDarkMode, toggleDarkMode } = useWellness();
 
   const displayName = userAlias || 'PeacefulUser';
   const displayRole = userRole || 'Individual';
@@ -132,7 +132,12 @@ export default function ProfileScreen() {
 
           <TouchableOpacity 
             style={styles.logoutButton}
-            onPress={() => router.replace('/login')}
+            onPress={() => {
+              setUserToken(null);
+              setUserAlias('');
+              setUserRole('');
+              router.replace('/login');
+            }}
             activeOpacity={0.8}
           >
             <LogOut size={18} color="#FF6B6B" style={{ marginRight: 8 }} />
