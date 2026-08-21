@@ -18,7 +18,7 @@ export interface AuthResponse {
   alias?: string;
 }
 
-const fetchWithTimeout = async (url: string, options: RequestInit = {}, timeoutMs = 8000): Promise<Response> => {
+const fetchWithTimeout = async (url: string, options: RequestInit = {}, timeoutMs = 30000): Promise<Response> => {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
@@ -29,9 +29,9 @@ const fetchWithTimeout = async (url: string, options: RequestInit = {}, timeoutM
     return response;
   } catch (err: any) {
     if (err.name === 'AbortError') {
-      throw new Error(`Connection timed out (${timeoutMs/1000}s). Make sure your backend server (npm run dev in backend-api) is running.`);
+      throw new Error(`Connection timed out (${timeoutMs/1000}s). Please check your internet connection and try again.`);
     }
-    throw new Error(`Unable to reach backend server at ${url}. Please verify backend server is running.`);
+    throw new Error(`Unable to reach backend server. Please verify your internet connection and try again.`);
   } finally {
     clearTimeout(timer);
   }

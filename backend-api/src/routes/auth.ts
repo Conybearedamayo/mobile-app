@@ -38,10 +38,10 @@ router.post('/send-otp', async (req: Request, res: Response): Promise<void> => {
         where: { id: user.id },
         data: { otpCode, otpExpiresAt },
       });
-      await sendOtpEmail(user.email, otpCode, user.alias);
+      sendOtpEmail(user.email, otpCode, user.alias).catch((e) => console.error('OTP email error:', e));
     } else {
       // Send OTP for email verification during register
-      await sendOtpEmail(trimmedEmail, otpCode, trimmedEmail.split('@')[0] || 'User');
+      sendOtpEmail(trimmedEmail, otpCode, trimmedEmail.split('@')[0] || 'User').catch((e) => console.error('OTP email error:', e));
     }
 
     res.json({
@@ -172,8 +172,8 @@ router.post('/register', async (req: Request, res: Response): Promise<void> => {
       },
     });
 
-    // Send verification code to user's Google/Email account
-    await sendOtpEmail(newUser.email, otpCode, newUser.alias);
+    // Send verification code asynchronously in background
+    sendOtpEmail(newUser.email, otpCode, newUser.alias).catch((e) => console.error('Registration email error:', e));
 
     res.status(201).json({
       message: 'Account created! A 6-digit verification code was sent to your email.',
@@ -240,7 +240,7 @@ router.post('/login', async (req: Request, res: Response): Promise<void> => {
       data: { otpCode, otpExpiresAt },
     });
 
-    await sendOtpEmail(user.email, otpCode, user.alias);
+    sendOtpEmail(user.email, otpCode, user.alias).catch((e) => console.error('Login email error:', e));
 
     res.json({
       message: 'Login successful! Verification code sent to your email.',
