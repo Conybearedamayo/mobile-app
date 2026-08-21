@@ -106,7 +106,7 @@ export default function HomeScreen() {
     setShowBreathingModal(false);
   };
 
-  const displayName = userAlias || 'Wellness Explorer';
+  const displayName = userAlias || 'User';
   const displayRole = userRole || 'Individual';
   const isAdmin = displayRole === 'Admin';
 

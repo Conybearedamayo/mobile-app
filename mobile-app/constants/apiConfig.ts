@@ -2,7 +2,7 @@ import { Platform } from 'react-native';
 import Constants from 'expo-constants';
 
 // Fallback IP for physical mobile devices when hostUri is unavailable
-const FALLBACK_IP = '192.168.100.32';
+const FALLBACK_IP = '192.168.0.104';
 
 /**
  * Mobile Host IP Resolver
@@ -22,7 +22,7 @@ const getMobileHostIp = (): string => {
 
 // Set this to your live Render/Railway URL once deployed (e.g. 'https://jucoch-backend.onrender.com')
 // If empty (''), it will automatically use your local developer IP for testing.
-const PRODUCTION_BACKEND_URL = '';
+const PRODUCTION_BACKEND_URL = 'https://jucoch-wellness-api.onrender.com';
 
 // Pure Mobile API Base URL Resolver
 export const API_BASE_URL = PRODUCTION_BACKEND_URL || `http://${getMobileHostIp()}:3000`;

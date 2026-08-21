@@ -24,6 +24,26 @@ app.get('/', (req: Request, res: Response) => {
   res.send('JUCOCH API is running! 🚀 Connected to Neon PostgreSQL Database.');
 });
 
+app.get('/api/health', async (req: Request, res: Response) => {
+  try {
+    const { prisma } = await import('./prisma');
+    const userCount = await prisma.user.count();
+    res.json({
+      status: 'healthy',
+      database: 'connected',
+      userCount,
+      databaseUrlConfigured: !!process.env.DATABASE_URL,
+    });
+  } catch (err: any) {
+    res.status(500).json({
+      status: 'error',
+      database: 'disconnected',
+      errorMessage: err?.message,
+      databaseUrlConfigured: !!process.env.DATABASE_URL,
+    });
+  }
+});
+
 app.listen(PORT, () => {
   console.log(`Server is running on http://localhost:${PORT}`);
 });

@@ -53,7 +53,8 @@ function RootLayoutNav() {
   return (
     <PaperProvider theme={colorScheme === 'dark' ? darkTheme : lightTheme}>
       <WellnessProvider>
-        <Stack initialRouteName="login">
+        <Stack initialRouteName="index">
+          <Stack.Screen name="index" options={{ headerShown: false }} />
           <Stack.Screen name="login" options={{ headerShown: false }} />
           <Stack.Screen name="register" options={{ headerShown: false }} />
           <Stack.Screen name="mood-logger" options={{ headerShown: false }} />
