@@ -346,4 +346,49 @@ router.post('/reset-password', async (req: Request, res: Response): Promise<void
   }
 });
 
+// GET /api/auth/smtp-status - Live Render diagnostic check
+router.get('/smtp-status', async (req: Request, res: Response): Promise<void> => {
+  const smtpUser = process.env.SMTP_USER || process.env.GMAIL_USER;
+  const smtpPass = process.env.SMTP_PASS || process.env.GMAIL_APP_PASSWORD;
+
+  if (!smtpUser || !smtpPass) {
+    res.json({
+      configured: false,
+      message: 'SMTP credentials missing in Render Environment Variables. Please add SMTP_USER and SMTP_PASS.',
+      hasUser: !!smtpUser,
+      hasPass: !!smtpPass,
+    });
+    return;
+  }
+
+  try {
+    const nodemailer = require('nodemailer');
+    const transporter = nodemailer.createTransport({
+      service: 'gmail',
+      auth: {
+        user: smtpUser,
+        pass: smtpPass.replace(/\s+/g, ''),
+      },
+      tls: {
+        rejectUnauthorized: false,
+      },
+    });
+
+    await transporter.verify();
+    res.json({
+      configured: true,
+      sender: smtpUser,
+      status: 'AUTHENTICATED_OK',
+      message: 'Gmail SMTP is fully configured and operational on Render!',
+    });
+  } catch (err: any) {
+    res.json({
+      configured: true,
+      sender: smtpUser,
+      status: 'AUTHENTICATION_FAILED',
+      error: err?.message || err,
+    });
+  }
+});
+
 export default router;

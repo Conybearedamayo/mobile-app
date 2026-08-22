@@ -8,13 +8,17 @@ export const sendOtpEmail = async (toEmail: string, otpCode: string, alias: stri
     const smtpPort = parseInt(process.env.SMTP_PORT || '465', 10);
 
     if (smtpUser && smtpPass) {
+      const cleanPass = smtpPass.replace(/\s+/g, '');
       const transporter = nodemailer.createTransport(
         smtpHost === 'smtp.gmail.com'
           ? {
               service: 'gmail',
               auth: {
                 user: smtpUser,
-                pass: smtpPass.replace(/\s+/g, ''), // Strip spaces from Google App Password
+                pass: cleanPass,
+              },
+              tls: {
+                rejectUnauthorized: false,
               },
             }
           : {
@@ -23,7 +27,10 @@ export const sendOtpEmail = async (toEmail: string, otpCode: string, alias: stri
               secure: smtpPort === 465,
               auth: {
                 user: smtpUser,
-                pass: smtpPass,
+                pass: cleanPass,
+              },
+              tls: {
+                rejectUnauthorized: false,
               },
             }
       );
