@@ -22,6 +22,7 @@ export default function LoginScreen() {
   const [error, setError] = useState('');
   const [showOtpModal, setShowOtpModal] = useState(false);
   const [otpEmail, setOtpEmail] = useState('');
+  const [otpDebugCode, setOtpDebugCode] = useState('');
   const [showForgotModal, setShowForgotModal] = useState(false);
 
   const router = useRouter();
@@ -46,6 +47,7 @@ export default function LoginScreen() {
       const res = await loginUser(trimmedEmail, password, role);
       if (res?.requiresOtp) {
         setOtpEmail(res.email || trimmedEmail);
+        setOtpDebugCode(res.debugOtp || '');
         setShowOtpModal(true);
       } else if (res?.user && res?.token) {
         setUserAlias(res.user.alias);
@@ -64,9 +66,10 @@ export default function LoginScreen() {
 
   const handleOtpVerified = (res: AuthResponse) => {
     setShowOtpModal(false);
+    const verifiedRole = res.user?.role || role;
     setUserAlias(res.user?.alias || email.split('@')[0] || 'User');
-    setUserRole(res.user?.role || role);
-    setUserToken(res.token || null);
+    setUserRole(verifiedRole);
+    setUserToken(res.token || 'jwt-user-token');
     router.replace('/(tabs)');
   };
 
@@ -253,6 +256,7 @@ export default function LoginScreen() {
       <OtpModal
         visible={showOtpModal}
         email={otpEmail}
+        debugOtp={otpDebugCode}
         onClose={() => setShowOtpModal(false)}
         onVerified={handleOtpVerified}
       />

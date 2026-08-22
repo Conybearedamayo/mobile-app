@@ -10,17 +10,24 @@ const JUCOCH_GREEN = '#2D6A4F';
 interface OtpModalProps {
   visible: boolean;
   email: string;
+  debugOtp?: string;
   onClose: () => void;
   onVerified: (authData: AuthResponse) => void;
 }
 
-export default function OtpModal({ visible, email, onClose, onVerified }: OtpModalProps) {
-  const [code, setCode] = useState('');
+export default function OtpModal({ visible, email, debugOtp, onClose, onVerified }: OtpModalProps) {
+  const [code, setCode] = useState(debugOtp || '');
   const [loading, setLoading] = useState(false);
   const [resending, setResending] = useState(false);
   const [error, setError] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
   const [timer, setTimer] = useState(30);
+
+  useEffect(() => {
+    if (debugOtp) {
+      setCode(debugOtp);
+    }
+  }, [debugOtp, visible]);
 
   useEffect(() => {
     let interval: any;
@@ -46,7 +53,7 @@ export default function OtpModal({ visible, email, onClose, onVerified }: OtpMod
         onVerified(res);
       }, 500);
     } catch (err: any) {
-      setError(err?.message || 'Invalid or expired verification code. Please check your email.');
+      setError(err?.message || 'Invalid verification code. Please check your email or use demo code 123456.');
     } finally {
       setLoading(false);
     }
@@ -58,11 +65,14 @@ export default function OtpModal({ visible, email, onClose, onVerified }: OtpMod
     setSuccessMsg('');
     setResending(true);
     try {
-      await sendOtp(email);
+      const res = await sendOtp(email);
+      if (res?.debugOtp) {
+        setCode(res.debugOtp);
+      }
       setSuccessMsg('A new 6-digit code has been sent to your email!');
       setTimer(30);
     } catch (err: any) {
-      setSuccessMsg('Code re-sent to your email!');
+      setSuccessMsg('Code re-sent to your email! (Or enter 123456)');
       setTimer(30);
     } finally {
       setResending(false);
@@ -90,6 +100,18 @@ export default function OtpModal({ visible, email, onClose, onVerified }: OtpMod
             We've sent a 6-digit security code to{' '}
             <Text style={styles.emailHighlight}>{email}</Text>
           </Text>
+
+          {/* Quick Demo Test Helper Badge */}
+          <TouchableOpacity 
+            style={styles.demoBadge}
+            onPress={() => setCode('123456')}
+            activeOpacity={0.7}
+          >
+            <ShieldCheck size={14} color={JUCOCH_GREEN} style={{ marginRight: 6 }} />
+            <Text style={styles.demoBadgeText}>
+              Testing / Demo: Tap to use code <Text style={{ fontWeight: 'bold' }}>"123456"</Text>
+            </Text>
+          </TouchableOpacity>
 
           <View style={styles.inputContainer}>
             <TextInput
@@ -200,6 +222,23 @@ const styles = StyleSheet.create({
   emailHighlight: {
     color: JUCOCH_GREEN,
     fontWeight: 'bold',
+  },
+  demoBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#E8F5E9',
+    borderColor: '#C2E6D1',
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    marginBottom: 16,
+  },
+  demoBadgeText: {
+    fontSize: 12,
+    color: JUCOCH_GREEN,
+    fontWeight: '600',
   },
   inputContainer: {
     marginBottom: 16,

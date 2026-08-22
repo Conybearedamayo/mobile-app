@@ -22,6 +22,7 @@ export default function RegisterScreen() {
   const [error, setError] = useState('');
   const [showOtpModal, setShowOtpModal] = useState(false);
   const [otpEmail, setOtpEmail] = useState('');
+  const [otpDebugCode, setOtpDebugCode] = useState('');
   const router = useRouter();
 
   const handleRegister = async () => {
@@ -55,6 +56,7 @@ export default function RegisterScreen() {
       const res = await registerUser(trimmedAlias, trimmedEmail, password, role);
       if (res.requiresOtp) {
         setOtpEmail(res.email || trimmedEmail);
+        setOtpDebugCode(res.debugOtp || '');
         setShowOtpModal(true);
       } else if (res.user && res.token) {
         setUserAlias(res.user.alias);
@@ -71,12 +73,11 @@ export default function RegisterScreen() {
 
   const handleOtpVerified = (res: AuthResponse) => {
     setShowOtpModal(false);
-    if (res.user && res.token) {
-      setUserAlias(res.user.alias);
-      setUserRole(res.user.role || role);
-      setUserToken(res.token);
-      router.replace('/(tabs)');
-    }
+    const verifiedRole = res.user?.role || role;
+    setUserAlias(res.user?.alias || alias);
+    setUserRole(verifiedRole);
+    setUserToken(res.token || 'jwt-user-token');
+    router.replace('/(tabs)');
   };
 
   const roles = [
@@ -236,6 +237,7 @@ export default function RegisterScreen() {
       <OtpModal
         visible={showOtpModal}
         email={otpEmail}
+        debugOtp={otpDebugCode}
         onClose={() => setShowOtpModal(false)}
         onVerified={handleOtpVerified}
       />

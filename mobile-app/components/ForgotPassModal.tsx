@@ -117,6 +117,17 @@ export default function ForgotPassModal({ visible, onClose, onSuccess }: ForgotP
             </View>
           ) : (
             <View style={styles.inputContainer}>
+              <TouchableOpacity 
+                style={styles.demoBadge}
+                onPress={() => setResetCode('123456')}
+                activeOpacity={0.7}
+              >
+                <ShieldCheck size={14} color={JUCOCH_GREEN} style={{ marginRight: 6 }} />
+                <Text style={styles.demoBadgeText}>
+                  Testing / Demo: Tap to use code <Text style={{ fontWeight: 'bold' }}>"123456"</Text>
+                </Text>
+              </TouchableOpacity>
+
               <TextInput
                 label="6-Digit Reset Code"
                 value={resetCode}
@@ -233,6 +244,23 @@ const styles = StyleSheet.create({
   },
   inputContainer: {
     marginBottom: 16,
+  },
+  demoBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#E8F5E9',
+    borderColor: '#C2E6D1',
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    marginBottom: 12,
+  },
+  demoBadgeText: {
+    fontSize: 12,
+    color: JUCOCH_GREEN,
+    fontWeight: '600',
   },
   input: {
     backgroundColor: '#FFF',

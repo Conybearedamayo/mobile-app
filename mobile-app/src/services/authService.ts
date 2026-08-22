@@ -16,6 +16,8 @@ export interface AuthResponse {
   requiresOtp?: boolean;
   email?: string;
   alias?: string;
+  role?: string;
+  debugOtp?: string;
 }
 
 const fetchWithTimeout = async (url: string, options: RequestInit = {}, timeoutMs = 30000): Promise<Response> => {
