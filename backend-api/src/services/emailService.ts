@@ -2,24 +2,34 @@ import nodemailer from 'nodemailer';
 
 export const sendOtpEmail = async (toEmail: string, otpCode: string, alias: string): Promise<boolean> => {
   try {
-    const smtpHost = process.env.SMTP_HOST;
-    const smtpPort = parseInt(process.env.SMTP_PORT || '587', 10);
-    const smtpUser = process.env.SMTP_USER;
-    const smtpPass = process.env.SMTP_PASS;
+    const smtpUser = process.env.SMTP_USER || process.env.GMAIL_USER;
+    const smtpPass = process.env.SMTP_PASS || process.env.GMAIL_APP_PASSWORD;
+    const smtpHost = process.env.SMTP_HOST || (smtpUser?.includes('@gmail.com') ? 'smtp.gmail.com' : undefined);
+    const smtpPort = parseInt(process.env.SMTP_PORT || '465', 10);
 
-    if (smtpHost && smtpUser && smtpPass) {
-      const transporter = nodemailer.createTransport({
-        host: smtpHost,
-        port: smtpPort,
-        secure: smtpPort === 465,
-        auth: {
-          user: smtpUser,
-          pass: smtpPass,
-        },
-      });
+    if (smtpUser && smtpPass) {
+      const transporter = nodemailer.createTransport(
+        smtpHost === 'smtp.gmail.com'
+          ? {
+              service: 'gmail',
+              auth: {
+                user: smtpUser,
+                pass: smtpPass.replace(/\s+/g, ''), // Strip spaces from Google App Password
+              },
+            }
+          : {
+              host: smtpHost,
+              port: smtpPort,
+              secure: smtpPort === 465,
+              auth: {
+                user: smtpUser,
+                pass: smtpPass,
+              },
+            }
+      );
 
       const mailOptions = {
-        from: `"JUCOCH Mental Wellness" <no-reply@jucoch.com>`,
+        from: `"JUCOCH Wellness" <${smtpUser}>`,
         to: toEmail,
         subject: `[JUCOCH] Your 6-Digit Verification Code: ${otpCode}`,
         html: `
@@ -56,20 +66,21 @@ export const sendOtpEmail = async (toEmail: string, otpCode: string, alias: stri
 
       await transporter.sendMail(mailOptions);
       console.log(`====================================================`);
-      console.log(`📧 OTP Email sent to: ${toEmail}`);
+      console.log(`📧 OTP Email successfully delivered to: ${toEmail}`);
       console.log(`🔑 Verification Code: ${otpCode}`);
       console.log(`====================================================`);
     } else {
-      // Instant development console log without network delay
+      // Instant console log if SMTP is not yet set in environment
       console.log(`====================================================`);
-      console.log(`📧 OTP Email requested for: ${toEmail}`);
+      console.log(`📧 [SIMULATED OTP] Email requested for: ${toEmail}`);
       console.log(`🔑 Verification Code: ${otpCode}`);
+      console.log(`💡 To deliver REAL emails: Add SMTP_USER and SMTP_PASS to Render Environment Variables.`);
       console.log(`====================================================`);
     }
 
     return true;
-  } catch (error) {
-    console.error('Error sending OTP email:', error);
+  } catch (error: any) {
+    console.error('Error sending OTP email via SMTP:', error?.message || error);
     console.log(`====================================================`);
     console.log(`[FALLBACK] Verification Code for ${toEmail}: ${otpCode}`);
     console.log(`====================================================`);
