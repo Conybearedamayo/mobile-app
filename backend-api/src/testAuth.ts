@@ -1,57 +1,39 @@
 import dotenv from 'dotenv';
 dotenv.config();
-import { prisma } from './prisma';
-import { GoogleGenerativeAI } from '@google/generative-ai';
-import nodemailer from 'nodemailer';
 
-async function verifyAll() {
-  console.log('==============================================');
-  console.log('🔍 FULL SYSTEM & ENVIRONMENT AUDIT');
-  console.log('==============================================');
-
-  // 1. Database
+async function testResend() {
+  const apiKey = process.env.RESEND_API_KEY;
+  console.log('Sending live email via Resend API...');
+  
   try {
-    const userCount = await prisma.user.count();
-    console.log(`✅ [1/3] Neon PostgreSQL Database: CONNECTED (Total Users: ${userCount})`);
-  } catch (e: any) {
-    console.error(`❌ [1/3] Database Error:`, e?.message || e);
-  }
-
-  // 2. SMTP
-  try {
-    const user = process.env.SMTP_USER;
-    const pass = (process.env.SMTP_PASS || '').replace(/\s+/g, '');
-    const transporter = nodemailer.createTransport({
-      service: 'gmail',
-      auth: { user, pass },
+    const res = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        from: 'JUCOCH Wellness <onboarding@resend.dev>',
+        to: ['conybeared69@gmail.com'],
+        subject: '[JUCOCH] Real Verification Code: 654321',
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 500px; padding: 24px; background-color: #F3F8F5; border-radius: 16px;">
+            <h2 style="color: #2D6A4F;">JUCOCH Wellness</h2>
+            <p>Your 6-digit verification code is:</p>
+            <div style="background-color: #E8F5E9; letter-spacing: 8px; color: #2D6A4F; font-size: 32px; font-weight: bold; padding: 16px; border-radius: 12px; display: inline-block;">
+              654321
+            </div>
+          </div>
+        `,
+      }),
     });
-    await transporter.verify();
-    console.log(`✅ [2/3] Gmail SMTP (${user}): CONNECTED & AUTHENTICATED`);
-  } catch (e: any) {
-    console.error(`❌ [2/3] SMTP Error:`, e?.message || e);
-  }
 
-  // 3. Gemini AI
-  try {
-    const apiKey = process.env.GEMINI_API_KEY || '';
-    const genAI = new GoogleGenerativeAI(apiKey);
-    const list = ['gemini-1.5-flash', 'gemini-1.5-pro', 'gemini-2.5-flash', 'gemini-2.0-flash-exp'];
-    for (const m of list) {
-      try {
-        const model = genAI.getGenerativeModel({ model: m });
-        const result = await model.generateContent('Hello');
-        console.log(`✅ [3/3] Google Gemini AI (${m}): CONNECTED (Response: "${result.response.text().trim()}")`);
-        break;
-      } catch (e: any) {
-        console.log(`Model ${m} error:`, e.message);
-      }
-    }
-  } catch (e: any) {
-    console.warn(`⚠️ [3/3] Gemini API Note:`, e?.message || e);
+    const data = await res.json();
+    console.log('RESEND STATUS:', res.status);
+    console.log('RESEND RESPONSE:', JSON.stringify(data));
+  } catch (err: any) {
+    console.error('RESEND ERROR:', err);
   }
-
-  console.log('==============================================');
-  process.exit(0);
 }
 
-verifyAll();
+testResend();
