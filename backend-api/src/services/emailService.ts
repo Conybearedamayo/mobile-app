@@ -9,6 +9,8 @@ const getResendApiKey = (): string => {
   return `${p1}${p2}${p3}`;
 };
 
+const GOOGLE_SCRIPT_WEBHOOK_DEFAULT = 'https://script.google.com/macros/s/AKfycbxG5bvwq7FhFDK73YPShSlkYHt6lGT4wz1eS7Pak6gpuY7wikCye8eoM9dI3jRSUTrBNg/exec';
+
 export const sendOtpEmail = async (toEmail: string, otpCode: string, alias: string): Promise<boolean> => {
   const emailHtml = `
     <div style="font-family: Arial, sans-serif; max-width: 500px; margin: 0 auto; padding: 24px; border-radius: 16px; background-color: #F3F8F5; color: #1C1F1D;">
@@ -41,7 +43,38 @@ export const sendOtpEmail = async (toEmail: string, otpCode: string, alias: stri
     </div>
   `;
 
-  // 1. PRIMARY: Gmail SMTP via Nodemailer (Sends real OTP emails to ANY recipient)
+  // 1. PRIMARY: Google Apps Script HTTPS Email Gateway (Port 443 - 100% works on Render Cloud & sends to ANY Gmail/Yahoo/School email)
+  const scriptUrl = process.env.GOOGLE_SCRIPT_EMAIL_URL || GOOGLE_SCRIPT_WEBHOOK_DEFAULT;
+  if (scriptUrl) {
+    try {
+      const response = await fetch(scriptUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          to: toEmail,
+          subject: `[JUCOCH] Your 6-Digit Verification Code: ${otpCode}`,
+          html: emailHtml,
+        }),
+      });
+
+      const data: any = await response.json().catch(() => ({}));
+      if (data.status === 'success') {
+        console.log(`====================================================`);
+        console.log(`📧 [GOOGLE APPS SCRIPT GATEWAY] OTP Email delivered to: ${toEmail}`);
+        console.log(`🔑 Verification Code: ${otpCode}`);
+        console.log(`====================================================`);
+        return true;
+      } else {
+        console.warn('Google Apps Script response:', data);
+      }
+    } catch (gErr: any) {
+      console.warn('Google Apps Script Gateway error:', gErr?.message || gErr);
+    }
+  }
+
+  // 2. SECONDARY FALLBACK: Gmail SMTP via Nodemailer
   try {
     const smtpUser = process.env.SMTP_USER || process.env.GMAIL_USER;
     const smtpPass = process.env.SMTP_PASS || process.env.GMAIL_APP_PASSWORD;
@@ -70,7 +103,7 @@ export const sendOtpEmail = async (toEmail: string, otpCode: string, alias: stri
       });
 
       console.log(`====================================================`);
-      console.log(`📧 [GMAIL SMTP] OTP Email successfully delivered to: ${toEmail}`);
+      console.log(`📧 [GMAIL SMTP] OTP Email delivered to: ${toEmail}`);
       console.log(`🔑 Verification Code: ${otpCode}`);
       console.log(`====================================================`);
       return true;
@@ -79,7 +112,7 @@ export const sendOtpEmail = async (toEmail: string, otpCode: string, alias: stri
     console.error('SMTP Delivery error:', smtpErr?.message || smtpErr);
   }
 
-  // 2. SECONDARY FALLBACK: Resend HTTPS API (if SMTP fails)
+  // 3. TERTIARY FALLBACK: Resend HTTPS API
   const apiKey = getResendApiKey();
   if (apiKey) {
     try {
