@@ -73,7 +73,7 @@ export default function ForgotPassModal({ visible, onClose, onSuccess }: ForgotP
         setStep(3);
       }, 700);
     } catch (err: any) {
-      setError(err?.message || 'Invalid verification code. Please check your email or enter 123456 for demo.');
+      setError(err?.message || 'Invalid verification code. Please check your email and try again.');
     } finally {
       setLoading(false);
     }
@@ -96,7 +96,7 @@ export default function ForgotPassModal({ visible, onClose, onSuccess }: ForgotP
     setError('');
     setLoading(true);
     try {
-      const res = await resetPasswordApi(email.trim(), resetCode.trim() || '123456', trimmedPass);
+      const res = await resetPasswordApi(email.trim(), resetCode.trim(), trimmedPass);
       setSuccessMsg(res.message || 'Password successfully updated in database!');
       setTimeout(() => {
         onSuccess(email.trim());
@@ -118,7 +118,7 @@ export default function ForgotPassModal({ visible, onClose, onSuccess }: ForgotP
       setSuccessMsg('A new 6-digit code has been sent to your email!');
       setTimer(30);
     } catch (err: any) {
-      setError('Failed to resend code. (You can also use demo code 123456).');
+      setError('Failed to resend code. Please try again.');
     } finally {
       setResending(false);
     }
@@ -196,17 +196,6 @@ export default function ForgotPassModal({ visible, onClose, onSuccess }: ForgotP
           {/* STEP 2: CONFIRM IT'S YOU (ENTER OTP) */}
           {step === 2 && (
             <View style={styles.inputContainer}>
-              <TouchableOpacity 
-                style={styles.demoBadge}
-                onPress={() => setResetCode('123456')}
-                activeOpacity={0.7}
-              >
-                <ShieldCheck size={14} color={JUCOCH_GREEN} style={{ marginRight: 6 }} />
-                <Text style={styles.demoBadgeText}>
-                  Testing / Demo: Tap to use code <Text style={{ fontWeight: 'bold' }}>"123456"</Text>
-                </Text>
-              </TouchableOpacity>
-
               <TextInput
                 label="6-Digit Verification Code"
                 value={resetCode}

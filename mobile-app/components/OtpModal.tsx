@@ -53,7 +53,7 @@ export default function OtpModal({ visible, email, debugOtp, onClose, onVerified
         onVerified(res);
       }, 500);
     } catch (err: any) {
-      setError(err?.message || 'Invalid verification code. Please check your email or use demo code 123456.');
+      setError(err?.message || 'Invalid verification code. Please check your email.');
     } finally {
       setLoading(false);
     }
@@ -72,7 +72,7 @@ export default function OtpModal({ visible, email, debugOtp, onClose, onVerified
       setSuccessMsg('A new 6-digit code has been sent to your email!');
       setTimer(30);
     } catch (err: any) {
-      setSuccessMsg('Code re-sent to your email! (Or enter 123456)');
+      setSuccessMsg('Code re-sent to your email!');
       setTimer(30);
     } finally {
       setResending(false);
@@ -100,18 +100,6 @@ export default function OtpModal({ visible, email, debugOtp, onClose, onVerified
             We've sent a 6-digit security code to{' '}
             <Text style={styles.emailHighlight}>{email}</Text>
           </Text>
-
-          {/* Quick Demo Test Helper Badge */}
-          <TouchableOpacity 
-            style={styles.demoBadge}
-            onPress={() => setCode('123456')}
-            activeOpacity={0.7}
-          >
-            <ShieldCheck size={14} color={JUCOCH_GREEN} style={{ marginRight: 6 }} />
-            <Text style={styles.demoBadgeText}>
-              Testing / Demo: Tap to use code <Text style={{ fontWeight: 'bold' }}>"123456"</Text>
-            </Text>
-          </TouchableOpacity>
 
           <View style={styles.inputContainer}>
             <TextInput
