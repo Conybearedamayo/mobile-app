@@ -54,6 +54,9 @@ export const sendOtpEmail = async (toEmail: string, otpCode: string, alias: stri
           user: smtpUser,
           pass: cleanPass,
         },
+        connectionTimeout: 3000,
+        greetingTimeout: 3000,
+        socketTimeout: 3000,
         tls: {
           rejectUnauthorized: false,
         },
