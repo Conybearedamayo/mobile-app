@@ -1,16 +1,18 @@
 import React, { useState } from 'react';
 import { View, StyleSheet, ScrollView, TouchableOpacity, Platform } from 'react-native';
 import { Text, Avatar, Button, Surface, Divider, Portal, Modal, TextInput, Switch } from 'react-native-paper';
-import { ChevronRight, Settings, Shield, Bell, LogOut, Award, Zap, BookOpen, Users, Star, ShieldCheck, Key, CheckCircle, GraduationCap, Moon, Sun } from 'lucide-react-native';
+import { ChevronRight, Settings, Shield, Bell, LogOut, Award, Zap, BookOpen, Users, Star, ShieldCheck, Key, CheckCircle, GraduationCap, Moon, Sun, Compass } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { useWellness } from '@/context/WellnessContext';
 import AdminDashboard from '@/components/dashboards/AdminDashboard';
+import AppGuideModal from '@/components/AppGuideModal';
 
 const JUCOCH_GREEN = '#2D6A4F';
 
 export default function ProfileScreen() {
   const router = useRouter();
   const { userAlias, userRole, setUserAlias, setUserRole, setUserToken, sleepLogs, journalEntries, getCurrentStreak, isDarkMode, toggleDarkMode } = useWellness();
+  const [showGuideModal, setShowGuideModal] = useState(false);
 
   const displayName = userAlias || 'PeacefulUser';
   const displayRole = userRole || 'Individual';
@@ -124,6 +126,15 @@ export default function ProfileScreen() {
               </View>
 
               <Divider style={styles.divider} />
+              <MenuItem 
+                icon={Compass} 
+                title="App Walkthrough & Guide" 
+                subtitle="Replay interactive feature tour" 
+                onPress={() => setShowGuideModal(true)} 
+                dynamicText={dynamicText} 
+                dynamicSub={dynamicSub} 
+              />
+              <Divider style={styles.divider} />
               <MenuItem icon={Shield} title="Privacy Control" subtitle="Anonymous alias & encryption" dynamicText={dynamicText} dynamicSub={dynamicSub} />
               <Divider style={styles.divider} />
               <MenuItem icon={Bell} title="Smart Notifications" subtitle="Early warning alerts" dynamicText={dynamicText} dynamicSub={dynamicSub} />
@@ -149,6 +160,11 @@ export default function ProfileScreen() {
         </View>
       </ScrollView>
 
+      {/* APP ONBOARDING & GUIDED TOUR MODAL */}
+      <AppGuideModal
+        visible={showGuideModal}
+        onClose={() => setShowGuideModal(false)}
+      />
     </View>
   );
 }
@@ -162,9 +178,9 @@ function StatBox({ value, label, color }: any) {
   );
 }
 
-function MenuItem({ icon: Icon, title, subtitle, dynamicText, dynamicSub }: any) {
+function MenuItem({ icon: Icon, title, subtitle, dynamicText, dynamicSub, onPress }: any) {
   return (
-    <TouchableOpacity style={styles.menuItem} activeOpacity={0.6}>
+    <TouchableOpacity style={styles.menuItem} activeOpacity={0.6} onPress={onPress}>
       <View style={styles.menuIconWrapper}>
         <Icon size={18} color={JUCOCH_GREEN} />
       </View>

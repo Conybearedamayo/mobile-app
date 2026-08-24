@@ -6,6 +6,7 @@ import { useRouter } from 'expo-router';
 import { useWellness } from '@/context/WellnessContext';
 import { LinearGradient } from 'expo-linear-gradient';
 import AdminDashboard from '@/components/dashboards/AdminDashboard';
+import AppGuideModal from '@/components/AppGuideModal';
 
 const { width } = Dimensions.get('window');
 const JUCOCH_GREEN = '#2D6A4F';
@@ -24,6 +25,7 @@ export default function HomeScreen() {
   const [selectedMood, setSelectedMood] = useState<string | null>(null);
   const [moodSavedMsg, setMoodSavedMsg] = useState('');
   const [showBreathingModal, setShowBreathingModal] = useState(false);
+  const [showGuideModal, setShowGuideModal] = useState(false);
 
   // Live Guided Breathing Exercise Timer & Animation State
   const [breathePhase, setBreathePhase] = useState<'Inhale' | 'Hold' | 'Exhale' | 'Rest'>('Inhale');
@@ -153,6 +155,16 @@ export default function HomeScreen() {
                 <Surface style={[styles.roleBadgeSurface, { backgroundColor: isDarkMode ? '#1E3A2B' : '#E8F5E9' }]} elevation={0}>
                   <Text style={styles.roleBadgeText}>{displayRole} Account</Text>
                 </Surface>
+                {!isAdmin && (
+                  <TouchableOpacity 
+                    onPress={() => setShowGuideModal(true)} 
+                    style={[styles.tourBadgeSurface, { backgroundColor: isDarkMode ? '#1B382B' : '#E0F2E9' }]}
+                    activeOpacity={0.75}
+                  >
+                    <Compass size={12} color={JUCOCH_GREEN} style={{ marginRight: 4 }} />
+                    <Text style={styles.tourBadgeText}>App Guide</Text>
+                  </TouchableOpacity>
+                )}
               </View>
             </View>
 
@@ -384,6 +396,11 @@ export default function HomeScreen() {
           </Surface>
         </Modal>
       </Portal>
+      {/* APP ONBOARDING & GUIDED TOUR MODAL */}
+      <AppGuideModal
+        visible={showGuideModal}
+        onClose={() => setShowGuideModal(false)}
+      />
     </View>
   );
 }
@@ -422,6 +439,9 @@ const styles = StyleSheet.create({
   },
   roleBadgeWrapper: {
     marginTop: 4,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
   roleBadgeSurface: {
     paddingHorizontal: 10,
@@ -430,6 +450,20 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
   },
   roleBadgeText: {
+    fontSize: 11,
+    fontWeight: 'bold',
+    color: JUCOCH_GREEN,
+  },
+  tourBadgeSurface: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#C2E6D1',
+  },
+  tourBadgeText: {
     fontSize: 11,
     fontWeight: 'bold',
     color: JUCOCH_GREEN,
