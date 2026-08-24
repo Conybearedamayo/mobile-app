@@ -41,7 +41,42 @@ export const sendOtpEmail = async (toEmail: string, otpCode: string, alias: stri
     </div>
   `;
 
-  // 1. PRIMARY: Resend HTTPS API (Port 443 - 100% works on Render Cloud without firewall blocks)
+  // 1. PRIMARY: Gmail SMTP via Nodemailer (Sends real OTP emails to ANY recipient)
+  try {
+    const smtpUser = process.env.SMTP_USER || process.env.GMAIL_USER;
+    const smtpPass = process.env.SMTP_PASS || process.env.GMAIL_APP_PASSWORD;
+
+    if (smtpUser && smtpPass) {
+      const cleanPass = smtpPass.replace(/\s+/g, '');
+      const transporter = nodemailer.createTransport({
+        service: 'gmail',
+        auth: {
+          user: smtpUser,
+          pass: cleanPass,
+        },
+        tls: {
+          rejectUnauthorized: false,
+        },
+      });
+
+      await transporter.sendMail({
+        from: `"JUCOCH Wellness" <${smtpUser}>`,
+        to: toEmail,
+        subject: `[JUCOCH] Your 6-Digit Verification Code: ${otpCode}`,
+        html: emailHtml,
+      });
+
+      console.log(`====================================================`);
+      console.log(`📧 [GMAIL SMTP] OTP Email successfully delivered to: ${toEmail}`);
+      console.log(`🔑 Verification Code: ${otpCode}`);
+      console.log(`====================================================`);
+      return true;
+    }
+  } catch (smtpErr: any) {
+    console.error('SMTP Delivery error:', smtpErr?.message || smtpErr);
+  }
+
+  // 2. SECONDARY FALLBACK: Resend HTTPS API (if SMTP fails)
   const apiKey = getResendApiKey();
   if (apiKey) {
     try {
@@ -65,61 +100,10 @@ export const sendOtpEmail = async (toEmail: string, otpCode: string, alias: stri
         console.log(`🔑 Verification Code: ${otpCode}`);
         console.log(`====================================================`);
         return true;
-      } else {
-        const errorData = await res.json().catch(() => ({}));
-        console.warn(`Resend API non-200 response:`, errorData);
       }
     } catch (resendErr: any) {
       console.warn(`Resend API error:`, resendErr?.message || resendErr);
     }
-  }
-
-  // 2. SECONDARY: Nodemailer SMTP
-  try {
-    const smtpUser = process.env.SMTP_USER || process.env.GMAIL_USER;
-    const smtpPass = process.env.SMTP_PASS || process.env.GMAIL_APP_PASSWORD;
-    const smtpHost = process.env.SMTP_HOST || (smtpUser?.includes('@gmail.com') ? 'smtp.gmail.com' : undefined);
-    const smtpPort = parseInt(process.env.SMTP_PORT || '465', 10);
-
-    if (smtpUser && smtpPass) {
-      const cleanPass = smtpPass.replace(/\s+/g, '');
-      const transporter = nodemailer.createTransport(
-        smtpHost === 'smtp.gmail.com'
-          ? {
-              service: 'gmail',
-              auth: { user: smtpUser, pass: cleanPass },
-              connectionTimeout: 4000,
-              greetingTimeout: 3000,
-              socketTimeout: 4000,
-              tls: { rejectUnauthorized: false },
-            }
-          : {
-              host: smtpHost,
-              port: smtpPort,
-              secure: smtpPort === 465,
-              auth: { user: smtpUser, pass: cleanPass },
-              connectionTimeout: 4000,
-              greetingTimeout: 3000,
-              socketTimeout: 4000,
-              tls: { rejectUnauthorized: false },
-            }
-      );
-
-      await transporter.sendMail({
-        from: `"JUCOCH Wellness" <${smtpUser}>`,
-        to: toEmail,
-        subject: `[JUCOCH] Your 6-Digit Verification Code: ${otpCode}`,
-        html: emailHtml,
-      });
-
-      console.log(`====================================================`);
-      console.log(`📧 [SMTP] OTP Email delivered to: ${toEmail}`);
-      console.log(`🔑 Verification Code: ${otpCode}`);
-      console.log(`====================================================`);
-      return true;
-    }
-  } catch (smtpErr: any) {
-    console.error('SMTP Delivery error:', smtpErr?.message || smtpErr);
   }
 
   console.log(`[FALLBACK CODE] Generated OTP for ${toEmail}: ${otpCode}`);

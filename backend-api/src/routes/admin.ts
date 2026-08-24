@@ -26,7 +26,17 @@ const verifyAdmin = async (req: Request, res: Response, next: () => void): Promi
   }
 };
 
-// GET /api/admin/users - Get all registered non-admin users
+// Helper function to mask email for strict student privacy protection (e.g. j***z@gmail.com)
+const maskUserEmail = (email: string): string => {
+  if (!email || !email.includes('@')) return '***@anonymous.protected';
+  const [localPart, domain] = email.split('@');
+  if (localPart.length <= 2) {
+    return `${localPart[0]}***@${domain}`;
+  }
+  return `${localPart.slice(0, 2)}***${localPart.slice(-1)}@${domain}`;
+};
+
+// GET /api/admin/users - Get all registered non-admin users (emails masked for privacy)
 router.get('/users', verifyAdmin, async (req: Request, res: Response): Promise<void> => {
   try {
     const users = await prisma.user.findMany({
@@ -44,7 +54,12 @@ router.get('/users', verifyAdmin, async (req: Request, res: Response): Promise<v
       orderBy: { createdAt: 'desc' },
     });
 
-    res.json({ users });
+    const privacyProtectedUsers = users.map(u => ({
+      ...u,
+      email: maskUserEmail(u.email),
+    }));
+
+    res.json({ users: privacyProtectedUsers });
   } catch (error: any) {
     console.error('Fetch Admin Users Error:', error);
     res.status(500).json({ error: 'Failed to fetch registered users list.' });

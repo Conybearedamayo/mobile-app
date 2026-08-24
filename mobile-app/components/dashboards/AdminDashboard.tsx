@@ -204,6 +204,9 @@ export default function AdminDashboard() {
                 <Text style={{ fontSize: 11, fontWeight: 'bold', color: JUCOCH_GREEN }}>Refresh List</Text>
               </TouchableOpacity>
             </View>
+            <Text style={[styles.feedSubtitle, { color: dynamicSub, marginTop: 4, marginBottom: 6 }]}>
+              🛡️ User emails are masked for anonymity and student privacy protection.
+            </Text>
             <Divider style={{ marginVertical: 8 }} />
 
             {filteredUsers.length === 0 ? (
@@ -235,7 +238,7 @@ export default function AdminDashboard() {
                             <Text style={[styles.roleBadgeText, { color: roleColor }]}>{u.role}</Text>
                           </Surface>
                         </View>
-                        <Text style={[styles.emailText, { color: dynamicSub }]}>{u.email} • Joined {u.joined}</Text>
+                        <Text style={[styles.emailText, { color: dynamicSub }]}>🔒 {u.email} • Joined {u.joined}</Text>
                       </View>
                     </View>
                   </View>

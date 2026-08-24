@@ -8,7 +8,7 @@ async function auditSystem() {
     const count = await prisma.user.count();
     console.log('✅ Neon Database Connected. Users in DB:', count);
   } catch (e: any) {
-    console.error('Database Error:', e.message);
+    console.error('Test Error:', e.message);
   }
 }
 
