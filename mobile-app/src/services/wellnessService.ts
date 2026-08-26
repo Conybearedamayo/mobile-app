@@ -57,6 +57,28 @@ export const saveJournalApi = async (token: string, content: string) => {
   return response.json();
 };
 
+export const updateJournalApi = async (token: string, id: string | number, content: string) => {
+  const response = await fetch(`${API_BASE_URL}/api/wellness/journal/${id}`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`,
+    },
+    body: JSON.stringify({ content }),
+  });
+  return response.json();
+};
+
+export const deleteJournalApi = async (token: string, id: string | number) => {
+  const response = await fetch(`${API_BASE_URL}/api/wellness/journal/${id}`, {
+    method: 'DELETE',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+    },
+  });
+  return response.json();
+};
+
 export const sendAiChatApi = async (message: string) => {
   const response = await fetch(`${API_BASE_URL}/api/ai/chat`, {
     method: 'POST',
@@ -64,6 +86,15 @@ export const sendAiChatApi = async (message: string) => {
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({ message }),
+  });
+  return response.json();
+};
+
+export const fetchAllWellnessDataApi = async (token: string) => {
+  const response = await fetch(`${API_BASE_URL}/api/wellness/all`, {
+    headers: {
+      'Authorization': `Bearer ${token}`,
+    },
   });
   return response.json();
 };

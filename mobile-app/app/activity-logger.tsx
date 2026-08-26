@@ -1,36 +1,76 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
-import { Text, Surface } from 'react-native-paper';
-import { ChevronLeft, Activity, Dumbbell, Users, Briefcase, Coffee } from 'lucide-react-native';
+import { View, StyleSheet, ScrollView, TouchableOpacity, Platform } from 'react-native';
+import { Text, Surface, Divider } from 'react-native-paper';
+import { 
+  ChevronLeft, 
+  Activity, 
+  Dumbbell, 
+  Users, 
+  Briefcase, 
+  Coffee, 
+  GraduationCap, 
+  BookOpen, 
+  Sparkles, 
+  Compass, 
+  Moon, 
+  Zap, 
+  Award, 
+  Clock, 
+  CheckCircle,
+  ShieldCheck
+} from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { useWellness } from '@/context/WellnessContext';
 import { LinearGradient } from 'expo-linear-gradient';
 
 const JUCOCH_GREEN = '#2D6A4F';
 
+// Individual Activities (Personal Wellness & Daily Habits)
+const INDIVIDUAL_ACTIVITIES = [
+  { name: 'Workout & Fitness', icon: Dumbbell, desc: 'Gym, cardio, stretching' },
+  { name: 'Mindful Meditation', icon: Sparkles, desc: 'Breathing, inner peace' },
+  { name: 'Deep Work Focus', icon: Briefcase, desc: 'Career, productivity' },
+  { name: 'Outdoor & Nature', icon: Compass, desc: 'Walking, fresh air' },
+  { name: 'Book Reading', icon: BookOpen, desc: 'Personal growth, stories' },
+  { name: 'Relaxation & Tea', icon: Coffee, desc: 'Unwinding, downtime' },
+  { name: 'Friends & Family', icon: Users, desc: 'Quality social bonding' },
+  { name: 'Creative Hobbies', icon: Activity, desc: 'Music, arts, journaling' },
+];
+
+// Student Activities (Academic, Campus & Study Life)
+const STUDENT_ACTIVITIES = [
+  { name: 'Class Lecture', icon: GraduationCap, desc: 'Attending lectures, notes' },
+  { name: 'Study & Review', icon: BookOpen, desc: 'Textbooks, problem sets' },
+  { name: 'Coursework / Project', icon: Briefcase, desc: 'Assignments, coding, labs' },
+  { name: 'Exam & Quiz Prep', icon: Zap, desc: 'Intense cramming, mock test' },
+  { name: 'Group Study Session', icon: Users, desc: 'Peer collaboration, team' },
+  { name: 'Campus Commute', icon: Compass, desc: 'Walking to class, travel' },
+  { name: 'Student Org / Club', icon: Award, desc: 'Extracurriculars, event' },
+  { name: 'Campus Power Nap', icon: Moon, desc: 'Quick rest between classes' },
+];
+
+const DURATIONS = [15, 30, 45, 60, 90, 120];
+
 export default function ActivityLoggerScreen() {
   const router = useRouter();
-  const { addActivityEntry } = useWellness();
+  const { userRole, addActivityEntry, isDarkMode, activityEntries } = useWellness();
+  
+  // Default to user's registered role category
+  const defaultCategory = userRole === 'Student' ? 'Student' : 'Individual';
+  const [activeCategory, setActiveCategory] = useState<'Individual' | 'Student'>(defaultCategory as any);
+  
   const [selectedActivities, setSelectedActivities] = useState<string[]>([]);
+  const [selectedDuration, setSelectedDuration] = useState<number>(30);
+  const [successMsg, setSuccessMsg] = useState('');
 
-  const handleSave = () => {
-    if (selectedActivities.length === 0) {
-      router.back();
-      return;
-    }
-    selectedActivities.forEach(activity => {
-      addActivityEntry(activity, 30); // Default duration 30 mins
-    });
-    router.back();
-  };
+  const dynamicBg = isDarkMode ? '#121614' : '#F3F8F5';
+  const dynamicCardBg = isDarkMode ? '#1C231F' : '#FFFFFF';
+  const dynamicText = isDarkMode ? '#EAF2EC' : '#1C1F1D';
+  const dynamicSub = isDarkMode ? '#9EB3A5' : '#707571';
+  const dynamicBorder = isDarkMode ? '#2C3A31' : '#E2EFE7';
 
-  const activities = [
-    { name: 'Exercise', icon: Dumbbell },
-    { name: 'Socializing', icon: Users },
-    { name: 'Work/Study', icon: Briefcase },
-    { name: 'Relaxing', icon: Coffee },
-    { name: 'Hobbies', icon: Activity },
-  ];
+  const currentActivityList = activeCategory === 'Student' ? STUDENT_ACTIVITIES : INDIVIDUAL_ACTIVITIES;
+  const themeColor = activeCategory === 'Student' ? '#1E88E5' : JUCOCH_GREEN;
 
   const toggleActivity = (name: string) => {
     if (selectedActivities.includes(name)) {
@@ -40,151 +80,351 @@ export default function ActivityLoggerScreen() {
     }
   };
 
+  const handleSave = () => {
+    if (selectedActivities.length === 0) return;
+    
+    selectedActivities.forEach(activity => {
+      const categoryTag = activeCategory === 'Student' ? `[Student] ${activity}` : `[Individual] ${activity}`;
+      addActivityEntry(categoryTag, selectedDuration);
+    });
+
+    setSuccessMsg(`Saved ${selectedActivities.length} activities (${selectedDuration} mins each)!`);
+    setSelectedActivities([]);
+    setTimeout(() => {
+      setSuccessMsg('');
+      router.back();
+    }, 1200);
+  };
+
   return (
-    <View style={styles.container}>
-      <ScrollView contentContainerStyle={styles.content}>
+    <View style={[styles.container, { backgroundColor: dynamicBg }]}>
+      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        
+        {/* Header */}
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-            <ChevronLeft size={24} color="#1C1F1D" />
+          <TouchableOpacity onPress={() => router.back()} style={[styles.backButton, { backgroundColor: dynamicCardBg, borderColor: dynamicBorder }]}>
+            <ChevronLeft size={22} color={dynamicText} />
           </TouchableOpacity>
-          <Text variant="headlineSmall" style={styles.title}>Activity Log</Text>
+          <View style={{ flex: 1 }}>
+            <Text variant="headlineSmall" style={[styles.title, { color: dynamicText }]}>Daily Activities</Text>
+            <Text variant="bodySmall" style={[styles.subtitle, { color: dynamicSub }]}>
+              Categorized for Individuals & Students
+            </Text>
+          </View>
+          <View style={[styles.roleBadge, { backgroundColor: `${themeColor}18` }]}>
+            <ShieldCheck size={14} color={themeColor} style={{ marginRight: 4 }} />
+            <Text style={[styles.roleBadgeText, { color: themeColor }]}>{activeCategory}</Text>
+          </View>
         </View>
 
-        <Text style={styles.sectionLabel}>WHAT HAVE YOU BEEN UP TO?</Text>
-        
-        <View style={styles.activityGrid}>
-          {activities.map((item) => {
-            const Icon = item.icon;
-            const isSelected = selectedActivities.includes(item.name);
+        {/* Category Switcher: Individual vs Student */}
+        <View style={styles.categorySwitcherRow}>
+          <TouchableOpacity
+            style={[
+              styles.categoryBtn,
+              { backgroundColor: dynamicCardBg, borderColor: dynamicBorder },
+              activeCategory === 'Individual' && { backgroundColor: JUCOCH_GREEN, borderColor: JUCOCH_GREEN }
+            ]}
+            onPress={() => {
+              setActiveCategory('Individual');
+              setSelectedActivities([]);
+            }}
+            activeOpacity={0.8}
+          >
+            <Dumbbell size={16} color={activeCategory === 'Individual' ? '#FFF' : JUCOCH_GREEN} style={{ marginRight: 6 }} />
+            <Text style={[styles.categoryBtnText, { color: dynamicText }, activeCategory === 'Individual' && { color: '#FFF' }]}>
+              👤 Individual Wellness
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[
+              styles.categoryBtn,
+              { backgroundColor: dynamicCardBg, borderColor: dynamicBorder },
+              activeCategory === 'Student' && { backgroundColor: '#1E88E5', borderColor: '#1E88E5' }
+            ]}
+            onPress={() => {
+              setActiveCategory('Student');
+              setSelectedActivities([]);
+            }}
+            activeOpacity={0.8}
+          >
+            <GraduationCap size={16} color={activeCategory === 'Student' ? '#FFF' : '#1E88E5'} style={{ marginRight: 6 }} />
+            <Text style={[styles.categoryBtnText, { color: dynamicText }, activeCategory === 'Student' && { color: '#FFF' }]}>
+              🎓 Student Campus
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Duration Selector */}
+        <View style={styles.sectionHeaderRow}>
+          <Clock size={14} color={themeColor} style={{ marginRight: 6 }} />
+          <Text style={[styles.sectionLabel, { color: dynamicSub }]}>SELECT DURATION PER ACTIVITY</Text>
+        </View>
+
+        <View style={styles.durationRow}>
+          {DURATIONS.map((dur) => {
+            const isDurSelected = selectedDuration === dur;
             return (
-              <TouchableOpacity 
-                key={item.name} 
-                style={[styles.activityCard, isSelected && styles.selectedCard]}
-                onPress={() => toggleActivity(item.name)}
-                activeOpacity={0.8}
+              <TouchableOpacity
+                key={dur}
+                style={[
+                  styles.durationChip,
+                  { backgroundColor: dynamicCardBg, borderColor: dynamicBorder },
+                  isDurSelected && { backgroundColor: themeColor, borderColor: themeColor }
+                ]}
+                onPress={() => setSelectedDuration(dur)}
               >
-                <Surface style={[styles.iconBox, isSelected && styles.selectedIconBox]} elevation={0}>
-                  <Icon size={24} color={isSelected ? '#FFF' : JUCOCH_GREEN} />
-                </Surface>
-                <Text style={[styles.activityName, isSelected && styles.selectedText]}>{item.name}</Text>
+                <Text style={[styles.durationChipText, { color: dynamicSub }, isDurSelected && { color: '#FFF', fontWeight: 'bold' }]}>
+                  {dur}m
+                </Text>
               </TouchableOpacity>
             );
           })}
         </View>
 
-        <Surface style={styles.aiNote} elevation={1}>
-          <View style={styles.insightIconBg}>
-            <Activity size={18} color={JUCOCH_GREEN} />
+        {/* Activity Selection Grid */}
+        <View style={styles.sectionHeaderRow}>
+          <Activity size={14} color={themeColor} style={{ marginRight: 6 }} />
+          <Text style={[styles.sectionLabel, { color: dynamicSub }]}>
+            {activeCategory === 'Student' ? 'CAMPUS & STUDY ROUTINES' : 'PERSONAL WELLNESS HABITS'}
+          </Text>
+        </View>
+        
+        <View style={styles.activityGrid}>
+          {currentActivityList.map((item) => {
+            const Icon = item.icon;
+            const isSelected = selectedActivities.includes(item.name);
+            return (
+              <TouchableOpacity 
+                key={item.name} 
+                style={[
+                  styles.activityCard,
+                  { backgroundColor: dynamicCardBg, borderColor: dynamicBorder },
+                  isSelected && { backgroundColor: themeColor, borderColor: themeColor }
+                ]}
+                onPress={() => toggleActivity(item.name)}
+                activeOpacity={0.8}
+              >
+                <Surface 
+                  style={[
+                    styles.iconBox,
+                    { backgroundColor: `${themeColor}18` },
+                    isSelected && { backgroundColor: 'rgba(255,255,255,0.25)' }
+                  ]} 
+                  elevation={0}
+                >
+                  <Icon size={22} color={isSelected ? '#FFF' : themeColor} />
+                </Surface>
+                <Text style={[styles.activityName, { color: dynamicText }, isSelected && styles.selectedText]} numberOfLines={1}>
+                  {item.name}
+                </Text>
+                <Text style={[styles.activityDesc, { color: dynamicSub }, isSelected && { color: 'rgba(255,255,255,0.85)' }]} numberOfLines={1}>
+                  {item.desc}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+
+        {/* Success Banner */}
+        {!!successMsg && (
+          <Surface style={styles.successCard} elevation={2}>
+            <CheckCircle size={18} color={JUCOCH_GREEN} style={{ marginRight: 8 }} />
+            <Text style={styles.successText}>{successMsg}</Text>
+          </Surface>
+        )}
+
+        {/* AI Insight Box */}
+        <Surface style={[styles.aiNote, { backgroundColor: dynamicCardBg, borderColor: dynamicBorder }]} elevation={1}>
+          <View style={[styles.insightIconBg, { backgroundColor: `${themeColor}18` }]}>
+            <Sparkles size={16} color={themeColor} />
           </View>
-          <Text style={styles.noteText}>
-            AI Prediction: Engaging in physical activity today could improve your sleep quality by 15%.
+          <Text style={[styles.noteText, { color: dynamicText }]}>
+            {activeCategory === 'Student'
+              ? 'AI Tip for Students: Logging study breaks & campus walks boosts cognitive focus during exam periods.'
+              : 'AI Prediction: Regular physical activity & daily mindfulness improves sleep quality by up to 20%.'}
           </Text>
         </Surface>
 
+        {/* Save Button */}
         <TouchableOpacity 
           onPress={handleSave}
-          activeOpacity={0.8}
+          disabled={selectedActivities.length === 0}
+          activeOpacity={0.85}
           style={styles.saveButtonWrapper}
         >
           <LinearGradient
-            colors={[JUCOCH_GREEN, '#1B4332']}
+            colors={selectedActivities.length > 0 ? [themeColor, '#1B4332'] : [isDarkMode ? '#243329' : '#D0E8D8', isDarkMode ? '#243329' : '#D0E8D8']}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
             style={styles.gradientButton}
           >
-            <Text style={styles.gradientButtonText}>Save Activities</Text>
+            <Text style={[styles.gradientButtonText, selectedActivities.length === 0 && { color: dynamicSub }]}>
+              {selectedActivities.length > 0 
+                ? `Save ${selectedActivities.length} ${activeCategory} Activity (${selectedActivities.length * selectedDuration}m total)`
+                : 'Select Activities to Log'}
+            </Text>
           </LinearGradient>
         </TouchableOpacity>
+
       </ScrollView>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F3F8F5' },
-  content: { padding: 24, paddingTop: 60 },
-  header: { flexDirection: 'row', alignItems: 'center', marginBottom: 36 },
+  container: { flex: 1 },
+  content: { 
+    padding: 20, 
+    paddingTop: Platform.OS === 'ios' ? 60 : 40,
+    paddingBottom: 60,
+    maxWidth: 550,
+    alignSelf: 'center',
+    width: '100%',
+  },
+  header: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    marginBottom: 20 
+  },
   backButton: { 
-    marginRight: 16, 
-    backgroundColor: '#FFF', 
+    marginRight: 12, 
     width: 44,
     height: 44,
     borderRadius: 14,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1.5,
-    borderColor: '#EBF2EE',
   },
-  title: { fontWeight: 'bold', color: '#1C1F1D' },
-  sectionLabel: { fontSize: 11, fontWeight: 'bold', color: '#909591', letterSpacing: 1.5, marginBottom: 20 },
-  activityGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' },
+  title: { fontWeight: 'bold' },
+  subtitle: { marginTop: 2, fontSize: 12 },
+  roleBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 12,
+  },
+  roleBadgeText: {
+    fontSize: 11,
+    fontWeight: 'bold',
+  },
+  categorySwitcherRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginBottom: 20,
+  },
+  categoryBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    borderRadius: 16,
+    borderWidth: 1.5,
+  },
+  categoryBtnText: {
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
+  sectionHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 10,
+    marginLeft: 2,
+  },
+  sectionLabel: { 
+    fontSize: 11, 
+    fontWeight: 'bold', 
+    letterSpacing: 1.2 
+  },
+  durationRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 22,
+  },
+  durationChip: {
+    flex: 1,
+    paddingVertical: 8,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  durationChipText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  activityGrid: { 
+    flexDirection: 'row', 
+    flexWrap: 'wrap', 
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
   activityCard: { 
     width: '48%', 
-    backgroundColor: '#FFF', 
-    borderRadius: 22, 
-    padding: 20, 
+    borderRadius: 20, 
+    padding: 16, 
     alignItems: 'center', 
-    marginBottom: 16, 
-    borderWidth: 1.5, 
-    borderColor: '#EBF2EE',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.02,
-    shadowRadius: 6,
+    marginBottom: 12, 
+    borderWidth: 1.5,
   },
-  selectedCard: { backgroundColor: JUCOCH_GREEN, borderColor: JUCOCH_GREEN },
   iconBox: { 
-    width: 48, 
-    height: 48, 
-    borderRadius: 16, 
-    backgroundColor: '#E8F5E9', 
+    width: 44, 
+    height: 44, 
+    borderRadius: 14, 
     justifyContent: 'center', 
     alignItems: 'center', 
-    marginBottom: 12 
+    marginBottom: 10 
   },
-  selectedIconBox: { backgroundColor: 'rgba(255,255,255,0.22)' },
-  activityName: { fontWeight: 'bold', color: '#333A36', fontSize: 13 },
+  activityName: { fontWeight: 'bold', fontSize: 12, textAlign: 'center' },
+  activityDesc: { fontSize: 10, marginTop: 2, textAlign: 'center' },
   selectedText: { color: '#FFF' },
+  successCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#E8F5E9',
+    padding: 12,
+    borderRadius: 14,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#A3D9A5',
+  },
+  successText: {
+    color: JUCOCH_GREEN,
+    fontSize: 12,
+    fontWeight: 'bold',
+    flex: 1,
+  },
   aiNote: { 
     flexDirection: 'row', 
-    backgroundColor: '#FFF', 
-    padding: 16, 
-    borderRadius: 22, 
-    marginBottom: 28, 
+    padding: 14, 
+    borderRadius: 18, 
+    marginBottom: 24, 
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#EBF2EE',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.02,
-    shadowRadius: 8,
   },
   insightIconBg: {
-    width: 32,
-    height: 32,
+    width: 30,
+    height: 30,
     borderRadius: 10,
-    backgroundColor: '#E8F5E9',
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 12,
+    marginRight: 10,
   },
-  noteText: { fontSize: 12, color: JUCOCH_GREEN, flex: 1, fontWeight: '500', lineHeight: 18 },
-  saveButtonWrapper: { marginTop: 12 },
+  noteText: { fontSize: 12, flex: 1, fontWeight: '500', lineHeight: 18 },
+  saveButtonWrapper: { marginTop: 4, marginBottom: 20 },
   gradientButton: {
-    height: 56,
-    borderRadius: 22,
+    height: 52,
+    borderRadius: 18,
     justifyContent: 'center',
     alignItems: 'center',
-    elevation: 6,
-    shadowColor: JUCOCH_GREEN,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.3,
-    shadowRadius: 12,
+    elevation: 4,
   },
   gradientButtonText: {
     color: '#FFF',
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: 'bold',
-    letterSpacing: 0.5,
   },
 });

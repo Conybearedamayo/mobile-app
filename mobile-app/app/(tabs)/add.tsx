@@ -43,6 +43,7 @@ export default function FeaturesHub() {
       title: 'DAILY WELLNESS TRACKING',
       items: [
         { name: 'Mood Logger', desc: 'Express your daily emotions', icon: Smile, route: '/mood-logger', color: '#48BB78' },
+        { name: 'Daily Activities', desc: 'Categorized for Individuals & Students', icon: Activity, route: '/activity-logger', color: '#2D6A4F' },
         { name: 'Sleep Tracker', desc: 'Monitor sleep duration & quality', icon: Moon, route: '/sleep-logger', color: '#5F27CD' },
         { name: 'Gratitude Journal', desc: 'Private encrypted reflections', icon: BookText, route: '/journal-logger', color: '#FF9F43' },
       ]

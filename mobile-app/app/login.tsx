@@ -22,7 +22,6 @@ export default function LoginScreen() {
   const [error, setError] = useState('');
   const [showOtpModal, setShowOtpModal] = useState(false);
   const [otpEmail, setOtpEmail] = useState('');
-  const [otpDebugCode, setOtpDebugCode] = useState('');
   const [showForgotModal, setShowForgotModal] = useState(false);
 
   const router = useRouter();
@@ -32,12 +31,12 @@ export default function LoginScreen() {
     const trimmedPassword = password.trim();
 
     if (!trimmedEmail || !trimmedPassword) {
-      setError('Email/alias and password cannot be empty.');
+      setError('Email and password cannot be empty.');
       return;
     }
 
-    if (trimmedEmail.length < 3) {
-      setError('Please enter a valid email address or alias (at least 3 characters).');
+    if (trimmedEmail.length < 3 || !trimmedEmail.includes('@')) {
+      setError('Please enter a valid email address.');
       return;
     }
 
@@ -47,7 +46,6 @@ export default function LoginScreen() {
       const res = await loginUser(trimmedEmail, password, role);
       if (res?.requiresOtp) {
         setOtpEmail(res.email || trimmedEmail);
-        setOtpDebugCode(res.debugOtp || '');
         setShowOtpModal(true);
       } else if (res?.user && res?.token) {
         setUserAlias(res.user.alias);
@@ -166,7 +164,7 @@ export default function LoginScreen() {
             {/* Input Form Fields */}
             <View style={styles.inputContainer}>
               <TextInput
-                label="Email Address or Alias"
+                label="Email Address"
                 value={email}
                 onChangeText={setEmail}
                 mode="outlined"
@@ -174,6 +172,8 @@ export default function LoginScreen() {
                 activeOutlineColor={JUCOCH_GREEN}
                 style={styles.input}
                 outlineStyle={{ borderRadius: 18 }}
+                keyboardType="email-address"
+                autoCapitalize="none"
                 left={<TextInput.Icon icon="email-outline" color={JUCOCH_GREEN} />}
               />
 
@@ -243,7 +243,7 @@ export default function LoginScreen() {
           </Surface>
 
           {/* Create Account Link Footer */}
-          <TouchableOpacity style={styles.footer} onPress={() => router.push('/register')} activeOpacity={0.7}>
+          <TouchableOpacity style={styles.footer} onPress={() => router.push('/register' as any)} activeOpacity={0.7}>
             <Text style={styles.footerText}>
               Don't have an account? <Text style={styles.createAccount}>Create Account</Text>
             </Text>
@@ -256,7 +256,6 @@ export default function LoginScreen() {
       <OtpModal
         visible={showOtpModal}
         email={otpEmail}
-        debugOtp={otpDebugCode}
         onClose={() => setShowOtpModal(false)}
         onVerified={handleOtpVerified}
       />

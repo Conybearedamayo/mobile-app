@@ -10,13 +10,12 @@ const JUCOCH_GREEN = '#2D6A4F';
 interface OtpModalProps {
   visible: boolean;
   email: string;
-  debugOtp?: string;
   onClose: () => void;
   onVerified: (authData: AuthResponse) => void;
 }
 
-export default function OtpModal({ visible, email, debugOtp, onClose, onVerified }: OtpModalProps) {
-  const [code, setCode] = useState(debugOtp || '');
+export default function OtpModal({ visible, email, onClose, onVerified }: OtpModalProps) {
+  const [code, setCode] = useState('');
   const [loading, setLoading] = useState(false);
   const [resending, setResending] = useState(false);
   const [error, setError] = useState('');
@@ -24,10 +23,12 @@ export default function OtpModal({ visible, email, debugOtp, onClose, onVerified
   const [timer, setTimer] = useState(30);
 
   useEffect(() => {
-    if (debugOtp) {
-      setCode(debugOtp);
+    if (visible) {
+      setCode('');
+      setError('');
+      setSuccessMsg('');
     }
-  }, [debugOtp, visible]);
+  }, [visible]);
 
   useEffect(() => {
     let interval: any;
@@ -65,10 +66,7 @@ export default function OtpModal({ visible, email, debugOtp, onClose, onVerified
     setSuccessMsg('');
     setResending(true);
     try {
-      const res = await sendOtp(email);
-      if (res?.debugOtp) {
-        setCode(res.debugOtp);
-      }
+      await sendOtp(email);
       setSuccessMsg('A new 6-digit code has been sent to your email!');
       setTimer(30);
     } catch (err: any) {
@@ -99,6 +97,9 @@ export default function OtpModal({ visible, email, debugOtp, onClose, onVerified
           <Text variant="bodyMedium" style={styles.subtitle}>
             We've sent a 6-digit security code to{' '}
             <Text style={styles.emailHighlight}>{email}</Text>
+          </Text>
+          <Text style={styles.inboxHint}>
+            Please check your Gmail inbox or Spam folder for the verification code.
           </Text>
 
           <View style={styles.inputContainer}>
@@ -203,9 +204,20 @@ const styles = StyleSheet.create({
   subtitle: {
     color: '#707571',
     marginTop: 6,
-    marginBottom: 20,
+    marginBottom: 6,
     lineHeight: 20,
     fontSize: 13,
+  },
+  inboxHint: {
+    color: '#2D6A4F',
+    fontSize: 12,
+    fontWeight: '500',
+    backgroundColor: '#E8F5E9',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    marginBottom: 18,
+    marginTop: 4,
   },
   emailHighlight: {
     color: JUCOCH_GREEN,

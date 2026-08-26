@@ -276,4 +276,95 @@ router.get('/journal', async (req: Request, res: Response): Promise<void> => {
   }
 });
 
+// PUT /api/wellness/journal/:id
+router.put('/journal/:id', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const id = req.params.id as string;
+    const { content } = req.body;
+    const userId = await resolveUserId(req);
+
+    if (!content || !content.trim()) {
+      res.status(400).json({ error: 'Journal content cannot be empty.' });
+      return;
+    }
+
+    const existing = await prisma.journalEntry.findUnique({
+      where: { id },
+    });
+
+    if (!existing) {
+      res.status(404).json({ error: 'Journal entry not found.' });
+      return;
+    }
+
+    const updated = await prisma.journalEntry.update({
+      where: { id },
+      data: { content: content.trim() },
+    });
+
+    res.json({
+      message: 'Journal entry updated successfully!',
+      journalEntry: updated,
+    });
+  } catch (error: any) {
+    console.error('Update Journal Entry Error:', error);
+    res.status(500).json({ error: 'Failed to update journal entry.' });
+  }
+});
+
+// DELETE /api/wellness/journal/:id
+router.delete('/journal/:id', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const id = req.params.id as string;
+
+    const existing = await prisma.journalEntry.findUnique({
+      where: { id },
+    });
+
+    if (!existing) {
+      res.status(404).json({ error: 'Journal entry not found.' });
+      return;
+    }
+
+    await prisma.journalEntry.delete({
+      where: { id },
+    });
+
+    res.json({
+      message: 'Journal entry deleted successfully!',
+    });
+  } catch (error: any) {
+    console.error('Delete Journal Entry Error:', error);
+    res.status(500).json({ error: 'Failed to delete journal entry.' });
+  }
+});
+
+// GET /api/wellness/all - Load all user wellness records on startup/login
+router.get('/all', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const userId = await resolveUserId(req);
+    if (!userId) {
+      res.status(400).json({ error: 'User ID or Auth token is required.' });
+      return;
+    }
+
+    const [moodLogs, sleepLogs, activityLogs, journalEntries] = await Promise.all([
+      prisma.moodLog.findMany({ where: { userId }, orderBy: { createdAt: 'desc' } }),
+      prisma.sleepLog.findMany({ where: { userId }, orderBy: { createdAt: 'desc' } }),
+      prisma.activityLog.findMany({ where: { userId }, orderBy: { createdAt: 'desc' } }),
+      prisma.journalEntry.findMany({ where: { userId }, orderBy: { createdAt: 'desc' } }),
+    ]);
+
+    res.json({
+      moodLogs,
+      sleepLogs,
+      activityLogs,
+      journalEntries,
+    });
+  } catch (error: any) {
+    console.error('Fetch All Wellness Data Error:', error);
+    res.status(500).json({ error: 'Failed to sync user wellness records.' });
+  }
+});
+
 export default router;

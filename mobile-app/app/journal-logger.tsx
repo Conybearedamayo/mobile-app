@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, ScrollView, TouchableOpacity, Dimensions, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, StyleSheet, ScrollView, TouchableOpacity, Dimensions, KeyboardAvoidingView, Platform, Modal } from 'react-native';
 import { Text, TextInput, Surface, IconButton, ActivityIndicator } from 'react-native-paper';
 import { useRouter, Stack } from 'expo-router';
-import { BookOpen, Sparkles, ShieldCheck, CheckCircle, ArrowLeft, Trash2, Calendar } from 'lucide-react-native';
-import { useWellness } from '@/context/WellnessContext';
+import { BookOpen, Sparkles, ShieldCheck, CheckCircle, ArrowLeft, Trash2, Calendar, Edit3, X, AlertTriangle } from 'lucide-react-native';
+import { useWellness, JournalEntry } from '@/context/WellnessContext';
 import { LinearGradient } from 'expo-linear-gradient';
 
 const { width } = Dimensions.get('window');
@@ -18,10 +18,18 @@ const PROMPTS = [
 
 export default function JournalLoggerScreen() {
   const router = useRouter();
-  const { journalEntries, addJournalEntry, isDarkMode } = useWellness();
+  const { journalEntries, addJournalEntry, editJournalEntry, deleteJournalEntry, isDarkMode } = useWellness();
   const [content, setContent] = useState('');
   const [loading, setLoading] = useState(false);
   const [successMsg, setSuccessMsg] = useState('');
+
+  // Edit State
+  const [editingEntry, setEditingEntry] = useState<JournalEntry | null>(null);
+  const [editContent, setEditContent] = useState('');
+  const [editLoading, setEditLoading] = useState(false);
+
+  // Delete State
+  const [deletingId, setDeletingId] = useState<string | number | null>(null);
 
   const dynamicBg = isDarkMode ? '#121614' : '#F3F8F5';
   const dynamicCardBg = isDarkMode ? '#1C231F' : '#FFFFFF';
@@ -43,6 +51,32 @@ export default function JournalLoggerScreen() {
       setContent('');
       setTimeout(() => setSuccessMsg(''), 2500);
     }, 600);
+  };
+
+  const handleStartEdit = (entry: JournalEntry) => {
+    setEditingEntry(entry);
+    setEditContent(entry.content);
+  };
+
+  const handleSaveEdit = () => {
+    if (!editingEntry || !editContent.trim()) return;
+    setEditLoading(true);
+    setTimeout(() => {
+      editJournalEntry(editingEntry.id, editContent.trim());
+      setEditLoading(false);
+      setEditingEntry(null);
+      setEditContent('');
+      setSuccessMsg('Journal entry updated successfully!');
+      setTimeout(() => setSuccessMsg(''), 2500);
+    }, 500);
+  };
+
+  const handleConfirmDelete = () => {
+    if (!deletingId) return;
+    deleteJournalEntry(deletingId);
+    setDeletingId(null);
+    setSuccessMsg('Journal entry deleted successfully.');
+    setTimeout(() => setSuccessMsg(''), 2500);
   };
 
   return (
@@ -159,10 +193,27 @@ export default function JournalLoggerScreen() {
                     <Calendar size={14} color={JUCOCH_GREEN} style={{ marginRight: 6 }} />
                     <Text style={[styles.entryDate, { color: dynamicSub }]}>{entry.timestamp || 'Today'}</Text>
                   </View>
-                  <Surface style={styles.encryptedTag} elevation={0}>
-                    <Text style={styles.encryptedTagText}>Encrypted</Text>
-                  </Surface>
+                  
+                  {/* Action Controls: Edit & Delete */}
+                  <View style={styles.actionControlsRow}>
+                    <TouchableOpacity
+                      onPress={() => handleStartEdit(entry)}
+                      style={[styles.actionBtn, { backgroundColor: isDarkMode ? '#25352A' : '#E8F5E9' }]}
+                      activeOpacity={0.7}
+                    >
+                      <Edit3 size={14} color={JUCOCH_GREEN} />
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      onPress={() => setDeletingId(entry.id)}
+                      style={[styles.actionBtn, { backgroundColor: isDarkMode ? '#3A1F1F' : '#FFE5E5' }]}
+                      activeOpacity={0.7}
+                    >
+                      <Trash2 size={14} color="#D90429" />
+                    </TouchableOpacity>
+                  </View>
                 </View>
+
                 <Text style={[styles.entryContent, { color: dynamicText }]}>{entry.content}</Text>
               </Surface>
             ))
@@ -170,6 +221,97 @@ export default function JournalLoggerScreen() {
         </View>
 
       </ScrollView>
+
+      {/* EDIT JOURNAL MODAL */}
+      <Modal
+        visible={!!editingEntry}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setEditingEntry(null)}
+      >
+        <View style={styles.modalOverlay}>
+          <Surface style={[styles.modalCard, { backgroundColor: dynamicCardBg }]} elevation={5}>
+            <View style={styles.modalHeader}>
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <Edit3 size={20} color={JUCOCH_GREEN} style={{ marginRight: 8 }} />
+                <Text variant="titleMedium" style={{ fontWeight: 'bold', color: dynamicText }}>Edit Reflection</Text>
+              </View>
+              <IconButton icon="close" size={20} onPress={() => setEditingEntry(null)} />
+            </View>
+
+            <TextInput
+              value={editContent}
+              onChangeText={setEditContent}
+              mode="outlined"
+              multiline
+              numberOfLines={6}
+              outlineColor={dynamicBorder}
+              activeOutlineColor={JUCOCH_GREEN}
+              style={[styles.editInput, { backgroundColor: dynamicCardBg }]}
+              textColor={dynamicText}
+            />
+
+            <View style={styles.modalFooter}>
+              <TouchableOpacity 
+                style={[styles.modalCancelBtn, { borderColor: dynamicBorder }]} 
+                onPress={() => setEditingEntry(null)}
+              >
+                <Text style={{ color: dynamicSub, fontWeight: '600' }}>Cancel</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity 
+                style={styles.modalSaveBtn} 
+                onPress={handleSaveEdit}
+                disabled={editLoading || !editContent.trim()}
+              >
+                {editLoading ? (
+                  <ActivityIndicator color="#FFF" size="small" />
+                ) : (
+                  <Text style={styles.modalSaveBtnText}>Save Changes</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </Surface>
+        </View>
+      </Modal>
+
+      {/* DELETE CONFIRMATION MODAL */}
+      <Modal
+        visible={!!deletingId}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setDeletingId(null)}
+      >
+        <View style={styles.modalOverlay}>
+          <Surface style={[styles.deleteModalCard, { backgroundColor: dynamicCardBg }]} elevation={5}>
+            <View style={styles.deleteIconCircle}>
+              <AlertTriangle size={24} color="#D90429" />
+            </View>
+
+            <Text variant="titleMedium" style={[styles.deleteModalTitle, { color: dynamicText }]}>Delete Reflection?</Text>
+            <Text style={[styles.deleteModalDesc, { color: dynamicSub }]}>
+              Are you sure you want to permanently delete this journal reflection? This action cannot be undone.
+            </Text>
+
+            <View style={styles.deleteModalActions}>
+              <TouchableOpacity 
+                style={[styles.deleteCancelBtn, { borderColor: dynamicBorder }]} 
+                onPress={() => setDeletingId(null)}
+              >
+                <Text style={{ color: dynamicSub, fontWeight: '600' }}>Cancel</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity 
+                style={styles.deleteConfirmBtn} 
+                onPress={handleConfirmDelete}
+              >
+                <Text style={styles.deleteConfirmBtnText}>Delete</Text>
+              </TouchableOpacity>
+            </View>
+          </Surface>
+        </View>
+      </Modal>
+
     </KeyboardAvoidingView>
   );
 }
@@ -366,5 +508,121 @@ const styles = StyleSheet.create({
   entryContent: {
     fontSize: 14,
     lineHeight: 20,
+  },
+  actionControlsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  actionBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  modalCard: {
+    width: '100%',
+    maxWidth: 460,
+    borderRadius: 24,
+    padding: 20,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  editInput: {
+    minHeight: 140,
+    fontSize: 15,
+    marginBottom: 16,
+  },
+  modalFooter: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: 12,
+  },
+  modalCancelBtn: {
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalSaveBtn: {
+    backgroundColor: JUCOCH_GREEN,
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalSaveBtnText: {
+    color: '#FFF',
+    fontWeight: 'bold',
+    fontSize: 14,
+  },
+  deleteModalCard: {
+    width: '100%',
+    maxWidth: 380,
+    borderRadius: 24,
+    padding: 24,
+    alignItems: 'center',
+  },
+  deleteIconCircle: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: '#FFE5E5',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 14,
+  },
+  deleteModalTitle: {
+    fontWeight: 'bold',
+    fontSize: 18,
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  deleteModalDesc: {
+    fontSize: 13,
+    textAlign: 'center',
+    lineHeight: 18,
+    marginBottom: 20,
+  },
+  deleteModalActions: {
+    flexDirection: 'row',
+    gap: 12,
+    width: '100%',
+  },
+  deleteCancelBtn: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 14,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  deleteConfirmBtn: {
+    flex: 1,
+    backgroundColor: '#D90429',
+    paddingVertical: 12,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  deleteConfirmBtnText: {
+    color: '#FFF',
+    fontWeight: 'bold',
+    fontSize: 14,
   },
 });

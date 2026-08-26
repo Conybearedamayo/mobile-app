@@ -161,4 +161,129 @@ router.get('/stats', verifyAdmin, async (req: Request, res: Response): Promise<v
   }
 });
 
+// DELETE /api/admin/activities/:id - Admin delete inappropriate activity log
+router.delete('/activities/:id', verifyAdmin, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const id = req.params.id as string;
+
+    if (id.startsWith('mood-')) {
+      const realId = id.replace('mood-', '');
+      await prisma.moodLog.deleteMany({ where: { id: realId } });
+    } else if (id.startsWith('sleep-')) {
+      const realId = id.replace('sleep-', '');
+      await prisma.sleepLog.deleteMany({ where: { id: realId } });
+    } else if (id.startsWith('act-')) {
+      const realId = id.replace('act-', '');
+      await prisma.activityLog.deleteMany({ where: { id: realId } });
+    } else if (id.startsWith('journal-')) {
+      const realId = id.replace('journal-', '');
+      await prisma.journalEntry.deleteMany({ where: { id: realId } });
+    } else {
+      // Try direct id match across all models
+      await Promise.allSettled([
+        prisma.moodLog.deleteMany({ where: { id } }),
+        prisma.sleepLog.deleteMany({ where: { id } }),
+        prisma.activityLog.deleteMany({ where: { id } }),
+        prisma.journalEntry.deleteMany({ where: { id } }),
+      ]);
+    }
+
+    res.json({ message: 'Activity entry moderated and deleted successfully by Admin.' });
+  } catch (error: any) {
+    console.error('Admin Delete Activity Error:', error);
+    res.status(500).json({ error: 'Failed to delete activity entry.' });
+  }
+});
+
+// PUT /api/admin/activities/:id - Admin edit activity details
+router.put('/activities/:id', verifyAdmin, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const id = req.params.id as string;
+    const { detail } = req.body;
+
+    if (!detail || !detail.trim()) {
+      res.status(400).json({ error: 'Activity detail cannot be empty.' });
+      return;
+    }
+
+    if (id.startsWith('journal-')) {
+      const realId = id.replace('journal-', '');
+      await prisma.journalEntry.updateMany({
+        where: { id: realId },
+        data: { content: detail.trim() },
+      });
+    } else if (id.startsWith('mood-')) {
+      const realId = id.replace('mood-', '');
+      await prisma.moodLog.updateMany({
+        where: { id: realId },
+        data: { note: detail.trim() },
+      });
+    } else if (id.startsWith('act-')) {
+      const realId = id.replace('act-', '');
+      await prisma.activityLog.updateMany({
+        where: { id: realId },
+        data: { type: detail.trim() },
+      });
+    }
+
+    res.json({ message: 'Activity details updated successfully by Admin.' });
+  } catch (error: any) {
+    console.error('Admin Edit Activity Error:', error);
+    res.status(500).json({ error: 'Failed to update activity entry.' });
+  }
+});
+
+// DELETE /api/admin/users/:id - Admin remove violating user account
+router.delete('/users/:id', verifyAdmin, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const id = req.params.id as string;
+    const targetUser = await prisma.user.findUnique({ where: { id } });
+    if (!targetUser) {
+      res.status(404).json({ error: 'User account not found.' });
+      return;
+    }
+    if (targetUser.role === 'Admin') {
+      res.status(403).json({ error: 'Cannot delete an official Admin account.' });
+      return;
+    }
+
+    await prisma.user.delete({ where: { id } });
+    res.json({ message: `User "${targetUser.alias}" deleted successfully by Admin.` });
+  } catch (error: any) {
+    console.error('Admin Delete User Error:', error);
+    res.status(500).json({ error: 'Failed to delete user account.' });
+  }
+});
+
+// PUT /api/admin/users/:id - Admin edit user profile (alias or role)
+router.put('/users/:id', verifyAdmin, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const id = req.params.id as string;
+    const { alias, role } = req.body;
+
+    const targetUser = await prisma.user.findUnique({ where: { id } });
+    if (!targetUser) {
+      res.status(404).json({ error: 'User account not found.' });
+      return;
+    }
+    if (targetUser.role === 'Admin') {
+      res.status(403).json({ error: 'Cannot edit an official Admin account from this panel.' });
+      return;
+    }
+
+    const updated = await prisma.user.update({
+      where: { id },
+      data: {
+        ...(alias ? { alias: alias.trim() } : {}),
+        ...(role ? { role: role.trim() } : {}),
+      },
+    });
+
+    res.json({ message: 'User account updated successfully!', user: updated });
+  } catch (error: any) {
+    console.error('Admin Edit User Error:', error);
+    res.status(500).json({ error: 'Failed to update user account.' });
+  }
+});
+
 export default router;

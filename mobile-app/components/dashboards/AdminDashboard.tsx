@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import { Text, Surface, Avatar, Divider, Searchbar, Portal, Modal, TextInput, ActivityIndicator } from 'react-native-paper';
-import { ShieldCheck, Users, GraduationCap, BookOpen, User, Activity, Clock, Smile, Moon, MessageCircle, Zap, UserPlus, CheckCircle, X, Inbox, RefreshCw } from 'lucide-react-native';
+import { ShieldCheck, Users, GraduationCap, BookOpen, User, Activity, Clock, Smile, Moon, MessageCircle, Zap, UserPlus, CheckCircle, X, Inbox, RefreshCw, Edit3, Trash2, AlertTriangle } from 'lucide-react-native';
 import { useWellness } from '@/context/WellnessContext';
 import { API_BASE_URL } from '@/constants/apiConfig';
 
@@ -41,6 +41,22 @@ export default function AdminDashboard() {
 
   const [registeredUsers, setRegisteredUsers] = useState<any[]>([]);
   const [dailyActivities, setDailyActivities] = useState<any[]>([]);
+
+  // Moderation state
+  const [moderationMsg, setModerationMsg] = useState('');
+  const [editActivity, setEditActivity] = useState<any | null>(null);
+  const [editActivityDetail, setEditActivityDetail] = useState('');
+  const [deletingActivityId, setDeletingActivityId] = useState<string | null>(null);
+
+  const [editUser, setEditUser] = useState<any | null>(null);
+  const [editUserAlias, setEditUserAlias] = useState('');
+  const [editUserRole, setEditUserRole] = useState('Individual');
+  const [deletingUserId, setDeletingUserId] = useState<string | null>(null);
+
+  const showToast = (msg: string) => {
+    setModerationMsg(msg);
+    setTimeout(() => setModerationMsg(''), 3000);
+  };
 
   useEffect(() => {
     fetchAdminData();
@@ -91,6 +107,91 @@ export default function AdminDashboard() {
       console.log('Fetch Admin Data error:', e);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleConfirmDeleteActivity = async () => {
+    if (!deletingActivityId) return;
+    const targetId = deletingActivityId;
+    setDeletingActivityId(null);
+    try {
+      await fetch(`${API_BASE_URL}/api/admin/activities/${targetId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${userToken || ''}`,
+          'Content-Type': 'application/json'
+        },
+      });
+      setDailyActivities(prev => prev.filter(a => a.id !== targetId));
+      showToast('Activity record moderated and removed successfully.');
+    } catch (err) {
+      showToast('Failed to delete activity.');
+    }
+  };
+
+  const handleSaveEditActivity = async () => {
+    if (!editActivity || !editActivityDetail.trim()) return;
+    const targetId = editActivity.id;
+    const newDetail = editActivityDetail.trim();
+    setEditActivity(null);
+    try {
+      await fetch(`${API_BASE_URL}/api/admin/activities/${targetId}`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${userToken || ''}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ detail: newDetail }),
+      });
+      setDailyActivities(prev =>
+        prev.map(a => (a.id === targetId ? { ...a, detail: newDetail } : a))
+      );
+      showToast('Activity record updated successfully.');
+    } catch (err) {
+      showToast('Failed to update activity.');
+    }
+  };
+
+  const handleConfirmDeleteUser = async () => {
+    if (!deletingUserId) return;
+    const targetId = deletingUserId;
+    setDeletingUserId(null);
+    try {
+      await fetch(`${API_BASE_URL}/api/admin/users/${targetId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${userToken || ''}`,
+          'Content-Type': 'application/json'
+        },
+      });
+      setRegisteredUsers(prev => prev.filter(u => u.id !== targetId));
+      showToast('User account removed successfully.');
+    } catch (err) {
+      showToast('Failed to delete user.');
+    }
+  };
+
+  const handleSaveEditUser = async () => {
+    if (!editUser || !editUserAlias.trim()) return;
+    const targetId = editUser.id;
+    const newAlias = editUserAlias.trim();
+    const newRole = editUserRole;
+    setEditUser(null);
+    try {
+      await fetch(`${API_BASE_URL}/api/admin/users/${targetId}`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${userToken || ''}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ alias: newAlias, role: newRole }),
+      });
+      setRegisteredUsers(prev =>
+        prev.map(u => (u.id === targetId ? { ...u, alias: newAlias, role: newRole } : u))
+      );
+      showToast('User account updated successfully.');
+    } catch (err) {
+      showToast('Failed to update user.');
     }
   };
 
@@ -209,6 +310,14 @@ export default function AdminDashboard() {
             </Text>
             <Divider style={{ marginVertical: 8 }} />
 
+            {/* Moderation Toast Message */}
+            {!!moderationMsg && (
+              <Surface style={styles.moderationToast} elevation={3}>
+                <CheckCircle size={16} color={JUCOCH_GREEN} style={{ marginRight: 6 }} />
+                <Text style={styles.moderationToastText}>{moderationMsg}</Text>
+              </Surface>
+            )}
+
             {filteredUsers.length === 0 ? (
               <View style={styles.emptyStateContainer}>
                 <Inbox size={32} color={dynamicSub} style={{ marginBottom: 8 }} />
@@ -240,6 +349,28 @@ export default function AdminDashboard() {
                         </View>
                         <Text style={[styles.emailText, { color: dynamicSub }]}>🔒 {u.email} • Joined {u.joined}</Text>
                       </View>
+
+                      {/* Admin User Moderation Controls */}
+                      <View style={styles.rowControls}>
+                        <TouchableOpacity
+                          onPress={() => {
+                            setEditUser(u);
+                            setEditUserAlias(u.alias);
+                            setEditUserRole(u.role);
+                          }}
+                          style={[styles.smallActionBtn, { backgroundColor: isDarkMode ? '#25352A' : '#E8F5E9' }]}
+                          activeOpacity={0.7}
+                        >
+                          <Edit3 size={12} color={JUCOCH_GREEN} />
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          onPress={() => setDeletingUserId(u.id)}
+                          style={[styles.smallActionBtn, { backgroundColor: isDarkMode ? '#3A1F1F' : '#FFE5E5' }]}
+                          activeOpacity={0.7}
+                        >
+                          <Trash2 size={12} color="#D90429" />
+                        </TouchableOpacity>
+                      </View>
                     </View>
                   </View>
                 );
@@ -258,6 +389,14 @@ export default function AdminDashboard() {
           </View>
           <Text style={[styles.feedSubtitle, { color: dynamicSub }]}>Tracks real-time mood logs, sleep logs, and AI chats recorded by users today.</Text>
           <Divider style={{ marginVertical: 10 }} />
+
+          {/* Moderation Toast Message */}
+          {!!moderationMsg && (
+            <Surface style={styles.moderationToast} elevation={3}>
+              <CheckCircle size={16} color={JUCOCH_GREEN} style={{ marginRight: 6 }} />
+              <Text style={styles.moderationToastText}>{moderationMsg}</Text>
+            </Surface>
+          )}
 
           {dailyActivities.length === 0 ? (
             <View style={styles.emptyStateContainer}>
@@ -285,6 +424,27 @@ export default function AdminDashboard() {
                         <Text style={{ fontWeight: 'bold', color: act.color }}>{act.action}</Text>: {act.detail}
                       </Text>
                       <Text style={[styles.userRoleTag, { color: dynamicSub }]}>Account Role: {act.role}</Text>
+                    </View>
+
+                    {/* Admin Moderation Controls for Activity Log */}
+                    <View style={styles.rowControls}>
+                      <TouchableOpacity
+                        onPress={() => {
+                          setEditActivity(act);
+                          setEditActivityDetail(act.detail);
+                        }}
+                        style={[styles.smallActionBtn, { backgroundColor: isDarkMode ? '#25352A' : '#E8F5E9' }]}
+                        activeOpacity={0.7}
+                      >
+                        <Edit3 size={12} color={JUCOCH_GREEN} />
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        onPress={() => setDeletingActivityId(act.id)}
+                        style={[styles.smallActionBtn, { backgroundColor: isDarkMode ? '#3A1F1F' : '#FFE5E5' }]}
+                        activeOpacity={0.7}
+                      >
+                        <Trash2 size={12} color="#D90429" />
+                      </TouchableOpacity>
                     </View>
                   </View>
                 </View>
@@ -321,6 +481,184 @@ export default function AdminDashboard() {
           ))}
         </Surface>
       )}
+
+      {/* MODAL 1: EDIT USER ACTIVITY */}
+      <Portal>
+        <Modal
+          visible={!!editActivity}
+          onDismiss={() => setEditActivity(null)}
+          contentContainerStyle={styles.modalContentStyle}
+        >
+          <Surface style={[styles.createModalCard, { backgroundColor: dynamicCardBg }]} elevation={5}>
+            <View style={styles.modalHeader}>
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <Edit3 size={18} color={JUCOCH_GREEN} style={{ marginRight: 8 }} />
+                <Text style={[styles.modalTitle, { color: dynamicText }]}>Moderate User Activity</Text>
+              </View>
+              <TouchableOpacity onPress={() => setEditActivity(null)}>
+                <X size={20} color={dynamicSub} />
+              </TouchableOpacity>
+            </View>
+
+            <Text style={[styles.modalSub, { color: dynamicSub }]}>
+              User: <Text style={{ fontWeight: 'bold', color: dynamicText }}>{editActivity?.alias}</Text> • Action: {editActivity?.action}
+            </Text>
+
+            <TextInput
+              label="Activity Details / Content"
+              value={editActivityDetail}
+              onChangeText={setEditActivityDetail}
+              mode="outlined"
+              multiline
+              numberOfLines={4}
+              outlineColor={dynamicBorder}
+              activeOutlineColor={JUCOCH_GREEN}
+              style={[styles.modalInput, { backgroundColor: dynamicCardBg }]}
+              textColor={dynamicText}
+            />
+
+            <TouchableOpacity
+              style={styles.submitModalBtn}
+              onPress={handleSaveEditActivity}
+              disabled={!editActivityDetail.trim()}
+            >
+              <Text style={styles.submitModalBtnText}>Save Moderation Changes</Text>
+            </TouchableOpacity>
+          </Surface>
+        </Modal>
+      </Portal>
+
+      {/* MODAL 2: DELETE ACTIVITY CONFIRMATION */}
+      <Portal>
+        <Modal
+          visible={!!deletingActivityId}
+          onDismiss={() => setDeletingActivityId(null)}
+          contentContainerStyle={styles.modalContentStyle}
+        >
+          <Surface style={[styles.createModalCard, { backgroundColor: dynamicCardBg, alignItems: 'center', padding: 24 }]} elevation={5}>
+            <View style={styles.deleteCircleIcon}>
+              <AlertTriangle size={24} color="#D90429" />
+            </View>
+            <Text style={[styles.modalTitle, { color: dynamicText, marginBottom: 8 }]}>Delete Inappropriate Activity?</Text>
+            <Text style={[styles.modalSub, { color: dynamicSub, textAlign: 'center', marginBottom: 20 }]}>
+              Are you sure you want to permanently remove this user activity log from the live audit feed?
+            </Text>
+
+            <View style={{ flexDirection: 'row', gap: 12, width: '100%' }}>
+              <TouchableOpacity 
+                style={[styles.modalCancelBtn, { borderColor: dynamicBorder }]} 
+                onPress={() => setDeletingActivityId(null)}
+              >
+                <Text style={{ color: dynamicSub, fontWeight: 'bold' }}>Cancel</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity 
+                style={styles.modalDeleteBtn} 
+                onPress={handleConfirmDeleteActivity}
+              >
+                <Text style={{ color: '#FFF', fontWeight: 'bold' }}>Delete</Text>
+              </TouchableOpacity>
+            </View>
+          </Surface>
+        </Modal>
+      </Portal>
+
+      {/* MODAL 3: EDIT USER PROFILE */}
+      <Portal>
+        <Modal
+          visible={!!editUser}
+          onDismiss={() => setEditUser(null)}
+          contentContainerStyle={styles.modalContentStyle}
+        >
+          <Surface style={[styles.createModalCard, { backgroundColor: dynamicCardBg }]} elevation={5}>
+            <View style={styles.modalHeader}>
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <User size={18} color={JUCOCH_GREEN} style={{ marginRight: 8 }} />
+                <Text style={[styles.modalTitle, { color: dynamicText }]}>Edit User Account</Text>
+              </View>
+              <TouchableOpacity onPress={() => setEditUser(null)}>
+                <X size={20} color={dynamicSub} />
+              </TouchableOpacity>
+            </View>
+
+            <Text style={[styles.modalSub, { color: dynamicSub }]}>
+              Modify user display alias or switch between Individual/Student roles.
+            </Text>
+
+            <TextInput
+              label="User Alias"
+              value={editUserAlias}
+              onChangeText={setEditUserAlias}
+              mode="outlined"
+              outlineColor={dynamicBorder}
+              activeOutlineColor={JUCOCH_GREEN}
+              style={[styles.modalInput, { backgroundColor: dynamicCardBg }]}
+              textColor={dynamicText}
+            />
+
+            <View style={{ flexDirection: 'row', gap: 10, marginVertical: 8 }}>
+              {['Individual', 'Student'].map((r) => (
+                <TouchableOpacity
+                  key={r}
+                  style={[
+                    styles.roleToggleChip,
+                    { borderColor: dynamicBorder, backgroundColor: dynamicCardBg },
+                    editUserRole === r && styles.selectedRoleToggleChip
+                  ]}
+                  onPress={() => setEditUserRole(r)}
+                >
+                  <Text style={[styles.roleToggleText, { color: dynamicSub }, editUserRole === r && { color: '#FFF', fontWeight: 'bold' }]}>
+                    {r}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <TouchableOpacity
+              style={styles.submitModalBtn}
+              onPress={handleSaveEditUser}
+              disabled={!editUserAlias.trim()}
+            >
+              <Text style={styles.submitModalBtnText}>Update Account</Text>
+            </TouchableOpacity>
+          </Surface>
+        </Modal>
+      </Portal>
+
+      {/* MODAL 4: DELETE USER CONFIRMATION */}
+      <Portal>
+        <Modal
+          visible={!!deletingUserId}
+          onDismiss={() => setDeletingUserId(null)}
+          contentContainerStyle={styles.modalContentStyle}
+        >
+          <Surface style={[styles.createModalCard, { backgroundColor: dynamicCardBg, alignItems: 'center', padding: 24 }]} elevation={5}>
+            <View style={styles.deleteCircleIcon}>
+              <AlertTriangle size={24} color="#D90429" />
+            </View>
+            <Text style={[styles.modalTitle, { color: dynamicText, marginBottom: 8 }]}>Delete User Account?</Text>
+            <Text style={[styles.modalSub, { color: dynamicSub, textAlign: 'center', marginBottom: 20 }]}>
+              Are you sure you want to permanently remove this user account and all their data from the database?
+            </Text>
+
+            <View style={{ flexDirection: 'row', gap: 12, width: '100%' }}>
+              <TouchableOpacity 
+                style={[styles.modalCancelBtn, { borderColor: dynamicBorder }]} 
+                onPress={() => setDeletingUserId(null)}
+              >
+                <Text style={{ color: dynamicSub, fontWeight: 'bold' }}>Cancel</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity 
+                style={styles.modalDeleteBtn} 
+                onPress={handleConfirmDeleteUser}
+              >
+                <Text style={{ color: '#FFF', fontWeight: 'bold' }}>Delete User</Text>
+              </TouchableOpacity>
+            </View>
+          </Surface>
+        </Modal>
+      </Portal>
 
     </View>
   );
@@ -583,5 +921,75 @@ const styles = StyleSheet.create({
     color: JUCOCH_GREEN,
     fontWeight: 'bold',
     flex: 1,
+  },
+  moderationToast: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#E8F5E9',
+    borderColor: '#A3D9A5',
+    borderWidth: 1,
+    borderRadius: 14,
+    padding: 10,
+    marginBottom: 12,
+  },
+  moderationToastText: {
+    color: JUCOCH_GREEN,
+    fontSize: 12,
+    fontWeight: 'bold',
+    flex: 1,
+  },
+  rowControls: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginLeft: 8,
+  },
+  smallActionBtn: {
+    width: 28,
+    height: 28,
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  deleteCircleIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#FFE5E5',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  modalCancelBtn: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 14,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalDeleteBtn: {
+    flex: 1,
+    backgroundColor: '#D90429',
+    paddingVertical: 12,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  roleToggleChip: {
+    flex: 1,
+    paddingVertical: 10,
+    borderRadius: 12,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  selectedRoleToggleChip: {
+    backgroundColor: JUCOCH_GREEN,
+    borderColor: JUCOCH_GREEN,
+  },
+  roleToggleText: {
+    fontSize: 13,
+    fontWeight: '600',
   },
 });

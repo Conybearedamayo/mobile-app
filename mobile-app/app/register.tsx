@@ -22,7 +22,6 @@ export default function RegisterScreen() {
   const [error, setError] = useState('');
   const [showOtpModal, setShowOtpModal] = useState(false);
   const [otpEmail, setOtpEmail] = useState('');
-  const [otpDebugCode, setOtpDebugCode] = useState('');
   const router = useRouter();
 
   const handleRegister = async () => {
@@ -56,7 +55,6 @@ export default function RegisterScreen() {
       const res = await registerUser(trimmedAlias, trimmedEmail, password, role);
       if (res.requiresOtp) {
         setOtpEmail(res.email || trimmedEmail);
-        setOtpDebugCode(res.debugOtp || '');
         setShowOtpModal(true);
       } else if (res.user && res.token) {
         setUserAlias(res.user.alias);
@@ -237,7 +235,6 @@ export default function RegisterScreen() {
       <OtpModal
         visible={showOtpModal}
         email={otpEmail}
-        debugOtp={otpDebugCode}
         onClose={() => setShowOtpModal(false)}
         onVerified={handleOtpVerified}
       />
