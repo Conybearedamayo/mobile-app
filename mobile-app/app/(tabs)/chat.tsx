@@ -19,11 +19,11 @@ export default function ChatScreen() {
   const dynamicSub = isDarkMode ? '#9EB3A5' : '#707571';
   const dynamicBorder = isDarkMode ? '#2C3A31' : '#EBF2EE';
 
-  // Clean initial state: Jucoch AI Welcome Greeting
+  // Clean initial state: MindBridge AI Welcome Greeting
   const [messages, setMessages] = useState([
     { 
       id: 1, 
-      text: `Hello ${userAlias || 'there'}! I am Jucoch AI, your anonymous mental health companion. How are you feeling today?`, 
+      text: `Hello ${userAlias || 'there'}! I am MindBridge AI, your anonymous mental health companion. How are you feeling today?`, 
       sender: 'ai', 
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) 
     },
@@ -44,7 +44,7 @@ export default function ChatScreen() {
       return "I'm really sorry to hear you're feeling down. Remember that it's completely okay to feel this way. You don't have to carry it all alone. Writing down your specific thoughts in your Journal can help release some weight.";
     }
     if (text.includes('hello') || text.includes('hi') || text.includes('hey') || text.includes('hello ai')) {
-      return `Hello! I am Jucoch AI, your mental health companion. I'm here to listen, track your wellness patterns, and give relaxation exercises. How can I help you today, ${userAlias || 'friend'}?`;
+      return `Hello! I am MindBridge AI, your mental health companion. I'm here to listen, track your wellness patterns, and give relaxation exercises. How can I help you today, ${userAlias || 'friend'}?`;
     }
     if (text.includes('good') || text.includes('happy') || text.includes('great') || text.includes('amazing')) {
       return "That's wonderful to hear! Capitalizing on positive moments is just as important. What made today feel so good? Recording this can anchor the feeling!";
@@ -125,7 +125,7 @@ export default function ChatScreen() {
               <Avatar.Text size={40} label="AI" style={{ backgroundColor: JUCOCH_GREEN }} />
             </View>
             <View style={styles.headerTextContainer}>
-              <Text variant="titleMedium" style={[styles.aiName, { color: dynamicText }]}>Jucoch AI</Text>
+              <Text variant="titleMedium" style={[styles.aiName, { color: dynamicText }]}>MindBridge AI</Text>
               <View style={styles.statusRow}>
                 <View style={styles.statusDot} />
                 <Text variant="bodySmall" style={[styles.statusText, { color: dynamicSub }]}>
@@ -176,7 +176,7 @@ export default function ChatScreen() {
         {isTyping && (
           <View style={[styles.messageWrapper, styles.aiWrapper]}>
             <Surface style={[styles.bubble, styles.aiBubble, styles.typingBubble, { backgroundColor: dynamicCardBg }]} elevation={1}>
-              <Text style={styles.typingText}>Jucoch AI is typing...</Text>
+              <Text style={styles.typingText}>MindBridge AI is typing...</Text>
             </Surface>
           </View>
         )}

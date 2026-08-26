@@ -242,7 +242,7 @@ export default function HomeScreen() {
                       <Text style={styles.scoreSub}>
                         {wellnessScore >= 80 ? '🌟 Excellent emotional balance today!' : 
                          wellnessScore >= 60 ? '✨ Stable emotional state. Keep it up!' :
-                         '💙 Rest and talk with Jucoch AI for support.'}
+                         '💙 Rest and talk with MindBridge AI for support.'}
                       </Text>
                     </View>
 

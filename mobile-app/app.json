@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "JUCOCH Wellness",
+    "name": "MindBridge",
     "slug": "jucoch-wellness",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "jucochwellness",
+    "scheme": "mindbridge",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "splash": {

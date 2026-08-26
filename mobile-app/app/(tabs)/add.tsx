@@ -34,7 +34,7 @@ export default function FeaturesHub() {
     {
       title: 'AI POWERED FEATURES',
       items: [
-        { name: 'Jucoch AI Companion', desc: '24/7 Anonymized Mental Health Chat', icon: Sparkles, route: '/(tabs)/chat', color: '#8E24AA' },
+        { name: 'MindBridge AI Companion', desc: '24/7 Anonymized Mental Health Chat', icon: Sparkles, route: '/(tabs)/chat', color: '#8E24AA' },
         { name: 'Behavioral Correlators', desc: 'AI Sleep & Exercise correlations', icon: Brain, route: '/(tabs)/insights', color: '#FF9F43' },
         { name: 'Early Warning System', desc: 'Automated distress detection', icon: AlertTriangle, route: '/(tabs)/insights', color: '#D90429' },
       ]
@@ -71,7 +71,7 @@ export default function FeaturesHub() {
               <Sparkles size={24} color="#FFF" />
             </View>
             <Text style={styles.headerTitle}>System Features & Tools Hub</Text>
-            <Text style={styles.headerSub}>Explore all modules of the Jucoch Wellness System in one place.</Text>
+            <Text style={styles.headerSub}>Explore all modules of the MindBridge Wellness System in one place.</Text>
           </LinearGradient>
 
           {/* Section Modules */}
@@ -110,7 +110,7 @@ export default function FeaturesHub() {
 
           <View style={styles.footer}>
             <ShieldCheck size={16} color={JUCOCH_GREEN} style={{ marginBottom: 4 }} />
-            <Text style={[styles.versionText, { color: dynamicSub }]}>JUCOCH AI SYSTEM • BETA v1.0.0</Text>
+            <Text style={[styles.versionText, { color: dynamicSub }]}>MINDBRIDGE AI SYSTEM • BETA v1.0.0</Text>
           </View>
 
         </View>
