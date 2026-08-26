@@ -144,7 +144,7 @@ export default function ProfileScreen() {
             </Surface>
             
             <Text variant="headlineSmall" style={[styles.userName, { color: dynamicText }]}>{displayName}</Text>
-            <Text variant="bodyMedium" style={[styles.userBio, { color: dynamicSub }]}>{displayRole} Account • MindBridge System</Text>
+            <Text variant="bodyMedium" style={[styles.userBio, { color: dynamicSub }]}>{displayRole} Account • Jucoch System</Text>
             
             <View style={styles.badgeRow}>
               {isAdmin ? (
@@ -281,7 +281,7 @@ export default function ProfileScreen() {
             <Text style={styles.logoutText}>Sign Out Securely</Text>
           </TouchableOpacity>
 
-          <Text style={styles.versionText}>MINDBRIDGE AI SYSTEM • BETA v1.0.0</Text>
+          <Text style={styles.versionText}>JUCOCH AI SYSTEM • BETA v1.0.0</Text>
 
         </View>
       </ScrollView>

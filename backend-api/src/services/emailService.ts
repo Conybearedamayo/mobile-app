@@ -15,8 +15,8 @@ export const sendOtpEmail = async (toEmail: string, otpCode: string, alias: stri
   const emailHtml = `
     <div style="font-family: Arial, sans-serif; max-width: 500px; margin: 0 auto; padding: 24px; border-radius: 16px; background-color: #F3F8F5; color: #1C1F1D;">
       <div style="text-align: center; margin-bottom: 24px;">
-        <div style="background-color: #2D6A4F; color: #FFF; width: 56px; height: 56px; line-height: 56px; border-radius: 18px; font-size: 28px; font-weight: bold; display: inline-block;">M</div>
-        <h2 style="color: #2D6A4F; margin-top: 12px; margin-bottom: 4px;">MindBridge Wellness</h2>
+        <div style="background-color: #2D6A4F; color: #FFF; width: 56px; height: 56px; line-height: 56px; border-radius: 18px; font-size: 28px; font-weight: bold; display: inline-block;">J</div>
+        <h2 style="color: #2D6A4F; margin-top: 12px; margin-bottom: 4px;">JUCOCH Wellness</h2>
         <p style="color: #707571; font-size: 14px; margin: 0;">Verification Code</p>
       </div>
       
@@ -38,7 +38,7 @@ export const sendOtpEmail = async (toEmail: string, otpCode: string, alias: stri
       </div>
 
       <div style="text-align: center; margin-top: 24px; font-size: 12px; color: #909591;">
-        MindBridge - Mindful Wellness & Anonymous Space
+        JUCOCH - Mindful Wellness & Anonymous Space
       </div>
     </div>
   `;
@@ -54,7 +54,7 @@ export const sendOtpEmail = async (toEmail: string, otpCode: string, alias: stri
         },
         body: JSON.stringify({
           to: toEmail,
-          subject: `[MindBridge] Your 6-Digit Verification Code: ${otpCode}`,
+          subject: `[JUCOCH] Your 6-Digit Verification Code: ${otpCode}`,
           html: emailHtml,
         }),
       });
