@@ -121,7 +121,7 @@ export default function LoginScreen() {
               </LinearGradient>
             </View>
 
-            <Text variant="headlineMedium" style={styles.title}>Welcome back!</Text>
+            <Text variant="headlineMedium" style={styles.title}>WELCOME</Text>
             <Text variant="bodyMedium" style={styles.subtitle}>
               Sign in to track your mental wellness, AI insights, and daily progress.
             </Text>

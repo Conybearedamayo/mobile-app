@@ -141,12 +141,44 @@ router.post('/register', async (req: Request, res: Response): Promise<void> => {
     // Check if email or alias exists
     const existingEmail = await prisma.user.findUnique({ where: { email: trimmedEmail } });
     if (existingEmail) {
-      res.status(400).json({ error: 'An account with this email already exists.' });
+      if (existingEmail.isVerified) {
+        res.status(400).json({ error: 'An account with this email already exists. Please log in.' });
+        return;
+      }
+
+      // If unverified, update pending credentials and re-issue OTP
+      const hashedPassword = await bcrypt.hash(password, 10);
+      const otpCode = generate6DigitCode();
+      const otpExpiresAt = new Date(Date.now() + 10 * 60 * 1000);
+      let assignedRole = role || 'Individual';
+      if (assignedRole === 'Admin') assignedRole = 'Individual';
+
+      const updatedUser = await prisma.user.update({
+        where: { id: existingEmail.id },
+        data: {
+          alias: trimmedAlias,
+          password: hashedPassword,
+          role: assignedRole,
+          otpCode,
+          otpExpiresAt,
+        },
+      });
+
+      sendOtpEmail(updatedUser.email, otpCode, updatedUser.alias).catch((e) => console.error('Re-send registration email error:', e));
+
+      res.status(200).json({
+        message: 'A 6-digit verification code was sent to your email.',
+        requiresOtp: true,
+        email: updatedUser.email,
+        alias: updatedUser.alias,
+        userId: updatedUser.id,
+        role: updatedUser.role,
+      });
       return;
     }
 
     const existingAlias = await prisma.user.findUnique({ where: { alias: trimmedAlias } });
-    if (existingAlias) {
+    if (existingAlias && existingAlias.isVerified) {
       res.status(400).json({ error: 'This alias is already taken. Please choose another.' });
       return;
     }

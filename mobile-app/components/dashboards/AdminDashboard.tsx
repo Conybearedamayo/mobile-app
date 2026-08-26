@@ -14,7 +14,7 @@ const OFFICIAL_ADMIN_GROUP = [
 ];
 
 export default function AdminDashboard() {
-  const { isDarkMode, userToken } = useWellness();
+  const { isDarkMode, userToken, isMasked, userAlias } = useWellness();
 
   const dynamicCardBg = isDarkMode ? '#1C231F' : '#FFFFFF';
   const dynamicText = isDarkMode ? '#EAF2EC' : '#1C1F1D';
@@ -328,6 +328,8 @@ export default function AdminDashboard() {
               filteredUsers.map((u, index) => {
                 const RoleIcon = u.role === 'Student' ? GraduationCap : User;
                 const roleColor = u.role === 'Student' ? '#1E88E5' : JUCOCH_GREEN;
+                const isUserMasked = (isMasked && u.alias === userAlias);
+                const displayAlias = isUserMasked ? 'Anonymous User (Masked)' : u.alias;
 
                 return (
                   <View key={u.id}>
@@ -335,13 +337,13 @@ export default function AdminDashboard() {
                     <View style={styles.userRow}>
                       <Avatar.Text 
                         size={40} 
-                        label={u.alias.slice(0, 2).toUpperCase()} 
-                        style={{ backgroundColor: roleColor }} 
+                        label={displayAlias.slice(0, 2).toUpperCase()} 
+                        style={{ backgroundColor: isUserMasked ? '#707571' : roleColor }} 
                       />
                       
                       <View style={styles.userDetails}>
                         <View style={styles.nameRow}>
-                          <Text style={[styles.userName, { color: dynamicText }]}>{u.alias}</Text>
+                          <Text style={[styles.userName, { color: dynamicText }]}>{displayAlias}</Text>
                           <Surface style={[styles.roleBadge, { backgroundColor: `${roleColor}18` }]} elevation={0}>
                             <RoleIcon size={12} color={roleColor} style={{ marginRight: 4 }} />
                             <Text style={[styles.roleBadgeText, { color: roleColor }]}>{u.role}</Text>
@@ -417,7 +419,9 @@ export default function AdminDashboard() {
 
                     <View style={styles.activityDetails}>
                       <View style={styles.nameRow}>
-                        <Text style={[styles.userName, { color: dynamicText }]}>{act.alias}</Text>
+                        <Text style={[styles.userName, { color: dynamicText }]}>
+                          {(isMasked && act.alias === userAlias) ? 'Anonymous User (Masked)' : act.alias}
+                        </Text>
                         <Text style={[styles.activityTime, { color: dynamicSub }]}>{act.time}</Text>
                       </View>
                       <Text style={[styles.actionText, { color: dynamicText }]}>

@@ -53,7 +53,9 @@ export default function ProfileScreen() {
     isDarkMode, 
     toggleDarkMode, 
     setUserAlias, 
-    refreshUserData 
+    refreshUserData,
+    isMasked,
+    setIsMasked,
   } = useWellness();
 
   const [showGuideModal, setShowGuideModal] = useState(false);
@@ -67,9 +69,6 @@ export default function ProfileScreen() {
   const [editAliasInput, setEditAliasInput] = useState(userAlias || '');
   const [toastMsg, setToastMsg] = useState('');
   const [isSyncing, setIsSyncing] = useState(false);
-
-  // Privacy State
-  const [maskAliasInAudit, setMaskAliasInAudit] = useState(false);
 
   // Smart Notifications State
   const [notifDailyCheckin, setNotifDailyCheckin] = useState(true);
@@ -516,10 +515,10 @@ export default function ProfileScreen() {
                 <Text style={[styles.privacyItemSub, { color: dynamicSub }]}>Display as "Anonymous User" instead of your alias.</Text>
               </View>
               <Switch 
-                value={maskAliasInAudit} 
+                value={isMasked} 
                 onValueChange={(val) => {
-                  setMaskAliasInAudit(val);
-                  showToast(val ? 'Alias masking enabled.' : 'Alias visible.');
+                  setIsMasked(val);
+                  showToast(val ? 'Alias masked as "Anonymous User".' : 'Alias visible to group.');
                 }} 
                 color={JUCOCH_GREEN} 
               />

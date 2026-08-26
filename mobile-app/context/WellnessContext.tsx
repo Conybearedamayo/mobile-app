@@ -45,6 +45,7 @@ export type WellnessState = {
   userToken: string | null;
   isAuthLoading: boolean;
   isDarkMode: boolean;
+  isMasked: boolean;
   moodLogs: MoodEntry[];
   sleepLogs: SleepEntry[];
   activityEntries: ActivityEntry[];
@@ -54,6 +55,7 @@ export type WellnessState = {
   setUserAlias: (name: string) => void;
   setUserRole: (role: string) => void;
   setUserToken: (token: string | null) => void;
+  setIsMasked: (val: boolean) => void;
   refreshUserData: () => Promise<void>;
   logout: () => Promise<void>;
   toggleDarkMode: () => void;
@@ -88,6 +90,7 @@ export const WellnessProvider = ({ children }: { children: React.ReactNode }) =>
   const [userToken, setUserTokenState] = useState<string | null>(null);
   const [isAuthLoading, setIsAuthLoading] = useState(true);
   const [isDarkMode, setIsDarkMode] = useState(false);
+  const [isMasked, setIsMaskedState] = useState(false);
   const [wellnessScoreState, setWellnessScoreState] = useState(78);
 
   const [moodLogs, setMoodLogs] = useState<MoodEntry[]>([]);
@@ -142,7 +145,7 @@ export const WellnessProvider = ({ children }: { children: React.ReactNode }) =>
         }
       }
     } catch (err) {
-      console.warn('Failed to sync user records from cloud:', err);
+      console.error('Error syncing user cloud wellness data:', err);
     }
   }, []);
 
@@ -159,10 +162,12 @@ export const WellnessProvider = ({ children }: { children: React.ReactNode }) =>
         const storedToken = await AsyncStorage.getItem('@jucoch_user_token');
         const storedAlias = await AsyncStorage.getItem('@jucoch_user_alias');
         const storedRole = await AsyncStorage.getItem('@jucoch_user_role');
+        const storedMasked = await AsyncStorage.getItem('@jucoch_user_masked');
         if (storedToken) {
           setUserTokenState(storedToken);
           if (storedAlias) setUserAliasState(storedAlias);
           if (storedRole) setUserRoleState(storedRole);
+          if (storedMasked === 'true') setIsMaskedState(true);
           // Sync existing user data from database immediately
           syncUserDataFromCloud(storedToken);
         }
@@ -174,6 +179,11 @@ export const WellnessProvider = ({ children }: { children: React.ReactNode }) =>
     };
     loadPersistedAuth();
   }, [syncUserDataFromCloud]);
+
+  const setIsMasked = useCallback((val: boolean) => {
+    setIsMaskedState(val);
+    AsyncStorage.setItem('@jucoch_user_masked', String(val)).catch(console.error);
+  }, []);
 
   const setUserToken = useCallback((token: string | null) => {
     setUserTokenState(token);
@@ -336,6 +346,7 @@ export const WellnessProvider = ({ children }: { children: React.ReactNode }) =>
     userToken,
     isAuthLoading,
     isDarkMode,
+    isMasked,
     moodLogs,
     sleepLogs,
     activityEntries,
@@ -343,6 +354,7 @@ export const WellnessProvider = ({ children }: { children: React.ReactNode }) =>
     setUserAlias,
     setUserRole,
     setUserToken,
+    setIsMasked,
     refreshUserData,
     logout,
     toggleDarkMode,

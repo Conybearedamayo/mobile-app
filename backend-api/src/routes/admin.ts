@@ -42,6 +42,7 @@ router.get('/users', verifyAdmin, async (req: Request, res: Response): Promise<v
     const users = await prisma.user.findMany({
       where: {
         role: { not: 'Admin' },
+        isVerified: true,
       },
       select: {
         id: true,
