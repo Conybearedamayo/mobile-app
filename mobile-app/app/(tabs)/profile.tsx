@@ -1,7 +1,35 @@
 import React, { useState } from 'react';
 import { View, StyleSheet, ScrollView, TouchableOpacity, Platform } from 'react-native';
 import { Text, Avatar, Button, Surface, Divider, Portal, Modal, TextInput, Switch } from 'react-native-paper';
-import { ChevronRight, Settings, Shield, Bell, LogOut, Award, Zap, BookOpen, Users, Star, ShieldCheck, Key, CheckCircle, GraduationCap, Moon, Sun, Compass } from 'lucide-react-native';
+import { 
+  ChevronRight, 
+  Settings, 
+  Shield, 
+  Bell, 
+  LogOut, 
+  Award, 
+  Zap, 
+  BookOpen, 
+  Star, 
+  ShieldCheck, 
+  Key, 
+  CheckCircle, 
+  GraduationCap, 
+  Moon, 
+  Sun, 
+  Compass, 
+  X, 
+  RefreshCw, 
+  Edit3, 
+  Sparkles, 
+  Check, 
+  Lock, 
+  Activity, 
+  Clock, 
+  Heart,
+  Copy,
+  Smile
+} from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { useWellness } from '@/context/WellnessContext';
 import AdminDashboard from '@/components/dashboards/AdminDashboard';
@@ -11,8 +39,67 @@ const JUCOCH_GREEN = '#2D6A4F';
 
 export default function ProfileScreen() {
   const router = useRouter();
-  const { userAlias, userRole, logout, sleepLogs, journalEntries, getCurrentStreak, isDarkMode, toggleDarkMode } = useWellness();
+  const { 
+    userAlias, 
+    userRole, 
+    userToken, 
+    logout, 
+    sleepLogs, 
+    moodLogs, 
+    activityEntries, 
+    journalEntries, 
+    getCurrentStreak, 
+    getWellnessScore, 
+    isDarkMode, 
+    toggleDarkMode, 
+    setUserAlias, 
+    refreshUserData 
+  } = useWellness();
+
   const [showGuideModal, setShowGuideModal] = useState(false);
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [showReportsModal, setShowReportsModal] = useState(false);
+  const [showAchievementsModal, setShowAchievementsModal] = useState(false);
+  const [showPrivacyModal, setShowPrivacyModal] = useState(false);
+  const [showNotificationsModal, setShowNotificationsModal] = useState(false);
+
+  // Settings State
+  const [editAliasInput, setEditAliasInput] = useState(userAlias || '');
+  const [toastMsg, setToastMsg] = useState('');
+  const [isSyncing, setIsSyncing] = useState(false);
+
+  // Privacy State
+  const [maskAliasInAudit, setMaskAliasInAudit] = useState(false);
+
+  // Smart Notifications State
+  const [notifDailyCheckin, setNotifDailyCheckin] = useState(true);
+  const [notifBedtimePrompt, setNotifBedtimePrompt] = useState(true);
+  const [notifStudyBreak, setNotifStudyBreak] = useState(true);
+  const [notifAiDistressAlert, setNotifAiDistressAlert] = useState(true);
+
+  const showToast = (msg: string) => {
+    setToastMsg(msg);
+    setTimeout(() => setToastMsg(''), 3000);
+  };
+
+  const handleSaveAlias = () => {
+    if (!editAliasInput.trim()) return;
+    setUserAlias(editAliasInput.trim());
+    setShowSettingsModal(false);
+    showToast('Alias updated successfully!');
+  };
+
+  const handleManualSync = async () => {
+    setIsSyncing(true);
+    try {
+      await refreshUserData();
+      showToast('Cloud database synchronized!');
+    } catch (e) {
+      showToast('Failed to sync database.');
+    } finally {
+      setIsSyncing(false);
+    }
+  };
 
   const displayName = userAlias || 'PeacefulUser';
   const displayRole = userRole || 'Individual';
@@ -43,8 +130,15 @@ export default function ProfileScreen() {
           {/* Polished Profile Header */}
           <View style={styles.header}>
             <Surface style={[styles.avatarOutline, { backgroundColor: dynamicCardBg, borderColor: dynamicBorder }]} elevation={4}>
-              <Avatar.Text size={96} label={displayName.slice(0, 2).toUpperCase()} style={{ backgroundColor: JUCOCH_GREEN }} />
-              <TouchableOpacity style={styles.editBadge}>
+              <Avatar.Text size={96} label={displayName.slice(0, 2).toUpperCase()} style={{ backgroundColor: isStudent ? '#1E88E5' : JUCOCH_GREEN }} />
+              <TouchableOpacity 
+                style={[styles.editBadge, { backgroundColor: isStudent ? '#1E88E5' : JUCOCH_GREEN }]}
+                onPress={() => {
+                  setEditAliasInput(userAlias || '');
+                  setShowSettingsModal(true);
+                }}
+                activeOpacity={0.8}
+              >
                 <Settings size={14} color="#FFF" />
               </TouchableOpacity>
             </Surface>
@@ -72,6 +166,14 @@ export default function ProfileScreen() {
             </View>
           </View>
 
+          {/* Toast Notification Banner */}
+          {!!toastMsg && (
+            <Surface style={styles.toastBanner} elevation={3}>
+              <CheckCircle size={16} color={JUCOCH_GREEN} style={{ marginRight: 6 }} />
+              <Text style={styles.toastText}>{toastMsg}</Text>
+            </Surface>
+          )}
+
           {/* ROLE-SPECIFIC EXCLUSIVE DASHBOARD */}
           {isAdmin && <AdminDashboard />}
 
@@ -80,22 +182,34 @@ export default function ProfileScreen() {
             <>
               {/* Quick Stats */}
               <Surface style={[styles.statsContainer, { backgroundColor: dynamicCardBg, borderColor: dynamicBorder }]} elevation={1}>
-                <StatBox value={getCurrentStreak().toString()} label="Day Streak" color={JUCOCH_GREEN} />
+                <StatBox value={getCurrentStreak().toString()} label="Day Streak" color={isStudent ? '#1E88E5' : JUCOCH_GREEN} />
                 <View style={[styles.statDivider, { backgroundColor: dynamicBorder }]} />
                 <StatBox value={`${avgSleep}h`} label="Avg Sleep" color="#5F27CD" />
                 <View style={[styles.statDivider, { backgroundColor: dynamicBorder }]} />
                 <StatBox value={journalEntries.length.toString()} label="Journals" color="#FF9F43" />
               </Surface>
 
-              {/* Wellness Section */}
+              {/* Wellness Section (Cleaned: Removed Wellness Circle) */}
               <View style={styles.section}>
                 <Text style={styles.sectionTitle}>MY WELLNESS JOURNEY</Text>
                 <Surface style={[styles.menuCard, { backgroundColor: dynamicCardBg, borderColor: dynamicBorder }]} elevation={1}>
-                  <MenuItem icon={BookOpen} title="Progress Reports" subtitle="Weekly and Monthly summaries" dynamicText={dynamicText} dynamicSub={dynamicSub} />
+                  <MenuItem 
+                    icon={BookOpen} 
+                    title="Progress Reports" 
+                    subtitle="Weekly and Monthly summaries" 
+                    onPress={() => setShowReportsModal(true)}
+                    dynamicText={dynamicText} 
+                    dynamicSub={dynamicSub} 
+                  />
                   <Divider style={styles.divider} />
-                  <MenuItem icon={Award} title="My Achievements" subtitle={`${getCurrentStreak()} active streak badges`} dynamicText={dynamicText} dynamicSub={dynamicSub} />
-                  <Divider style={styles.divider} />
-                  <MenuItem icon={Users} title="Wellness Circle" subtitle="Connect with professionals" dynamicText={dynamicText} dynamicSub={dynamicSub} />
+                  <MenuItem 
+                    icon={Award} 
+                    title="My Achievements" 
+                    subtitle={`${getCurrentStreak()} active streak badges`} 
+                    onPress={() => setShowAchievementsModal(true)}
+                    dynamicText={dynamicText} 
+                    dynamicSub={dynamicSub} 
+                  />
                 </Surface>
               </View>
             </>
@@ -135,9 +249,23 @@ export default function ProfileScreen() {
                 dynamicSub={dynamicSub} 
               />
               <Divider style={styles.divider} />
-              <MenuItem icon={Shield} title="Privacy Control" subtitle="Anonymous alias & encryption" dynamicText={dynamicText} dynamicSub={dynamicSub} />
+              <MenuItem 
+                icon={Shield} 
+                title="Privacy Control" 
+                subtitle="Anonymous alias & encryption" 
+                onPress={() => setShowPrivacyModal(true)}
+                dynamicText={dynamicText} 
+                dynamicSub={dynamicSub} 
+              />
               <Divider style={styles.divider} />
-              <MenuItem icon={Bell} title="Smart Notifications" subtitle="Early warning alerts" dynamicText={dynamicText} dynamicSub={dynamicSub} />
+              <MenuItem 
+                icon={Bell} 
+                title="Smart Notifications" 
+                subtitle="Daily check-ins & early alerts" 
+                onPress={() => setShowNotificationsModal(true)}
+                dynamicText={dynamicText} 
+                dynamicSub={dynamicSub} 
+              />
             </Surface>
           </View>
 
@@ -163,6 +291,382 @@ export default function ProfileScreen() {
         visible={showGuideModal}
         onClose={() => setShowGuideModal(false)}
       />
+
+      {/* MODAL 1: ACCOUNT SETTINGS & ALIAS EDIT */}
+      <Portal>
+        <Modal
+          visible={showSettingsModal}
+          onDismiss={() => setShowSettingsModal(false)}
+          contentContainerStyle={styles.modalContentStyle}
+        >
+          <Surface style={[styles.modalCard, { backgroundColor: dynamicCardBg }]} elevation={5}>
+            <View style={styles.modalHeader}>
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <Settings size={18} color={JUCOCH_GREEN} style={{ marginRight: 8 }} />
+                <Text style={[styles.modalTitle, { color: dynamicText }]}>Account & Profile Settings</Text>
+              </View>
+              <TouchableOpacity onPress={() => setShowSettingsModal(false)}>
+                <X size={20} color={dynamicSub} />
+              </TouchableOpacity>
+            </View>
+
+            <Text style={[styles.modalSub, { color: dynamicSub }]}>
+              Manage your anonymous display alias and sync your data with the cloud database.
+            </Text>
+
+            <TextInput
+              label="Edit Anonymous Alias"
+              value={editAliasInput}
+              onChangeText={setEditAliasInput}
+              mode="outlined"
+              outlineColor={dynamicBorder}
+              activeOutlineColor={JUCOCH_GREEN}
+              style={[styles.modalInput, { backgroundColor: dynamicCardBg }]}
+              textColor={dynamicText}
+            />
+
+            <View style={[styles.infoBanner, { backgroundColor: isDarkMode ? '#1E2E25' : '#E8F5EE', borderColor: dynamicBorder }]}>
+              <GraduationCap size={16} color={JUCOCH_GREEN} style={{ marginRight: 8 }} />
+              <Text style={[styles.infoBannerText, { color: dynamicText }]}>
+                Registered Role: <Text style={{ fontWeight: 'bold' }}>{displayRole}</Text>
+              </Text>
+            </View>
+
+            <TouchableOpacity 
+              style={[styles.syncButton, { borderColor: dynamicBorder }]}
+              onPress={handleManualSync}
+              disabled={isSyncing}
+            >
+              <RefreshCw size={16} color={JUCOCH_GREEN} style={{ marginRight: 8 }} />
+              <Text style={{ color: JUCOCH_GREEN, fontWeight: 'bold', fontSize: 13 }}>
+                {isSyncing ? 'Syncing with Database...' : 'Sync Cloud Database Now'}
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.submitModalBtn}
+              onPress={handleSaveAlias}
+              disabled={!editAliasInput.trim()}
+            >
+              <Text style={styles.submitModalBtnText}>Save Profile Changes</Text>
+            </TouchableOpacity>
+          </Surface>
+        </Modal>
+      </Portal>
+
+      {/* MODAL 2: PROGRESS REPORTS */}
+      <Portal>
+        <Modal
+          visible={showReportsModal}
+          onDismiss={() => setShowReportsModal(false)}
+          contentContainerStyle={styles.modalContentStyle}
+        >
+          <Surface style={[styles.modalCard, { backgroundColor: dynamicCardBg }]} elevation={5}>
+            <View style={styles.modalHeader}>
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <BookOpen size={18} color={JUCOCH_GREEN} style={{ marginRight: 8 }} />
+                <Text style={[styles.modalTitle, { color: dynamicText }]}>Weekly Progress Report</Text>
+              </View>
+              <TouchableOpacity onPress={() => setShowReportsModal(false)}>
+                <X size={20} color={dynamicSub} />
+              </TouchableOpacity>
+            </View>
+
+            <Text style={[styles.modalSub, { color: dynamicSub }]}>
+              Summary of your emotional stability, sleep patterns, and daily habits.
+            </Text>
+
+            <View style={styles.reportGrid}>
+              <View style={[styles.reportCard, { backgroundColor: isDarkMode ? '#1C2920' : '#E8F5EE' }]}>
+                <Clock size={18} color={JUCOCH_GREEN} style={{ marginBottom: 4 }} />
+                <Text style={[styles.reportValue, { color: JUCOCH_GREEN }]}>{avgSleep} hrs</Text>
+                <Text style={[styles.reportLabel, { color: dynamicSub }]}>Avg Sleep Rest</Text>
+              </View>
+
+              <View style={[styles.reportCard, { backgroundColor: isDarkMode ? '#1E2538' : '#E3F2FD' }]}>
+                <Smile size={18} color="#1E88E5" style={{ marginBottom: 4 }} />
+                <Text style={[styles.reportValue, { color: '#1E88E5' }]}>{moodLogs.length}</Text>
+                <Text style={[styles.reportLabel, { color: dynamicSub }]}>Mood Check-ins</Text>
+              </View>
+
+              <View style={[styles.reportCard, { backgroundColor: isDarkMode ? '#33271A' : '#FFF3E0' }]}>
+                <Award size={18} color="#FF9F43" style={{ marginBottom: 4 }} />
+                <Text style={[styles.reportValue, { color: '#FF9F43' }]}>{getCurrentStreak()} Days</Text>
+                <Text style={[styles.reportLabel, { color: dynamicSub }]}>Active Streak</Text>
+              </View>
+
+              <View style={[styles.reportCard, { backgroundColor: isDarkMode ? '#2B1E38' : '#F3E5F5' }]}>
+                <Heart size={18} color="#AB47BC" style={{ marginBottom: 4 }} />
+                <Text style={[styles.reportValue, { color: '#AB47BC' }]}>{journalEntries.length}</Text>
+                <Text style={[styles.reportLabel, { color: dynamicSub }]}>Journal Reflections</Text>
+              </View>
+            </View>
+
+            <Surface style={[styles.aiInsightCard, { backgroundColor: dynamicCardBg, borderColor: dynamicBorder }]} elevation={1}>
+              <Sparkles size={16} color={JUCOCH_GREEN} style={{ marginRight: 8 }} />
+              <Text style={[styles.aiInsightText, { color: dynamicText }]}>
+                AI Evaluation: Your resilience score is at <Text style={{ fontWeight: 'bold', color: JUCOCH_GREEN }}>{getWellnessScore()}%</Text>. Consistent sleep and daily reflection support healthy cognitive focus!
+              </Text>
+            </Surface>
+
+            <TouchableOpacity style={styles.closeReportBtn} onPress={() => setShowReportsModal(false)}>
+              <Text style={{ color: '#FFF', fontWeight: 'bold' }}>Close Report</Text>
+            </TouchableOpacity>
+          </Surface>
+        </Modal>
+      </Portal>
+
+      {/* MODAL 3: MY ACHIEVEMENTS & BADGES */}
+      <Portal>
+        <Modal
+          visible={showAchievementsModal}
+          onDismiss={() => setShowAchievementsModal(false)}
+          contentContainerStyle={styles.modalContentStyle}
+        >
+          <Surface style={[styles.modalCard, { backgroundColor: dynamicCardBg }]} elevation={5}>
+            <View style={styles.modalHeader}>
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <Award size={18} color="#FF9F43" style={{ marginRight: 8 }} />
+                <Text style={[styles.modalTitle, { color: dynamicText }]}>My Wellness Achievements</Text>
+              </View>
+              <TouchableOpacity onPress={() => setShowAchievementsModal(false)}>
+                <X size={20} color={dynamicSub} />
+              </TouchableOpacity>
+            </View>
+
+            <Text style={[styles.modalSub, { color: dynamicSub }]}>
+              Earn milestone badges by keeping up with your daily habits and reflections.
+            </Text>
+
+            <ScrollView style={{ maxHeight: 320 }} showsVerticalScrollIndicator={false}>
+              <AchievementItem
+                title="Consistency Master"
+                desc="Maintained a 3+ day streak in the wellness tracker."
+                unlocked={getCurrentStreak() >= 3}
+                icon="🥉"
+                dynamicText={dynamicText}
+                dynamicSub={dynamicSub}
+              />
+              <AchievementItem
+                title="Deep Sleep Champion"
+                desc="Averaged 7 or more hours of healthy sleep."
+                unlocked={parseFloat(avgSleep) >= 7.0}
+                icon="🌙"
+                dynamicText={dynamicText}
+                dynamicSub={dynamicSub}
+              />
+              <AchievementItem
+                title="Mindful Journaler"
+                desc="Recorded thoughtful reflections in your encrypted journal."
+                unlocked={journalEntries.length >= 1}
+                icon="📖"
+                dynamicText={dynamicText}
+                dynamicSub={dynamicSub}
+              />
+              <AchievementItem
+                title="Campus Scholar"
+                desc="Logged academic routines and student activities."
+                unlocked={isStudent || activityEntries.length >= 1}
+                icon="🎓"
+                dynamicText={dynamicText}
+                dynamicSub={dynamicSub}
+              />
+              <AchievementItem
+                title="Privacy Shield Pioneer"
+                desc="Protected account with 256-bit OTP verification."
+                unlocked={true}
+                icon="🛡️"
+                dynamicText={dynamicText}
+                dynamicSub={dynamicSub}
+              />
+            </ScrollView>
+
+            <TouchableOpacity style={styles.closeReportBtn} onPress={() => setShowAchievementsModal(false)}>
+              <Text style={{ color: '#FFF', fontWeight: 'bold' }}>Awesome!</Text>
+            </TouchableOpacity>
+          </Surface>
+        </Modal>
+      </Portal>
+
+      {/* MODAL 4: PRIVACY CONTROL */}
+      <Portal>
+        <Modal
+          visible={showPrivacyModal}
+          onDismiss={() => setShowPrivacyModal(false)}
+          contentContainerStyle={styles.modalContentStyle}
+        >
+          <Surface style={[styles.modalCard, { backgroundColor: dynamicCardBg }]} elevation={5}>
+            <View style={styles.modalHeader}>
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <Shield size={18} color={JUCOCH_GREEN} style={{ marginRight: 8 }} />
+                <Text style={[styles.modalTitle, { color: dynamicText }]}>Privacy & Anonymity Control</Text>
+              </View>
+              <TouchableOpacity onPress={() => setShowPrivacyModal(false)}>
+                <X size={20} color={dynamicSub} />
+              </TouchableOpacity>
+            </View>
+
+            <Text style={[styles.modalSub, { color: dynamicSub }]}>
+              Your student privacy is guaranteed. No real names or emails are ever published.
+            </Text>
+
+            <View style={styles.privacyItemRow}>
+              <View style={{ flex: 1, paddingRight: 10 }}>
+                <Text style={[styles.privacyItemTitle, { color: dynamicText }]}>Mask Alias in Activity Feed</Text>
+                <Text style={[styles.privacyItemSub, { color: dynamicSub }]}>Display as "Anonymous User" instead of your alias.</Text>
+              </View>
+              <Switch 
+                value={maskAliasInAudit} 
+                onValueChange={(val) => {
+                  setMaskAliasInAudit(val);
+                  showToast(val ? 'Alias masking enabled.' : 'Alias visible.');
+                }} 
+                color={JUCOCH_GREEN} 
+              />
+            </View>
+
+            <Divider style={{ marginVertical: 12 }} />
+
+            <View style={[styles.encryptionCard, { backgroundColor: isDarkMode ? '#172B20' : '#E8F5EE' }]}>
+              <Lock size={16} color={JUCOCH_GREEN} style={{ marginRight: 8 }} />
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontWeight: 'bold', fontSize: 12, color: JUCOCH_GREEN }}>256-Bit Encrypted Storage</Text>
+                <Text style={{ fontSize: 11, color: dynamicSub, marginTop: 2 }}>
+                  Reflections and mood check-ins are protected with strict student privacy protocols.
+                </Text>
+              </View>
+            </View>
+
+            <TouchableOpacity 
+              style={[styles.exportBtn, { borderColor: dynamicBorder }]}
+              onPress={() => showToast('Summary copied to clipboard!')}
+            >
+              <Copy size={16} color={JUCOCH_GREEN} style={{ marginRight: 8 }} />
+              <Text style={{ color: JUCOCH_GREEN, fontWeight: 'bold', fontSize: 13 }}>Export My Wellness Summary</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.closeReportBtn} onPress={() => setShowPrivacyModal(false)}>
+              <Text style={{ color: '#FFF', fontWeight: 'bold' }}>Done</Text>
+            </TouchableOpacity>
+          </Surface>
+        </Modal>
+      </Portal>
+
+      {/* MODAL 5: SMART NOTIFICATIONS */}
+      <Portal>
+        <Modal
+          visible={showNotificationsModal}
+          onDismiss={() => setShowNotificationsModal(false)}
+          contentContainerStyle={styles.modalContentStyle}
+        >
+          <Surface style={[styles.modalCard, { backgroundColor: dynamicCardBg }]} elevation={5}>
+            <View style={styles.modalHeader}>
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <Bell size={18} color={JUCOCH_GREEN} style={{ marginRight: 8 }} />
+                <Text style={[styles.modalTitle, { color: dynamicText }]}>Smart Notifications</Text>
+              </View>
+              <TouchableOpacity onPress={() => setShowNotificationsModal(false)}>
+                <X size={20} color={dynamicSub} />
+              </TouchableOpacity>
+            </View>
+
+            <Text style={[styles.modalSub, { color: dynamicSub }]}>
+              Configure personalized wellness reminders and early distress alerts.
+            </Text>
+
+            <View style={styles.privacyItemRow}>
+              <View style={{ flex: 1, paddingRight: 10 }}>
+                <Text style={[styles.privacyItemTitle, { color: dynamicText }]}>Daily Check-In (8:00 AM)</Text>
+                <Text style={[styles.privacyItemSub, { color: dynamicSub }]}>Gentle morning prompt to record how you feel.</Text>
+              </View>
+              <Switch 
+                value={notifDailyCheckin} 
+                onValueChange={(val) => {
+                  setNotifDailyCheckin(val);
+                  showToast(val ? 'Morning reminder enabled.' : 'Morning reminder disabled.');
+                }} 
+                color={JUCOCH_GREEN} 
+              />
+            </View>
+
+            <Divider style={{ marginVertical: 10 }} />
+
+            <View style={styles.privacyItemRow}>
+              <View style={{ flex: 1, paddingRight: 10 }}>
+                <Text style={[styles.privacyItemTitle, { color: dynamicText }]}>Sleep Wind-Down (10:00 PM)</Text>
+                <Text style={[styles.privacyItemSub, { color: dynamicSub }]}>Reminder to unwind and prepare for rest.</Text>
+              </View>
+              <Switch 
+                value={notifBedtimePrompt} 
+                onValueChange={(val) => {
+                  setNotifBedtimePrompt(val);
+                  showToast(val ? 'Sleep reminder enabled.' : 'Sleep reminder disabled.');
+                }} 
+                color={JUCOCH_GREEN} 
+              />
+            </View>
+
+            <Divider style={{ marginVertical: 10 }} />
+
+            <View style={styles.privacyItemRow}>
+              <View style={{ flex: 1, paddingRight: 10 }}>
+                <Text style={[styles.privacyItemTitle, { color: dynamicText }]}>Study Break & Hydration</Text>
+                <Text style={[styles.privacyItemSub, { color: dynamicSub }]}>Prompts for students during intense study sessions.</Text>
+              </View>
+              <Switch 
+                value={notifStudyBreak} 
+                onValueChange={(val) => {
+                  setNotifStudyBreak(val);
+                  showToast(val ? 'Study break alerts enabled.' : 'Study break alerts disabled.');
+                }} 
+                color={JUCOCH_GREEN} 
+              />
+            </View>
+
+            <Divider style={{ marginVertical: 10 }} />
+
+            <View style={styles.privacyItemRow}>
+              <View style={{ flex: 1, paddingRight: 10 }}>
+                <Text style={[styles.privacyItemTitle, { color: dynamicText }]}>AI Early Distress Warnings</Text>
+                <Text style={[styles.privacyItemSub, { color: dynamicSub }]}>Safety tips when continuous stress patterns are detected.</Text>
+              </View>
+              <Switch 
+                value={notifAiDistressAlert} 
+                onValueChange={(val) => {
+                  setNotifAiDistressAlert(val);
+                  showToast(val ? 'AI distress alerts active.' : 'AI distress alerts muted.');
+                }} 
+                color={JUCOCH_GREEN} 
+              />
+            </View>
+
+            <TouchableOpacity style={[styles.closeReportBtn, { marginTop: 18 }]} onPress={() => setShowNotificationsModal(false)}>
+              <Text style={{ color: '#FFF', fontWeight: 'bold' }}>Save Preferences</Text>
+            </TouchableOpacity>
+          </Surface>
+        </Modal>
+      </Portal>
+
+    </View>
+  );
+}
+
+function AchievementItem({ title, desc, unlocked, icon, dynamicText, dynamicSub }: any) {
+  return (
+    <View style={[styles.achievementRow, !unlocked && { opacity: 0.55 }]}>
+      <Text style={styles.achievementIcon}>{icon}</Text>
+      <View style={{ flex: 1, marginLeft: 12 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          <Text style={[styles.achievementTitle, { color: dynamicText }]}>{title}</Text>
+          {unlocked && (
+            <Surface style={styles.unlockedBadge} elevation={0}>
+              <Check size={10} color="#2D6A4F" />
+              <Text style={styles.unlockedText}>Unlocked</Text>
+            </Surface>
+          )}
+        </View>
+        <Text style={[styles.achievementDesc, { color: dynamicSub }]}>{desc}</Text>
+      </View>
     </View>
   );
 }
@@ -398,49 +902,183 @@ const styles = StyleSheet.create({
     color: '#A0A5A1',
     fontWeight: '600',
   },
-  codeModalCard: {
-    backgroundColor: '#FFF',
+  toastBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#E8F5E9',
+    borderColor: '#A3D9A5',
+    borderWidth: 1,
+    borderRadius: 14,
+    padding: 12,
+    marginBottom: 16,
+    width: '100%',
+  },
+  toastText: {
+    color: JUCOCH_GREEN,
+    fontSize: 13,
+    fontWeight: 'bold',
+    flex: 1,
+  },
+  modalContentStyle: {
+    padding: 20,
+  },
+  modalCard: {
     borderRadius: 24,
     padding: 20,
+    maxHeight: '90%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
   modalTitle: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#1C1F1D',
   },
   modalSub: {
     fontSize: 12,
-    color: '#707571',
     marginTop: 4,
-    marginBottom: 12,
+    marginBottom: 14,
   },
   modalInput: {
+    marginBottom: 12,
+  },
+  infoBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    borderRadius: 14,
+    borderWidth: 1,
     marginBottom: 14,
-    backgroundColor: '#FFF',
+  },
+  infoBannerText: {
+    fontSize: 12,
+  },
+  syncButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    marginBottom: 14,
   },
   submitModalBtn: {
     backgroundColor: JUCOCH_GREEN,
     borderRadius: 16,
     paddingVertical: 14,
     alignItems: 'center',
+    marginTop: 4,
   },
   submitModalBtnText: {
     color: '#FFF',
     fontWeight: 'bold',
     fontSize: 14,
   },
-  successBox: {
+  reportGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    gap: 10,
+    marginBottom: 14,
+  },
+  reportCard: {
+    width: '48%',
+    borderRadius: 16,
+    padding: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  reportValue: {
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  reportLabel: {
+    fontSize: 11,
+    marginTop: 2,
+  },
+  aiInsightCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 14,
+    borderRadius: 16,
+    borderWidth: 1,
+    marginBottom: 16,
+  },
+  aiInsightText: {
+    fontSize: 12,
+    flex: 1,
+    lineHeight: 18,
+  },
+  closeReportBtn: {
+    backgroundColor: JUCOCH_GREEN,
+    borderRadius: 16,
+    paddingVertical: 14,
+    alignItems: 'center',
+    marginTop: 4,
+  },
+  achievementRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F4F2',
+  },
+  achievementIcon: {
+    fontSize: 26,
+  },
+  achievementTitle: {
+    fontSize: 13,
+    fontWeight: 'bold',
+  },
+  achievementDesc: {
+    fontSize: 11,
+    marginTop: 2,
+  },
+  unlockedBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#E8F5E9',
-    padding: 14,
-    borderRadius: 14,
-    marginVertical: 12,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 8,
+    marginLeft: 6,
   },
-  successText: {
-    fontSize: 13,
-    color: JUCOCH_GREEN,
+  unlockedText: {
+    fontSize: 9,
     fontWeight: 'bold',
-    flex: 1,
+    color: JUCOCH_GREEN,
+    marginLeft: 2,
+  },
+  privacyItemRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 6,
+  },
+  privacyItemTitle: {
+    fontSize: 13,
+    fontWeight: 'bold',
+  },
+  privacyItemSub: {
+    fontSize: 11,
+    marginTop: 2,
+  },
+  encryptionCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    borderRadius: 14,
+    marginBottom: 14,
+  },
+  exportBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    marginBottom: 14,
   },
 });

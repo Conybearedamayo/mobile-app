@@ -100,6 +100,17 @@ export default function ChatScreen() {
     }
   };
 
+  const QUICK_PROMPTS = [
+    '💡 I feel stressed & overwhelmed',
+    '😴 How can I sleep better?',
+    '🎯 Give me a positive mindset quote',
+    '🧘 Help me calm down & breathe',
+  ];
+
+  const sendQuickPrompt = (promptText: string) => {
+    setInputText(promptText);
+  };
+
   return (
     <KeyboardAvoidingView 
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'} 
@@ -171,12 +182,29 @@ export default function ChatScreen() {
         )}
       </ScrollView>
 
+      {/* Quick Prompts Row */}
+      <View style={styles.quickPromptSection}>
+        <ScrollView 
+          horizontal 
+          showsHorizontalScrollIndicator={false} 
+          contentContainerStyle={styles.quickPromptScroll}
+        >
+          {QUICK_PROMPTS.map((prompt) => (
+            <TouchableOpacity
+              key={prompt}
+              style={[styles.quickPromptChip, { backgroundColor: dynamicCardBg, borderColor: dynamicBorder }]}
+              onPress={() => sendQuickPrompt(prompt)}
+              activeOpacity={0.75}
+            >
+              <Text style={[styles.quickPromptText, { color: dynamicText }]}>{prompt}</Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      </View>
+
       {/* Input Area */}
       <View style={styles.inputSection}>
         <Surface style={[styles.inputContainer, { backgroundColor: dynamicCardBg, borderColor: dynamicBorder }]} elevation={1}>
-          <TouchableOpacity style={[styles.iconButton, { backgroundColor: isDarkMode ? '#28332C' : '#F3F8F5' }]} activeOpacity={0.7}>
-            <Plus size={20} color={dynamicSub} />
-          </TouchableOpacity>
           <TextInput
             placeholder="Share your thoughts..."
             value={inputText}
@@ -383,6 +411,24 @@ const styles = StyleSheet.create({
     borderRadius: 19,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  quickPromptSection: {
+    paddingHorizontal: 16,
+    marginBottom: 8,
+  },
+  quickPromptScroll: {
+    gap: 8,
+    paddingRight: 16,
+  },
+  quickPromptChip: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 16,
+    borderWidth: 1,
+  },
+  quickPromptText: {
+    fontSize: 12,
+    fontWeight: '600',
   },
   disabledSend: {
     opacity: 0.8,

@@ -146,7 +146,7 @@ export default function RegisterScreen() {
 
             <View style={styles.inputContainer}>
               <TextInput
-                label="Choose an Alias"
+                label="Create an Alias"
                 value={alias}
                 onChangeText={setAlias}
                 mode="outlined"
@@ -154,7 +154,7 @@ export default function RegisterScreen() {
                 activeOutlineColor={JUCOCH_GREEN}
                 style={styles.input}
                 outlineStyle={{ borderRadius: 16 }}
-                placeholder="e.g. BraveHeart24"
+                placeholder="e.g. BraveHeart24 or PeacefulMind"
                 left={<TextInput.Icon icon="account-circle-outline" color={JUCOCH_GREEN} />}
               />
 
