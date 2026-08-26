@@ -5,6 +5,7 @@ import { Smile, Moon, Zap, Activity, ChevronRight, Bell, Sparkles, MessageCircle
 import { useRouter } from 'expo-router';
 import { useWellness } from '@/context/WellnessContext';
 import { LinearGradient } from 'expo-linear-gradient';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import AdminDashboard from '@/components/dashboards/AdminDashboard';
 import AppGuideModal from '@/components/AppGuideModal';
 
@@ -26,6 +27,27 @@ export default function HomeScreen() {
   const [moodSavedMsg, setMoodSavedMsg] = useState('');
   const [showBreathingModal, setShowBreathingModal] = useState(false);
   const [showGuideModal, setShowGuideModal] = useState(false);
+
+  useEffect(() => {
+    const checkFirstTimeTour = async () => {
+      try {
+        const hasSeen = await AsyncStorage.getItem('@jucoch_tour_shown');
+        if (!hasSeen) {
+          setTimeout(() => {
+            setShowGuideModal(true);
+          }, 1200);
+        }
+      } catch (e) {}
+    };
+    checkFirstTimeTour();
+  }, []);
+
+  const handleCloseGuideModal = async () => {
+    setShowGuideModal(false);
+    try {
+      await AsyncStorage.setItem('@jucoch_tour_shown', 'true');
+    } catch (e) {}
+  };
 
   // Live Guided Breathing Exercise Timer & Animation State
   const [breathePhase, setBreathePhase] = useState<'Inhale' | 'Hold' | 'Exhale' | 'Rest'>('Inhale');
@@ -399,7 +421,7 @@ export default function HomeScreen() {
       {/* APP ONBOARDING & GUIDED TOUR MODAL */}
       <AppGuideModal
         visible={showGuideModal}
-        onClose={() => setShowGuideModal(false)}
+        onClose={handleCloseGuideModal}
       />
     </View>
   );
