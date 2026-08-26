@@ -50,6 +50,7 @@ router.get('/users', verifyAdmin, async (req: Request, res: Response): Promise<v
         email: true,
         role: true,
         isVerified: true,
+        isAnonymous: true,
         createdAt: true,
       },
       orderBy: { createdAt: 'desc' },
@@ -57,6 +58,7 @@ router.get('/users', verifyAdmin, async (req: Request, res: Response): Promise<v
 
     const privacyProtectedUsers = users.map(u => ({
       ...u,
+      alias: u.isAnonymous ? 'Anonymous User' : u.alias,
       email: maskUserEmail(u.email),
     }));
 
@@ -73,32 +75,32 @@ router.get('/activities', verifyAdmin, async (req: Request, res: Response): Prom
     const moodLogs = await prisma.moodLog.findMany({
       take: 20,
       orderBy: { createdAt: 'desc' },
-      include: { user: { select: { alias: true, role: true } } },
+      include: { user: { select: { alias: true, role: true, isAnonymous: true } } },
     });
 
     const sleepLogs = await prisma.sleepLog.findMany({
       take: 20,
       orderBy: { createdAt: 'desc' },
-      include: { user: { select: { alias: true, role: true } } },
+      include: { user: { select: { alias: true, role: true, isAnonymous: true } } },
     });
 
     const activityLogs = await prisma.activityLog.findMany({
       take: 20,
       orderBy: { createdAt: 'desc' },
-      include: { user: { select: { alias: true, role: true } } },
+      include: { user: { select: { alias: true, role: true, isAnonymous: true } } },
     });
 
     const journalEntries = await prisma.journalEntry.findMany({
       take: 20,
       orderBy: { createdAt: 'desc' },
-      include: { user: { select: { alias: true, role: true } } },
+      include: { user: { select: { alias: true, role: true, isAnonymous: true } } },
     });
 
     // Format into a unified real-time feed
     const formattedFeed = [
       ...moodLogs.map(m => ({
         id: `mood-${m.id}`,
-        alias: m.user.alias,
+        alias: m.user.isAnonymous ? 'Anonymous User' : m.user.alias,
         role: m.user.role,
         action: 'Mood Check-in',
         detail: `${m.emoji} ${m.mood}${m.note ? ` ("${m.note}")` : ''}`,
@@ -106,7 +108,7 @@ router.get('/activities', verifyAdmin, async (req: Request, res: Response): Prom
       })),
       ...sleepLogs.map(s => ({
         id: `sleep-${s.id}`,
-        alias: s.user.alias,
+        alias: s.user.isAnonymous ? 'Anonymous User' : s.user.alias,
         role: s.user.role,
         action: 'Sleep Recorded',
         detail: `${s.hours} hours (${s.quality} quality)`,
@@ -114,7 +116,7 @@ router.get('/activities', verifyAdmin, async (req: Request, res: Response): Prom
       })),
       ...activityLogs.map(a => ({
         id: `act-${a.id}`,
-        alias: a.user.alias,
+        alias: a.user.isAnonymous ? 'Anonymous User' : a.user.alias,
         role: a.user.role,
         action: 'Wellness Activity',
         detail: `${a.type} for ${a.duration} minutes`,
@@ -122,7 +124,7 @@ router.get('/activities', verifyAdmin, async (req: Request, res: Response): Prom
       })),
       ...journalEntries.map(j => ({
         id: `journal-${j.id}`,
-        alias: j.user.alias,
+        alias: j.user.isAnonymous ? 'Anonymous User' : j.user.alias,
         role: j.user.role,
         action: 'Journal Reflection',
         detail: `Wrote a reflection (${j.content.slice(0, 30)}...)`,

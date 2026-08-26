@@ -328,7 +328,7 @@ export default function AdminDashboard() {
               filteredUsers.map((u, index) => {
                 const RoleIcon = u.role === 'Student' ? GraduationCap : User;
                 const roleColor = u.role === 'Student' ? '#1E88E5' : JUCOCH_GREEN;
-                const isUserMasked = (isMasked && u.alias === userAlias);
+                const isUserMasked = u.alias === 'Anonymous User' || (isMasked && u.alias === userAlias);
                 const displayAlias = isUserMasked ? 'Anonymous User (Masked)' : u.alias;
 
                 return (
@@ -337,7 +337,7 @@ export default function AdminDashboard() {
                     <View style={styles.userRow}>
                       <Avatar.Text 
                         size={40} 
-                        label={displayAlias.slice(0, 2).toUpperCase()} 
+                        label={isUserMasked ? 'AN' : displayAlias.slice(0, 2).toUpperCase()} 
                         style={{ backgroundColor: isUserMasked ? '#707571' : roleColor }} 
                       />
                       
@@ -420,7 +420,7 @@ export default function AdminDashboard() {
                     <View style={styles.activityDetails}>
                       <View style={styles.nameRow}>
                         <Text style={[styles.userName, { color: dynamicText }]}>
-                          {(isMasked && act.alias === userAlias) ? 'Anonymous User (Masked)' : act.alias}
+                          {(act.alias === 'Anonymous User' || (isMasked && act.alias === userAlias)) ? 'Anonymous User (Masked)' : act.alias}
                         </Text>
                         <Text style={[styles.activityTime, { color: dynamicSub }]}>{act.time}</Text>
                       </View>

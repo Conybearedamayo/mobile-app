@@ -9,6 +9,7 @@ import {
   deleteJournalApi,
   fetchAllWellnessDataApi
 } from '@/src/services/wellnessService';
+import { updatePrivacySettingsApi } from '@/src/services/authService';
 
 // Define the types for our wellness data - Synced with Screen naming conventions
 export type MoodEntry = {
@@ -183,7 +184,10 @@ export const WellnessProvider = ({ children }: { children: React.ReactNode }) =>
   const setIsMasked = useCallback((val: boolean) => {
     setIsMaskedState(val);
     AsyncStorage.setItem('@jucoch_user_masked', String(val)).catch(console.error);
-  }, []);
+    if (userToken) {
+      updatePrivacySettingsApi(userToken, val).catch(console.error);
+    }
+  }, [userToken]);
 
   const setUserToken = useCallback((token: string | null) => {
     setUserTokenState(token);

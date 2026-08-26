@@ -132,3 +132,21 @@ export const resetPasswordApi = async (email: string, code: string, newPassword:
 
   return data;
 };
+
+export const updatePrivacySettingsApi = async (token: string, isAnonymous: boolean): Promise<any> => {
+  if (!token) return null;
+  try {
+    const response = await fetchWithTimeout(`${API_BASE_URL}/api/auth/privacy`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify({ isAnonymous }),
+    });
+    return await response.json();
+  } catch (err) {
+    console.error('Update Privacy API error:', err);
+    return null;
+  }
+};

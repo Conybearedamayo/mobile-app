@@ -323,6 +323,7 @@ router.get('/me', async (req: Request, res: Response): Promise<void> => {
         email: true,
         role: true,
         isVerified: true,
+        isAnonymous: true,
         createdAt: true,
       },
     });
@@ -334,7 +335,43 @@ router.get('/me', async (req: Request, res: Response): Promise<void> => {
 
     res.json({ user });
   } catch (error: any) {
-    res.status(401).json({ error: 'Invalid or expired token.' });
+    console.error('Get Me Error:', error);
+    res.status(500).json({ error: 'Failed to retrieve user profile.' });
+  }
+});
+
+// PUT /api/auth/privacy - Toggle isAnonymous status
+router.put('/privacy', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      res.status(401).json({ error: 'Authorization header missing or invalid.' });
+      return;
+    }
+
+    const token = authHeader.split(' ')[1];
+    const decoded = jwt.verify(token, JWT_SECRET) as any;
+    const { isAnonymous } = req.body;
+
+    const updatedUser = await prisma.user.update({
+      where: { id: decoded.userId },
+      data: { isAnonymous: Boolean(isAnonymous) },
+      select: {
+        id: true,
+        alias: true,
+        email: true,
+        role: true,
+        isAnonymous: true,
+      },
+    });
+
+    res.json({
+      message: 'Privacy settings updated successfully.',
+      user: updatedUser,
+    });
+  } catch (error: any) {
+    console.error('Update Privacy Error:', error);
+    res.status(500).json({ error: 'Failed to update privacy settings.' });
   }
 });
 
