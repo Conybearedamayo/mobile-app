@@ -252,6 +252,14 @@ router.post('/login', async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
+    // STRICT SECURITY: Block unverified accounts from logging in
+    if (!user.isVerified) {
+      res.status(403).json({ 
+        error: 'This account is unverified. Please complete your email verification first before logging in.' 
+      });
+      return;
+    }
+
     // Role Mismatch Validation: ensure selected role matches registered account role
     if (role && typeof role === 'string' && role.trim() && user.role !== 'Admin') {
       const selectedRole = role.trim();
