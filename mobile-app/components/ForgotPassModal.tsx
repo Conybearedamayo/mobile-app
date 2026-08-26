@@ -187,7 +187,11 @@ export default function ForgotPassModal({ visible, onClose, onSuccess }: ForgotP
                 activeOutlineColor={JUCOCH_GREEN}
                 style={styles.input}
                 outlineStyle={{ borderRadius: 16 }}
+                textColor="#1C1F1D"
+                placeholderTextColor="#707571"
                 placeholder="e.g. name@gmail.com"
+                keyboardType="email-address"
+                autoCapitalize="none"
                 left={<TextInput.Icon icon="email-outline" color={JUCOCH_GREEN} />}
               />
             </View>
@@ -207,6 +211,8 @@ export default function ForgotPassModal({ visible, onClose, onSuccess }: ForgotP
                 activeOutlineColor={JUCOCH_GREEN}
                 style={styles.otpInput}
                 outlineStyle={{ borderRadius: 16 }}
+                textColor="#1C1F1D"
+                placeholderTextColor="#707571"
                 placeholder="1 2 3 4 5 6"
                 left={<TextInput.Icon icon="key-outline" color={JUCOCH_GREEN} />}
               />
@@ -240,6 +246,8 @@ export default function ForgotPassModal({ visible, onClose, onSuccess }: ForgotP
                 activeOutlineColor={JUCOCH_GREEN}
                 style={styles.input}
                 outlineStyle={{ borderRadius: 16 }}
+                textColor="#1C1F1D"
+                placeholderTextColor="#707571"
                 left={<TextInput.Icon icon="lock-outline" color={JUCOCH_GREEN} />}
                 right={
                   <TextInput.Icon 
@@ -260,6 +268,8 @@ export default function ForgotPassModal({ visible, onClose, onSuccess }: ForgotP
                 activeOutlineColor={JUCOCH_GREEN}
                 style={styles.input}
                 outlineStyle={{ borderRadius: 16 }}
+                textColor="#1C1F1D"
+                placeholderTextColor="#707571"
                 left={<TextInput.Icon icon="lock-check-outline" color={JUCOCH_GREEN} />}
                 right={
                   <TextInput.Icon 

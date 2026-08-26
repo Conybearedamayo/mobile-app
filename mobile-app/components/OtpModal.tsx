@@ -114,6 +114,8 @@ export default function OtpModal({ visible, email, onClose, onVerified }: OtpMod
               activeOutlineColor={JUCOCH_GREEN}
               style={styles.otpInput}
               outlineStyle={{ borderRadius: 16 }}
+              textColor="#1C1F1D"
+              placeholderTextColor="#707571"
             />
           </View>
 

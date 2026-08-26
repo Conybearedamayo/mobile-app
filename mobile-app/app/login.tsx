@@ -174,6 +174,8 @@ export default function LoginScreen() {
                 outlineStyle={{ borderRadius: 18 }}
                 keyboardType="email-address"
                 autoCapitalize="none"
+                textColor="#1C1F1D"
+                placeholderTextColor="#707571"
                 left={<TextInput.Icon icon="email-outline" color={JUCOCH_GREEN} />}
               />
 
@@ -187,6 +189,8 @@ export default function LoginScreen() {
                 activeOutlineColor={JUCOCH_GREEN}
                 style={styles.input}
                 outlineStyle={{ borderRadius: 18 }}
+                textColor="#1C1F1D"
+                placeholderTextColor="#707571"
                 left={<TextInput.Icon icon="lock-outline" color={JUCOCH_GREEN} />}
                 right={
                   <TextInput.Icon 

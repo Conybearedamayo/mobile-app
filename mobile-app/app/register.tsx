@@ -154,6 +154,8 @@ export default function RegisterScreen() {
                 activeOutlineColor={JUCOCH_GREEN}
                 style={styles.input}
                 outlineStyle={{ borderRadius: 16 }}
+                textColor="#1C1F1D"
+                placeholderTextColor="#707571"
                 placeholder="e.g. BraveHeart24 or PeacefulMind"
                 left={<TextInput.Icon icon="account-circle-outline" color={JUCOCH_GREEN} />}
               />
@@ -167,6 +169,10 @@ export default function RegisterScreen() {
                 activeOutlineColor={JUCOCH_GREEN}
                 style={styles.input}
                 outlineStyle={{ borderRadius: 16 }}
+                textColor="#1C1F1D"
+                placeholderTextColor="#707571"
+                keyboardType="email-address"
+                autoCapitalize="none"
                 left={<TextInput.Icon icon="email-outline" color={JUCOCH_GREEN} />}
               />
 
@@ -180,6 +186,8 @@ export default function RegisterScreen() {
                 activeOutlineColor={JUCOCH_GREEN}
                 style={styles.input}
                 outlineStyle={{ borderRadius: 16 }}
+                textColor="#1C1F1D"
+                placeholderTextColor="#707571"
                 left={<TextInput.Icon icon="lock-outline" color={JUCOCH_GREEN} />}
                 right={
                   <TextInput.Icon 
