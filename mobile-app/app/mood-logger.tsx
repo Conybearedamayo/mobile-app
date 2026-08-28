@@ -78,12 +78,18 @@ export default function MoodLoggerScreen() {
   const dynamicSub = isDarkMode ? '#9EB3A5' : '#707571';
   const dynamicBorder = isDarkMode ? '#2C3A31' : '#EBF2EE';
 
+  const isPositiveMood = (label?: string) => {
+    return label === 'Good' || label === 'Great' || label === 'Amazing';
+  };
+
   const handleMoodSelect = (mood: any) => {
     setSelectedMood(mood);
 
-    if (mood.label === 'Good' || mood.label === 'Great' || mood.label === 'Amazing') {
+    if (isPositiveMood(mood.label)) {
       setShowConfetti(true);
       setTimeout(() => setShowConfetti(false), 3500);
+    } else {
+      setShowConfetti(false);
     }
 
     if (mood.label === 'Awful' || mood.label === 'Bad') {
@@ -112,10 +118,17 @@ export default function MoodLoggerScreen() {
     const newScore = moodScores[selectedMood.label] || 50;
     setWellnessScore(newScore);
 
-    setShowConfetti(true);
-    setTimeout(() => {
-      router.back();
-    }, 1200);
+    if (isPositiveMood(selectedMood.label)) {
+      setShowConfetti(true);
+      setTimeout(() => {
+        router.back();
+      }, 1200);
+    } else {
+      setShowConfetti(false);
+      setTimeout(() => {
+        router.back();
+      }, 400);
+    }
   };
 
   return (

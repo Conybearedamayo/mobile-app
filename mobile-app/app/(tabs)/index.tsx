@@ -54,11 +54,12 @@ export default function HomeScreen() {
   const [breatheSeconds, setBreatheSeconds] = useState(4);
   const [breatheActive, setBreatheActive] = useState(false);
   const [breatheCycle, setBreatheCycle] = useState(1);
+  const [breatheFinished, setBreatheFinished] = useState(false);
   const scaleAnim = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
     let interval: any = null;
-    if (showBreathingModal && breatheActive) {
+    if (showBreathingModal && breatheActive && !breatheFinished) {
       interval = setInterval(() => {
         setBreatheSeconds((prevSec) => {
           if (prevSec > 1) {
@@ -73,7 +74,15 @@ export default function HomeScreen() {
             } else if (prevPhase === 'Exhale') {
               return 'Rest';
             } else {
-              setBreatheCycle((c) => (c >= 4 ? 1 : c + 1));
+              // Rest finished
+              setBreatheCycle((c) => {
+                if (c >= 4) {
+                  setBreatheActive(false);
+                  setBreatheFinished(true);
+                  return 4;
+                }
+                return c + 1;
+              });
               return 'Inhale';
             }
           });
@@ -84,11 +93,11 @@ export default function HomeScreen() {
       clearInterval(interval);
     }
     return () => clearInterval(interval);
-  }, [showBreathingModal, breatheActive]);
+  }, [showBreathingModal, breatheActive, breatheFinished]);
 
   useEffect(() => {
     const useNativeDriver = Platform.OS !== 'web';
-    if (!breatheActive || !showBreathingModal) {
+    if (!breatheActive || !showBreathingModal || breatheFinished) {
       scaleAnim.setValue(1.0);
       return;
     }
@@ -115,18 +124,20 @@ export default function HomeScreen() {
         useNativeDriver,
       }).start();
     }
-  }, [breathePhase, breatheActive, showBreathingModal]);
+  }, [breathePhase, breatheActive, showBreathingModal, breatheFinished]);
 
   const handleOpenBreathingModal = () => {
     setBreathePhase('Inhale');
     setBreatheSeconds(4);
     setBreatheCycle(1);
+    setBreatheFinished(false);
     setBreatheActive(true);
     setShowBreathingModal(true);
   };
 
   const handleCloseBreathingModal = () => {
     setBreatheActive(false);
+    setBreatheFinished(false);
     setShowBreathingModal(false);
   };
 
@@ -150,10 +161,12 @@ export default function HomeScreen() {
 
   const handleQuickMoodSelect = (mood: typeof MOOD_OPTIONS[0]) => {
     setSelectedMood(mood.label);
-    addMoodLog({ id: Date.now(), mood: mood.label, emoji: mood.emoji, timestamp: 'Just now' });
+    addMoodLog({ id: Date.now(), mood: mood.label, emoji: mood.emoji, timestamp: new Date().toISOString() });
     setMoodSavedMsg(`Recorded your mood as "${mood.label} ${mood.emoji}"!`);
     setTimeout(() => setMoodSavedMsg(''), 2500);
   };
+
+  const totalUserLogs = moodLogs.length + sleepLogs.length + activityEntries.length;
 
   return (
     <View style={[styles.container, { backgroundColor: dynamicBg }]}>
@@ -240,9 +253,11 @@ export default function HomeScreen() {
                         <Text style={styles.scoreScale}>/100</Text>
                       </View>
                       <Text style={styles.scoreSub}>
-                        {wellnessScore >= 80 ? '🌟 Excellent emotional balance today!' : 
-                         wellnessScore >= 60 ? '✨ Stable emotional state. Keep it up!' :
-                         '💙 Rest and talk with Jucoch AI for support.'}
+                        {totalUserLogs === 0
+                          ? '🌱 New user baseline: Log your daily mood or rest to calculate your AI index!'
+                          : wellnessScore >= 80 ? '🌟 Excellent emotional balance today!'
+                          : wellnessScore >= 60 ? '✨ Stable emotional state. Keep it up!'
+                          : '💙 Rest and talk with Jucoch AI for support.'}
                       </Text>
                     </View>
 
@@ -365,56 +380,103 @@ export default function HomeScreen() {
               </TouchableOpacity>
             </View>
             
-            <View style={styles.breatheCircleContainer}>
-              <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
-                <LinearGradient
-                  colors={
-                    breathePhase === 'Inhale' ? ['#2D6A4F', '#52B788'] :
-                    breathePhase === 'Hold' ? ['#FF9F43', '#FFB703'] :
-                    breathePhase === 'Exhale' ? ['#1E88E5', '#42A5F5'] :
-                    ['#48BB78', '#2D6A4F']
-                  }
-                  style={styles.breatheOuterCircle}
-                >
-                  <View style={styles.breatheInnerCircle}>
-                    <Wind size={32} color={JUCOCH_GREEN} />
-                    <Text style={styles.breatheInstruction}>
-                      {breathePhase === 'Inhale' ? 'Inhale...' :
-                       breathePhase === 'Hold' ? 'Hold...' :
-                       breathePhase === 'Exhale' ? 'Exhale...' : 'Rest...'}
-                    </Text>
-                    <Text style={styles.breatheSecondsText}>{breatheSeconds}s</Text>
-                  </View>
-                </LinearGradient>
-              </Animated.View>
-            </View>
+            {breatheFinished ? (
+              <View style={styles.breatheCompleteContainer}>
+                <View style={[styles.breatheCompleteIconBg, { backgroundColor: isDarkMode ? '#1E3A2B' : '#E8F5E9' }]}>
+                  <Sparkles size={40} color={JUCOCH_GREEN} />
+                </View>
 
-            <Text style={[styles.breatheTipText, { color: dynamicSub }]}>
-              {breathePhase === 'Inhale' ? '🫁 Inhale deeply through your nose...' :
-               breathePhase === 'Hold' ? '⏸️ Hold your breath calmly...' :
-               breathePhase === 'Exhale' ? '💨 Exhale slowly through your mouth...' :
-               '🌿 Relax and prepare for the next cycle...'}
-            </Text>
-
-            <View style={{ flexDirection: 'row', gap: 10, width: '100%' }}>
-              <TouchableOpacity 
-                style={[styles.startBreatheBtn, { flex: 1, backgroundColor: breatheActive ? '#FF9F43' : JUCOCH_GREEN, paddingVertical: 14, alignItems: 'center' }]}
-                onPress={() => setBreatheActive(!breatheActive)}
-                activeOpacity={0.8}
-              >
-                <Text style={styles.startBreatheBtnText}>
-                  {breatheActive ? 'Pause Timer' : 'Resume Timer'}
+                <Text variant="titleMedium" style={[styles.breatheCompleteTitle, { color: dynamicText }]}>
+                  🌟 Mindful Reset Achieved!
                 </Text>
-              </TouchableOpacity>
 
-              <TouchableOpacity 
-                style={[styles.closeBreatheBtn, { flex: 1 }]}
-                onPress={handleCloseBreathingModal}
-                activeOpacity={0.8}
-              >
-                <Text style={styles.closeBreatheBtnText}>Complete</Text>
-              </TouchableOpacity>
-            </View>
+                <Text style={[styles.breatheCompleteDesc, { color: dynamicSub }]}>
+                  Great job, <Text style={{ fontWeight: 'bold', color: JUCOCH_GREEN }}>{displayName}</Text>! You successfully completed 4 deep breathing cycles. Your vagus nerve is stimulated, your heart rate is calming down, and your mind is refreshed. 🌿
+                </Text>
+
+                <View style={styles.breatheStatRow}>
+                  <View style={[styles.breatheStatBox, { backgroundColor: isDarkMode ? '#1A231E' : '#F3F8F5', borderColor: dynamicBorder }]}>
+                    <Text style={[styles.breatheStatNum, { color: JUCOCH_GREEN }]}>4 / 4</Text>
+                    <Text style={[styles.breatheStatLabel, { color: dynamicSub }]}>Cycles Completed</Text>
+                  </View>
+                  <View style={[styles.breatheStatBox, { backgroundColor: isDarkMode ? '#1A231E' : '#F3F8F5', borderColor: dynamicBorder }]}>
+                    <Text style={[styles.breatheStatNum, { color: '#1E88E5' }]}>64s</Text>
+                    <Text style={[styles.breatheStatLabel, { color: dynamicSub }]}>Mindful Rest</Text>
+                  </View>
+                </View>
+
+                <View style={{ flexDirection: 'row', gap: 10, width: '100%', marginTop: 8 }}>
+                  <TouchableOpacity 
+                    style={[styles.restartBreatheBtn, { borderColor: dynamicBorder }]}
+                    onPress={handleOpenBreathingModal}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={[styles.restartBreatheBtnText, { color: dynamicText }]}>Start Again 🔄</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity 
+                    style={[styles.startBreatheBtn, { flex: 1, backgroundColor: JUCOCH_GREEN, paddingVertical: 14, alignItems: 'center' }]}
+                    onPress={handleCloseBreathingModal}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={styles.startBreatheBtnText}>Done 🌿</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            ) : (
+              <>
+                <View style={styles.breatheCircleContainer}>
+                  <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
+                    <LinearGradient
+                      colors={
+                        breathePhase === 'Inhale' ? ['#2D6A4F', '#52B788'] :
+                        breathePhase === 'Hold' ? ['#FF9F43', '#FFB703'] :
+                        breathePhase === 'Exhale' ? ['#1E88E5', '#42A5F5'] :
+                        ['#48BB78', '#2D6A4F']
+                      }
+                      style={styles.breatheOuterCircle}
+                    >
+                      <View style={styles.breatheInnerCircle}>
+                        <Wind size={32} color={JUCOCH_GREEN} />
+                        <Text style={styles.breatheInstruction}>
+                          {breathePhase === 'Inhale' ? 'Inhale...' :
+                           breathePhase === 'Hold' ? 'Hold...' :
+                           breathePhase === 'Exhale' ? 'Exhale...' : 'Rest...'}
+                        </Text>
+                        <Text style={styles.breatheSecondsText}>{breatheSeconds}s</Text>
+                      </View>
+                    </LinearGradient>
+                  </Animated.View>
+                </View>
+
+                <Text style={[styles.breatheTipText, { color: dynamicSub }]}>
+                  {breathePhase === 'Inhale' ? '🫁 Inhale deeply through your nose...' :
+                   breathePhase === 'Hold' ? '⏸️ Hold your breath calmly...' :
+                   breathePhase === 'Exhale' ? '💨 Exhale slowly through your mouth...' :
+                   '🌿 Relax and prepare for the next cycle...'}
+                </Text>
+
+                <View style={{ flexDirection: 'row', gap: 10, width: '100%' }}>
+                  <TouchableOpacity 
+                    style={[styles.startBreatheBtn, { flex: 1, backgroundColor: breatheActive ? '#FF9F43' : JUCOCH_GREEN, paddingVertical: 14, alignItems: 'center' }]}
+                    onPress={() => setBreatheActive(!breatheActive)}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={styles.startBreatheBtnText}>
+                      {breatheActive ? 'Pause Timer' : 'Resume Timer'}
+                    </Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity 
+                    style={[styles.closeBreatheBtn, { flex: 1 }]}
+                    onPress={handleCloseBreathingModal}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={styles.closeBreatheBtnText}>Complete</Text>
+                  </TouchableOpacity>
+                </View>
+              </>
+            )}
           </Surface>
         </Modal>
       </Portal>
@@ -825,5 +887,65 @@ const styles = StyleSheet.create({
     color: '#FFF',
     fontWeight: 'bold',
     fontSize: 14,
+  },
+  breatheCompleteContainer: {
+    alignItems: 'center',
+    paddingVertical: 10,
+    width: '100%',
+  },
+  breatheCompleteIconBg: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  breatheCompleteTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  breatheCompleteDesc: {
+    fontSize: 13,
+    textAlign: 'center',
+    lineHeight: 20,
+    marginBottom: 18,
+    paddingHorizontal: 8,
+  },
+  breatheStatRow: {
+    flexDirection: 'row',
+    gap: 12,
+    width: '100%',
+    marginBottom: 18,
+  },
+  breatheStatBox: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 16,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  breatheStatNum: {
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  breatheStatLabel: {
+    fontSize: 11,
+    marginTop: 2,
+  },
+  restartBreatheBtn: {
+    flex: 1,
+    borderWidth: 1.5,
+    borderRadius: 16,
+    paddingVertical: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  restartBreatheBtnText: {
+    fontWeight: 'bold',
+    fontSize: 13,
   },
 });

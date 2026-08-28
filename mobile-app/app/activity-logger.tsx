@@ -55,9 +55,9 @@ export default function ActivityLoggerScreen() {
   const router = useRouter();
   const { userRole, addActivityEntry, isDarkMode, activityEntries } = useWellness();
   
-  // Default to user's registered role category
-  const defaultCategory = userRole === 'Student' ? 'Student' : 'Individual';
-  const [activeCategory, setActiveCategory] = useState<'Individual' | 'Student'>(defaultCategory as any);
+  // Strictly lock category to user's registered account role (Student vs Individual)
+  const isStudent = userRole === 'Student';
+  const activeCategory: 'Individual' | 'Student' = isStudent ? 'Student' : 'Individual';
   
   const [selectedActivities, setSelectedActivities] = useState<string[]>([]);
   const [selectedDuration, setSelectedDuration] = useState<number>(30);
@@ -69,8 +69,8 @@ export default function ActivityLoggerScreen() {
   const dynamicSub = isDarkMode ? '#9EB3A5' : '#707571';
   const dynamicBorder = isDarkMode ? '#2C3A31' : '#E2EFE7';
 
-  const currentActivityList = activeCategory === 'Student' ? STUDENT_ACTIVITIES : INDIVIDUAL_ACTIVITIES;
-  const themeColor = activeCategory === 'Student' ? '#1E88E5' : JUCOCH_GREEN;
+  const currentActivityList = isStudent ? STUDENT_ACTIVITIES : INDIVIDUAL_ACTIVITIES;
+  const themeColor = isStudent ? '#1E88E5' : JUCOCH_GREEN;
 
   const toggleActivity = (name: string) => {
     if (selectedActivities.includes(name)) {
@@ -84,11 +84,11 @@ export default function ActivityLoggerScreen() {
     if (selectedActivities.length === 0) return;
     
     selectedActivities.forEach(activity => {
-      const categoryTag = activeCategory === 'Student' ? `[Student] ${activity}` : `[Individual] ${activity}`;
+      const categoryTag = isStudent ? `[Student] ${activity}` : `[Individual] ${activity}`;
       addActivityEntry(categoryTag, selectedDuration);
     });
 
-    setSuccessMsg(`Saved ${selectedActivities.length} activities (${selectedDuration} mins each)!`);
+    setSuccessMsg(`Saved ${selectedActivities.length} ${activeCategory} activities (${selectedDuration} mins each)!`);
     setSelectedActivities([]);
     setTimeout(() => {
       setSuccessMsg('');
@@ -108,7 +108,7 @@ export default function ActivityLoggerScreen() {
           <View style={{ flex: 1 }}>
             <Text variant="headlineSmall" style={[styles.title, { color: dynamicText }]}>Daily Activities</Text>
             <Text variant="bodySmall" style={[styles.subtitle, { color: dynamicSub }]}>
-              Categorized for Individuals & Students
+              {isStudent ? '🎓 Student Campus & Academic Tracker' : '👤 Individual Personal Wellness Tracker'}
             </Text>
           </View>
           <View style={[styles.roleBadge, { backgroundColor: `${themeColor}18` }]}>
@@ -117,44 +117,22 @@ export default function ActivityLoggerScreen() {
           </View>
         </View>
 
-        {/* Category Switcher: Individual vs Student */}
-        <View style={styles.categorySwitcherRow}>
-          <TouchableOpacity
-            style={[
-              styles.categoryBtn,
-              { backgroundColor: dynamicCardBg, borderColor: dynamicBorder },
-              activeCategory === 'Individual' && { backgroundColor: JUCOCH_GREEN, borderColor: JUCOCH_GREEN }
-            ]}
-            onPress={() => {
-              setActiveCategory('Individual');
-              setSelectedActivities([]);
-            }}
-            activeOpacity={0.8}
-          >
-            <Dumbbell size={16} color={activeCategory === 'Individual' ? '#FFF' : JUCOCH_GREEN} style={{ marginRight: 6 }} />
-            <Text style={[styles.categoryBtnText, { color: dynamicText }, activeCategory === 'Individual' && { color: '#FFF' }]}>
-              👤 Individual Wellness
+        {/* Role Exclusivity Banner */}
+        <Surface style={[styles.roleBannerCard, { backgroundColor: dynamicCardBg, borderColor: dynamicBorder }]} elevation={1}>
+          <View style={[styles.roleIconBg, { backgroundColor: `${themeColor}18` }]}>
+            {isStudent ? <GraduationCap size={18} color="#1E88E5" /> : <Dumbbell size={18} color={JUCOCH_GREEN} />}
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.roleBannerTitle, { color: dynamicText }]}>
+              {isStudent ? 'Student Campus Activities' : 'Individual Wellness Habits'}
             </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[
-              styles.categoryBtn,
-              { backgroundColor: dynamicCardBg, borderColor: dynamicBorder },
-              activeCategory === 'Student' && { backgroundColor: '#1E88E5', borderColor: '#1E88E5' }
-            ]}
-            onPress={() => {
-              setActiveCategory('Student');
-              setSelectedActivities([]);
-            }}
-            activeOpacity={0.8}
-          >
-            <GraduationCap size={16} color={activeCategory === 'Student' ? '#FFF' : '#1E88E5'} style={{ marginRight: 6 }} />
-            <Text style={[styles.categoryBtnText, { color: dynamicText }, activeCategory === 'Student' && { color: '#FFF' }]}>
-              🎓 Student Campus
+            <Text style={[styles.roleBannerSub, { color: dynamicSub }]}>
+              {isStudent 
+                ? 'Exclusively curated for study routines, lectures, orgs & exams.' 
+                : 'Exclusively curated for personal fitness, mindfulness & work-life balance.'}
             </Text>
-          </TouchableOpacity>
-        </View>
+          </View>
+        </Surface>
 
         {/* Duration Selector */}
         <View style={styles.sectionHeaderRow}>
@@ -187,7 +165,7 @@ export default function ActivityLoggerScreen() {
         <View style={styles.sectionHeaderRow}>
           <Activity size={14} color={themeColor} style={{ marginRight: 6 }} />
           <Text style={[styles.sectionLabel, { color: dynamicSub }]}>
-            {activeCategory === 'Student' ? 'CAMPUS & STUDY ROUTINES' : 'PERSONAL WELLNESS HABITS'}
+            {isStudent ? 'CAMPUS & STUDY ROUTINES' : 'PERSONAL WELLNESS HABITS'}
           </Text>
         </View>
         
@@ -241,7 +219,7 @@ export default function ActivityLoggerScreen() {
             <Sparkles size={16} color={themeColor} />
           </View>
           <Text style={[styles.noteText, { color: dynamicText }]}>
-            {activeCategory === 'Student'
+            {isStudent
               ? 'AI Tip for Students: Logging study breaks & campus walks boosts cognitive focus during exam periods.'
               : 'AI Prediction: Regular physical activity & daily mindfulness improves sleep quality by up to 20%.'}
           </Text>
@@ -267,6 +245,31 @@ export default function ActivityLoggerScreen() {
             </Text>
           </LinearGradient>
         </TouchableOpacity>
+
+        {/* Live Saved Activities Feed */}
+        {activityEntries && activityEntries.length > 0 && (
+          <View style={{ marginTop: 24 }}>
+            <View style={styles.sectionHeaderRow}>
+              <Clock size={14} color={themeColor} style={{ marginRight: 6 }} />
+              <Text style={[styles.sectionLabel, { color: dynamicSub }]}>RECENTLY SAVED ACTIVITIES ({activityEntries.length})</Text>
+            </View>
+
+            {activityEntries.slice(0, 5).map((entry) => (
+              <Surface key={entry.id} style={[styles.recentActivityItem, { backgroundColor: dynamicCardBg, borderColor: dynamicBorder }]} elevation={1}>
+                <View style={[styles.recentIconBg, { backgroundColor: `${themeColor}18` }]}>
+                  <Activity size={16} color={themeColor} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.recentTitle, { color: dynamicText }]}>{entry.type.replace('[Individual] ', '').replace('[Student] ', '')}</Text>
+                  <Text style={[styles.recentSub, { color: dynamicSub }]}>{entry.timestamp}</Text>
+                </View>
+                <View style={[styles.durationBadge, { backgroundColor: `${themeColor}20` }]}>
+                  <Text style={[styles.durationBadgeText, { color: themeColor }]}>{entry.duration} mins</Text>
+                </View>
+              </Surface>
+            ))}
+          </View>
+        )}
 
       </ScrollView>
     </View>
@@ -425,6 +428,64 @@ const styles = StyleSheet.create({
   gradientButtonText: {
     color: '#FFF',
     fontSize: 14,
+    fontWeight: 'bold',
+  },
+  roleBannerCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 14,
+    borderRadius: 18,
+    borderWidth: 1,
+    marginBottom: 20,
+  },
+  roleIconBg: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  roleBannerTitle: {
+    fontSize: 13,
+    fontWeight: 'bold',
+  },
+  roleBannerSub: {
+    fontSize: 11,
+    marginTop: 2,
+    lineHeight: 16,
+  },
+  recentActivityItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    borderRadius: 16,
+    borderWidth: 1,
+    marginBottom: 10,
+  },
+  recentIconBg: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 10,
+  },
+  recentTitle: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  recentSub: {
+    fontSize: 10,
+    marginTop: 2,
+  },
+  durationBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  durationBadgeText: {
+    fontSize: 10,
     fontWeight: 'bold',
   },
 });

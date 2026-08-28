@@ -92,7 +92,7 @@ export const WellnessProvider = ({ children }: { children: React.ReactNode }) =>
   const [isAuthLoading, setIsAuthLoading] = useState(true);
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [isMasked, setIsMaskedState] = useState(false);
-  const [wellnessScoreState, setWellnessScoreState] = useState(78);
+  const [wellnessScoreState, setWellnessScoreState] = useState(0);
 
   const [moodLogs, setMoodLogs] = useState<MoodEntry[]>([]);
   const [sleepLogs, setSleepLogs] = useState<SleepEntry[]>([]);
@@ -105,44 +105,44 @@ export const WellnessProvider = ({ children }: { children: React.ReactNode }) =>
       const data = await fetchAllWellnessDataApi(token);
       if (data) {
         if (Array.isArray(data.moodLogs)) {
-          setMoodLogs(data.moodLogs.map((m: any) => ({
+          const mappedMoods = data.moodLogs.map((m: any) => ({
             id: m.id,
             mood: m.mood,
             emoji: m.emoji,
-            timestamp: m.createdAt
-              ? new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-              : new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            timestamp: m.createdAt || new Date().toISOString(),
             note: m.note,
-          })));
+          }));
+          setMoodLogs(mappedMoods);
+          AsyncStorage.setItem('@jucoch_local_mood_logs', JSON.stringify(mappedMoods)).catch(() => {});
         }
         if (Array.isArray(data.sleepLogs)) {
-          setSleepLogs(data.sleepLogs.map((s: any) => ({
+          const mappedSleep = data.sleepLogs.map((s: any) => ({
             id: s.id,
             hours: s.hours,
             quality: s.quality,
-            timestamp: s.createdAt
-              ? new Date(s.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-              : new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-          })));
+            timestamp: s.createdAt || new Date().toISOString(),
+          }));
+          setSleepLogs(mappedSleep);
+          AsyncStorage.setItem('@jucoch_local_sleep_logs', JSON.stringify(mappedSleep)).catch(() => {});
         }
         if (Array.isArray(data.activityLogs)) {
-          setActivityEntries(data.activityLogs.map((a: any) => ({
+          const mappedActivities = data.activityLogs.map((a: any) => ({
             id: a.id,
             type: a.type,
             duration: a.duration,
-            timestamp: a.createdAt
-              ? new Date(a.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-              : new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-          })));
+            timestamp: a.createdAt || new Date().toISOString(),
+          }));
+          setActivityEntries(mappedActivities);
+          AsyncStorage.setItem('@jucoch_local_activity_logs', JSON.stringify(mappedActivities)).catch(() => {});
         }
         if (Array.isArray(data.journalEntries)) {
-          setJournalEntries(data.journalEntries.map((j: any) => ({
+          const mappedJournals = data.journalEntries.map((j: any) => ({
             id: j.id,
             content: j.content,
-            timestamp: j.createdAt
-              ? new Date(j.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
-              : new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }),
-          })));
+            timestamp: j.createdAt || new Date().toISOString(),
+          }));
+          setJournalEntries(mappedJournals);
+          AsyncStorage.setItem('@jucoch_local_journal_logs', JSON.stringify(mappedJournals)).catch(() => {});
         }
       }
     } catch (err) {
@@ -156,7 +156,7 @@ export const WellnessProvider = ({ children }: { children: React.ReactNode }) =>
     }
   }, [userToken, syncUserDataFromCloud]);
 
-  // Load persisted session on startup
+  // Load persisted session and offline cached logs on startup
   useEffect(() => {
     const loadPersistedAuth = async () => {
       try {
@@ -164,12 +164,43 @@ export const WellnessProvider = ({ children }: { children: React.ReactNode }) =>
         const storedAlias = await AsyncStorage.getItem('@jucoch_user_alias');
         const storedRole = await AsyncStorage.getItem('@jucoch_user_role');
         const storedMasked = await AsyncStorage.getItem('@jucoch_user_masked');
+        
+        // Load local cached logs so UI is immediately populated
+        const storedMoods = await AsyncStorage.getItem('@jucoch_local_mood_logs');
+        if (storedMoods) {
+          try {
+            const parsed = JSON.parse(storedMoods);
+            if (Array.isArray(parsed)) setMoodLogs(parsed);
+          } catch (e) {}
+        }
+        const storedSleep = await AsyncStorage.getItem('@jucoch_local_sleep_logs');
+        if (storedSleep) {
+          try {
+            const parsed = JSON.parse(storedSleep);
+            if (Array.isArray(parsed)) setSleepLogs(parsed);
+          } catch (e) {}
+        }
+        const storedActivities = await AsyncStorage.getItem('@jucoch_local_activity_logs');
+        if (storedActivities) {
+          try {
+            const parsed = JSON.parse(storedActivities);
+            if (Array.isArray(parsed)) setActivityEntries(parsed);
+          } catch (e) {}
+        }
+        const storedJournals = await AsyncStorage.getItem('@jucoch_local_journal_logs');
+        if (storedJournals) {
+          try {
+            const parsed = JSON.parse(storedJournals);
+            if (Array.isArray(parsed)) setJournalEntries(parsed);
+          } catch (e) {}
+        }
+
         if (storedToken) {
           setUserTokenState(storedToken);
           if (storedAlias) setUserAliasState(storedAlias);
           if (storedRole) setUserRoleState(storedRole);
           if (storedMasked === 'true') setIsMaskedState(true);
-          // Sync existing user data from database immediately
+          // Sync fresh user data from database immediately
           syncUserDataFromCloud(storedToken);
         }
       } catch (err) {
@@ -223,6 +254,10 @@ export const WellnessProvider = ({ children }: { children: React.ReactNode }) =>
         '@jucoch_user_token',
         '@jucoch_user_alias',
         '@jucoch_user_role',
+        '@jucoch_local_mood_logs',
+        '@jucoch_local_sleep_logs',
+        '@jucoch_local_activity_logs',
+        '@jucoch_local_journal_logs',
       ]);
     } catch (e) {
       console.error('Error clearing auth storage:', e);
@@ -234,6 +269,7 @@ export const WellnessProvider = ({ children }: { children: React.ReactNode }) =>
     setSleepLogs([]);
     setActivityEntries([]);
     setJournalEntries([]);
+    setWellnessScoreState(0);
   }, []);
 
   const toggleDarkMode = useCallback(() => {
@@ -245,9 +281,13 @@ export const WellnessProvider = ({ children }: { children: React.ReactNode }) =>
       id: logInput.id || Date.now(),
       mood: logInput.mood,
       emoji: logInput.emoji,
-      timestamp: logInput.timestamp || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      timestamp: logInput.timestamp || new Date().toISOString(),
     };
-    setMoodLogs((prev) => [newEntry, ...prev]);
+    setMoodLogs((prev) => {
+      const updated = [newEntry, ...prev];
+      AsyncStorage.setItem('@jucoch_local_mood_logs', JSON.stringify(updated)).catch(() => {});
+      return updated;
+    });
 
     // Async sync to Neon PostgreSQL backend for Admin Live Audit Feed
     logMoodApi(userToken || '', logInput.mood, logInput.emoji).catch(() => {});
@@ -258,9 +298,13 @@ export const WellnessProvider = ({ children }: { children: React.ReactNode }) =>
       id: Date.now(),
       hours,
       quality,
-      timestamp: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+      timestamp: new Date().toISOString(),
     };
-    setSleepLogs((prev) => [newEntry, ...prev]);
+    setSleepLogs((prev) => {
+      const updated = [newEntry, ...prev];
+      AsyncStorage.setItem('@jucoch_local_sleep_logs', JSON.stringify(updated)).catch(() => {});
+      return updated;
+    });
 
     // Async sync to Neon PostgreSQL backend for Admin Live Audit Feed
     logSleepApi(userToken || '', hours, quality).catch(() => {});
@@ -271,9 +315,13 @@ export const WellnessProvider = ({ children }: { children: React.ReactNode }) =>
       id: Date.now(),
       type,
       duration,
-      timestamp: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+      timestamp: new Date().toISOString(),
     };
-    setActivityEntries((prev) => [newEntry, ...prev]);
+    setActivityEntries((prev) => {
+      const updated = [newEntry, ...prev];
+      AsyncStorage.setItem('@jucoch_local_activity_logs', JSON.stringify(updated)).catch(() => {});
+      return updated;
+    });
 
     // Async sync to Neon PostgreSQL backend for Admin Live Audit Feed
     logActivityApi(userToken || '', type, duration).catch(() => {});
@@ -284,44 +332,57 @@ export const WellnessProvider = ({ children }: { children: React.ReactNode }) =>
     const newEntry: JournalEntry = {
       id: newId,
       content,
-      timestamp: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }),
+      timestamp: new Date().toISOString(),
     };
-    setJournalEntries((prev) => [newEntry, ...prev]);
+    setJournalEntries((prev) => {
+      const updated = [newEntry, ...prev];
+      AsyncStorage.setItem('@jucoch_local_journal_logs', JSON.stringify(updated)).catch(() => {});
+      return updated;
+    });
 
     // Async sync to Neon PostgreSQL backend for Admin Live Audit Feed
     saveJournalApi(userToken || '', content)
       .then((res) => {
         if (res?.journalEntry?.id) {
-          setJournalEntries((prev) =>
-            prev.map((j) => (j.id === newId ? { ...j, id: res.journalEntry.id } : j))
-          );
+          setJournalEntries((prev) => {
+            const updated = prev.map((j) => (j.id === newId ? { ...j, id: res.journalEntry.id } : j));
+            AsyncStorage.setItem('@jucoch_local_journal_logs', JSON.stringify(updated)).catch(() => {});
+            return updated;
+          });
         }
       })
       .catch(() => {});
   }, [userToken]);
 
   const editJournalEntry = useCallback((id: string | number, newContent: string) => {
-    setJournalEntries((prev) =>
-      prev.map((j) => (j.id === id ? { ...j, content: newContent } : j))
-    );
+    setJournalEntries((prev) => {
+      const updated = prev.map((j) => (j.id === id ? { ...j, content: newContent } : j));
+      AsyncStorage.setItem('@jucoch_local_journal_logs', JSON.stringify(updated)).catch(() => {});
+      return updated;
+    });
     if (typeof id === 'string') {
       updateJournalApi(userToken || '', id, newContent).catch(() => {});
     }
   }, [userToken]);
 
   const deleteJournalEntry = useCallback((id: string | number) => {
-    setJournalEntries((prev) => prev.filter((j) => j.id !== id));
+    setJournalEntries((prev) => {
+      const updated = prev.filter((j) => j.id !== id);
+      AsyncStorage.setItem('@jucoch_local_journal_logs', JSON.stringify(updated)).catch(() => {});
+      return updated;
+    });
     if (typeof id === 'string') {
       deleteJournalApi(userToken || '', id).catch(() => {});
     }
   }, [userToken]);
 
   const getCurrentStreak = useCallback(() => {
-    return Math.max(1, moodLogs.length + sleepLogs.length);
+    const total = moodLogs.length + sleepLogs.length;
+    return total === 0 ? 0 : total;
   }, [moodLogs.length, sleepLogs.length]);
 
   const getAverageMoodScore = useCallback(() => {
-    if (moodLogs.length === 0) return 7.5;
+    if (moodLogs.length === 0) return 0;
     const moodValues: Record<string, number> = {
       Awful: 2,
       Bad: 4,
@@ -334,15 +395,18 @@ export const WellnessProvider = ({ children }: { children: React.ReactNode }) =>
   }, [moodLogs]);
 
   const getWellnessScore = useCallback(() => {
+    if (moodLogs.length === 0 && sleepLogs.length === 0) return 0;
     const avgMood = getAverageMoodScore();
     const streak = getCurrentStreak();
     const baseScore = Math.round(avgMood * 8 + Math.min(streak * 2, 20));
-    return Math.min(100, Math.max(30, baseScore));
-  }, [getAverageMoodScore, getCurrentStreak]);
+    return Math.min(100, Math.max(10, baseScore));
+  }, [getAverageMoodScore, getCurrentStreak, moodLogs.length, sleepLogs.length]);
 
   const setWellnessScore = useCallback((score: number) => {
     setWellnessScoreState(score);
   }, []);
+
+  const dynamicWellnessScore = wellnessScoreState > 0 ? wellnessScoreState : getWellnessScore();
 
   const value = {
     userAlias,
@@ -372,7 +436,7 @@ export const WellnessProvider = ({ children }: { children: React.ReactNode }) =>
     getCurrentStreak,
     getAverageMoodScore,
     getWellnessScore,
-    wellnessScore: wellnessScoreState,
+    wellnessScore: dynamicWellnessScore,
   };
 
   return <WellnessContext.Provider value={value}>{children}</WellnessContext.Provider>;

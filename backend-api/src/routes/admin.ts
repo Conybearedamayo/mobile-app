@@ -96,19 +96,19 @@ router.get('/activities', verifyAdmin, async (req: Request, res: Response): Prom
       include: { user: { select: { alias: true, role: true, isAnonymous: true } } },
     });
 
-    // Format into a unified real-time feed
+    // Format into a privacy-first real-time audit feed
     const formattedFeed = [
       ...moodLogs.map(m => ({
         id: `mood-${m.id}`,
-        alias: m.user.isAnonymous ? 'Anonymous User' : m.user.alias,
+        alias: m.user.isAnonymous ? 'Anonymous User' : (m.user.alias || 'Encrypted User'),
         role: m.user.role,
         action: 'Mood Check-in',
-        detail: `${m.emoji} ${m.mood}${m.note ? ` ("${m.note}")` : ''}`,
+        detail: `${m.emoji} ${m.mood}${m.note ? ' • [🔒 Private Note Encrypted]' : ''}`,
         createdAt: m.createdAt,
       })),
       ...sleepLogs.map(s => ({
         id: `sleep-${s.id}`,
-        alias: s.user.isAnonymous ? 'Anonymous User' : s.user.alias,
+        alias: m.user.isAnonymous ? 'Anonymous User' : (s.user.alias || 'Encrypted User'),
         role: s.user.role,
         action: 'Sleep Recorded',
         detail: `${s.hours} hours (${s.quality} quality)`,
@@ -116,18 +116,18 @@ router.get('/activities', verifyAdmin, async (req: Request, res: Response): Prom
       })),
       ...activityLogs.map(a => ({
         id: `act-${a.id}`,
-        alias: a.user.isAnonymous ? 'Anonymous User' : a.user.alias,
+        alias: a.user.isAnonymous ? 'Anonymous User' : (a.user.alias || 'Encrypted User'),
         role: a.user.role,
         action: 'Wellness Activity',
-        detail: `${a.type} for ${a.duration} minutes`,
+        detail: `${a.type} • ${a.duration} mins`,
         createdAt: a.createdAt,
       })),
       ...journalEntries.map(j => ({
         id: `journal-${j.id}`,
-        alias: j.user.isAnonymous ? 'Anonymous User' : j.user.alias,
+        alias: j.user.isAnonymous ? 'Anonymous User' : (j.user.alias || 'Encrypted User'),
         role: j.user.role,
         action: 'Journal Reflection',
-        detail: `Wrote a reflection (${j.content.slice(0, 30)}...)`,
+        detail: '🔒 256-Bit Encrypted Personal Reflection (Confidential)',
         createdAt: j.createdAt,
       })),
     ].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());

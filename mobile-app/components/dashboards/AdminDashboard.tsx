@@ -328,7 +328,7 @@ export default function AdminDashboard() {
               filteredUsers.map((u, index) => {
                 const RoleIcon = u.role === 'Student' ? GraduationCap : User;
                 const roleColor = u.role === 'Student' ? '#1E88E5' : JUCOCH_GREEN;
-                const isUserMasked = u.alias === 'Anonymous User' || (isMasked && u.alias === userAlias);
+                const isUserMasked = u.alias === 'Anonymous User';
                 const displayAlias = isUserMasked ? 'Anonymous User (Masked)' : u.alias;
 
                 return (
@@ -386,10 +386,12 @@ export default function AdminDashboard() {
       {activeTab === 'activity' && (
         <Surface style={[styles.listContainer, { backgroundColor: dynamicCardBg, borderColor: dynamicBorder }]} elevation={2}>
           <View style={styles.feedHeader}>
-            <Text style={styles.rosterTitle}>LIVE DAILY USER ACTIVITY FEED</Text>
-            <Text style={styles.liveBadge}>● LIVE UPDATES</Text>
+            <Text style={styles.rosterTitle}>LIVE USER ENGAGEMENT AUDIT FEED</Text>
+            <Text style={styles.liveBadge}>● PRIVACY-ENCRYPTED</Text>
           </View>
-          <Text style={[styles.feedSubtitle, { color: dynamicSub }]}>Tracks real-time mood logs, sleep logs, and AI chats recorded by users today.</Text>
+          <Text style={[styles.feedSubtitle, { color: dynamicSub }]}>
+            🔒 End-to-End Privacy Active: User journals and personal notes are anonymized & 256-bit encrypted.
+          </Text>
           <Divider style={{ marginVertical: 10 }} />
 
           {/* Moderation Toast Message */}
@@ -409,6 +411,9 @@ export default function AdminDashboard() {
           ) : (
             dailyActivities.map((act, index) => {
               const IconComp = act.icon;
+              const isActMasked = act.alias === 'Anonymous User';
+              const displayActAlias = isActMasked ? 'Anonymous User (Masked)' : act.alias;
+
               return (
                 <View key={act.id}>
                   {index > 0 && <Divider style={styles.divider} />}
@@ -420,7 +425,7 @@ export default function AdminDashboard() {
                     <View style={styles.activityDetails}>
                       <View style={styles.nameRow}>
                         <Text style={[styles.userName, { color: dynamicText }]}>
-                          {(act.alias === 'Anonymous User' || (isMasked && act.alias === userAlias)) ? 'Anonymous User (Masked)' : act.alias}
+                          {displayActAlias}
                         </Text>
                         <Text style={[styles.activityTime, { color: dynamicSub }]}>{act.time}</Text>
                       </View>

@@ -404,11 +404,13 @@ export default function ProfileScreen() {
             <Surface style={[styles.aiInsightCard, { backgroundColor: dynamicCardBg, borderColor: dynamicBorder }]} elevation={1}>
               <Sparkles size={16} color={JUCOCH_GREEN} style={{ marginRight: 8 }} />
               <Text style={[styles.aiInsightText, { color: dynamicText }]}>
-                AI Evaluation: Your resilience score is at <Text style={{ fontWeight: 'bold', color: JUCOCH_GREEN }}>{getWellnessScore()}%</Text>. Consistent sleep and daily reflection support healthy cognitive focus!
+                {moodLogs.length + sleepLogs.length === 0
+                  ? 'AI Evaluation: New Account Baseline (0%). Log your daily mood and sleep to generate personalized AI resilience analytics!'
+                  : `AI Evaluation: Your resilience score is at ${getWellnessScore()}%. Consistent sleep and daily reflection support healthy cognitive focus!`}
               </Text>
             </Surface>
 
-            <TouchableOpacity style={styles.closeReportBtn} onPress={() => setShowReportsModal(false)}>
+            <TouchableOpacity style={styles.closeReportBtn} onPress={() => setShowReportsModal(false)} activeOpacity={0.8}>
               <Text style={{ color: '#FFF', fontWeight: 'bold' }}>Close Report</Text>
             </TouchableOpacity>
           </Surface>
@@ -920,11 +922,15 @@ const styles = StyleSheet.create({
   },
   modalContentStyle: {
     padding: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   modalCard: {
     borderRadius: 24,
     padding: 20,
     maxHeight: '90%',
+    width: '100%',
+    maxWidth: 520,
   },
   modalHeader: {
     flexDirection: 'row',
@@ -981,9 +987,12 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     gap: 10,
     marginBottom: 14,
+    width: '100%',
   },
   reportCard: {
     width: '48%',
+    flexBasis: '47%',
+    flexGrow: 1,
     borderRadius: 16,
     padding: 14,
     alignItems: 'center',
@@ -1004,6 +1013,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     borderWidth: 1,
     marginBottom: 16,
+    width: '100%',
   },
   aiInsightText: {
     fontSize: 12,
@@ -1015,6 +1025,8 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     paddingVertical: 14,
     alignItems: 'center',
+    justifyContent: 'center',
+    width: '100%',
     marginTop: 4,
   },
   achievementRow: {

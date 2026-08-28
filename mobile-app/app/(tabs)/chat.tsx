@@ -1,10 +1,11 @@
-import React, { useState, useRef } from 'react';
-import { View, StyleSheet, ScrollView, TouchableOpacity, TextInput, KeyboardAvoidingView, Platform, Dimensions } from 'react-native';
+import React, { useState, useRef, useEffect } from 'react';
+import { View, StyleSheet, ScrollView, TouchableOpacity, TextInput, KeyboardAvoidingView, Platform, Dimensions, Alert } from 'react-native';
 import { Text, Avatar, Surface } from 'react-native-paper';
-import { Send, Plus, Sparkles, MessageCircle } from 'lucide-react-native';
+import { Send, Plus, Sparkles, MessageCircle, RotateCcw, Trash2 } from 'lucide-react-native';
 import { useWellness } from '@/context/WellnessContext';
 import { LinearGradient } from 'expo-linear-gradient';
 import { sendAiChatApi } from '@/src/services/wellnessService';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const { width } = Dimensions.get('window');
 const JUCOCH_GREEN = '#2D6A4F';
@@ -19,18 +20,57 @@ export default function ChatScreen() {
   const dynamicSub = isDarkMode ? '#9EB3A5' : '#707571';
   const dynamicBorder = isDarkMode ? '#2C3A31' : '#EBF2EE';
 
-  // Clean initial state: Jucoch AI Welcome Greeting
-  const [messages, setMessages] = useState([
+  const defaultGreeting = [
     { 
       id: 1, 
       text: `Hello ${userAlias || 'there'}! I am Jucoch AI, your anonymous mental health companion. How are you feeling today?`, 
       sender: 'ai', 
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) 
     },
-  ]);
+  ];
 
+  const [messages, setMessages] = useState(defaultGreeting);
   const [inputText, setInputText] = useState('');
   const [isTyping, setIsTyping] = useState(false);
+
+  // Load chat history from AsyncStorage on startup
+  useEffect(() => {
+    const loadChatHistory = async () => {
+      try {
+        const stored = await AsyncStorage.getItem('@jucoch_ai_chat_history');
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setMessages(parsed);
+          }
+        }
+      } catch (e) {
+        console.error('Error loading chat history:', e);
+      }
+    };
+    loadChatHistory();
+  }, []);
+
+  const saveChatHistory = async (msgs: typeof messages) => {
+    try {
+      await AsyncStorage.setItem('@jucoch_ai_chat_history', JSON.stringify(msgs));
+    } catch (e) {
+      console.error('Error saving chat history:', e);
+    }
+  };
+
+  const handleNewChat = () => {
+    const fresh = [
+      { 
+        id: Date.now(), 
+        text: `Hello ${userAlias || 'there'}! Starting a fresh session. What is on your mind right now?`, 
+        sender: 'ai', 
+        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) 
+      },
+    ];
+    setMessages(fresh);
+    saveChatHistory(fresh);
+  };
 
   const getAIResponse = (userText: string): string => {
     const text = userText.toLowerCase();
@@ -56,7 +96,7 @@ export default function ChatScreen() {
     if (inputText.trim() === '') return;
     
     const userMsg = {
-      id: messages.length + 1,
+      id: Date.now(),
       text: inputText.trim(),
       sender: 'user',
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
@@ -65,6 +105,7 @@ export default function ChatScreen() {
     const query = inputText.trim();
     const updatedMessages = [...messages, userMsg];
     setMessages(updatedMessages);
+    saveChatHistory(updatedMessages);
     setInputText('');
     
     setTimeout(() => {
@@ -77,21 +118,25 @@ export default function ChatScreen() {
       const res = await sendAiChatApi(query);
       const aiResponseText = res?.reply || getAIResponse(query);
       const aiMsg = {
-        id: updatedMessages.length + 1,
+        id: Date.now() + 1,
         text: aiResponseText,
         sender: 'ai',
         time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
       };
-      setMessages(prev => [...prev, aiMsg]);
+      const finalMessages = [...updatedMessages, aiMsg];
+      setMessages(finalMessages);
+      saveChatHistory(finalMessages);
     } catch (error) {
       const fallbackText = getAIResponse(query);
       const aiMsg = {
-        id: updatedMessages.length + 1,
+        id: Date.now() + 1,
         text: fallbackText,
         sender: 'ai',
         time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
       };
-      setMessages(prev => [...prev, aiMsg]);
+      const finalMessages = [...updatedMessages, aiMsg];
+      setMessages(finalMessages);
+      saveChatHistory(finalMessages);
     } finally {
       setIsTyping(false);
       setTimeout(() => {
@@ -134,8 +179,20 @@ export default function ChatScreen() {
               </View>
             </View>
           </View>
-          <View style={[styles.sparkleIconWrapper, { backgroundColor: isDarkMode ? '#1E3A2B' : '#E8F5E9' }]}>
-            <Sparkles size={18} color={JUCOCH_GREEN} />
+
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <TouchableOpacity 
+              onPress={handleNewChat}
+              style={[styles.newChatBtn, { backgroundColor: isDarkMode ? '#1E3A2B' : '#E8F5E9' }]}
+              activeOpacity={0.75}
+            >
+              <RotateCcw size={14} color={JUCOCH_GREEN} style={{ marginRight: 4 }} />
+              <Text style={styles.newChatText}>New Chat</Text>
+            </TouchableOpacity>
+
+            <View style={[styles.sparkleIconWrapper, { backgroundColor: isDarkMode ? '#1E3A2B' : '#E8F5E9' }]}>
+              <Sparkles size={18} color={JUCOCH_GREEN} />
+            </View>
           </View>
         </View>
       </Surface>
@@ -297,6 +354,18 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  newChatBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 12,
+  },
+  newChatText: {
+    fontSize: 11,
+    fontWeight: 'bold',
+    color: JUCOCH_GREEN,
   },
   chatArea: {
     flex: 1,

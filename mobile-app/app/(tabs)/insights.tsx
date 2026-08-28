@@ -9,7 +9,7 @@ const { width } = Dimensions.get('window');
 const JUCOCH_GREEN = '#2D6A4F';
 
 export default function InsightsScreen() {
-  const { wellnessScore, sleepLogs, moodLogs, journalEntries, isDarkMode } = useWellness();
+  const { wellnessScore, sleepLogs, moodLogs, journalEntries, activityEntries, isDarkMode } = useWellness();
   const [timeFilter, setTimeFilter] = useState<'7d' | '30d' | '90d'>('7d');
 
   const dynamicBg = isDarkMode ? '#121614' : '#F3F8F5';
@@ -35,7 +35,7 @@ export default function InsightsScreen() {
     }
   };
 
-  // Generate dynamic event timeline from actual user logs
+  // Generate dynamic event timeline from actual user logs (Moods, Sleep, Activities, Journals)
   const dynamicTimeline = [
     ...moodLogs.map((m) => ({
       id: `mood-${m.id}`,
@@ -51,6 +51,13 @@ export default function InsightsScreen() {
       tags: ['Sleep', 'Rest'],
       isWarning: s.hours < 6 || s.quality === 'Restless' || s.quality === 'Poor',
     })),
+    ...activityEntries.map((a) => ({
+      id: `act-${a.id}`,
+      date: formatEventDate(a.timestamp),
+      title: `Completed activity: ${a.type.replace('[Individual] ', '').replace('[Student] ', '')} (${a.duration} mins).`,
+      tags: ['Daily Activity', 'Routine'],
+      isWarning: false,
+    })),
     ...journalEntries.map((j) => ({
       id: `journal-${j.id}`,
       date: formatEventDate(j.timestamp),
@@ -60,7 +67,7 @@ export default function InsightsScreen() {
     })),
   ];
 
-  const totalLogsCount = moodLogs.length + sleepLogs.length + journalEntries.length;
+  const totalLogsCount = moodLogs.length + sleepLogs.length + activityEntries.length + journalEntries.length;
 
   // Dynamic Weekly Mood Frequency calculation from actual user moodLogs
   const moodValueMap: Record<string, number> = {
@@ -77,8 +84,18 @@ export default function InsightsScreen() {
 
   moodLogs.forEach((m) => {
     try {
-      const timestampMs = typeof m.id === 'number' ? m.id : Date.parse(m.timestamp || '');
-      const d = isNaN(timestampMs) ? new Date() : new Date(timestampMs);
+      let d: Date | null = null;
+      if (typeof m.id === 'number' && m.id > 1000000000) {
+        d = new Date(m.id);
+      } else if (m.timestamp) {
+        const parsed = Date.parse(m.timestamp);
+        if (!isNaN(parsed)) {
+          d = new Date(parsed);
+        }
+      }
+      if (!d) {
+        d = new Date();
+      }
       const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
       const dayName = dayNames[d.getDay()] || 'Mon';
       const score = moodValueMap[m.mood] || 7;
