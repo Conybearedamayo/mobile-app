@@ -44,6 +44,7 @@ export type WellnessState = {
   userAlias: string;
   userRole: string;
   userToken: string | null;
+  userAvatar: string;
   isAuthLoading: boolean;
   isDarkMode: boolean;
   isMasked: boolean;
@@ -56,6 +57,7 @@ export type WellnessState = {
   setUserAlias: (name: string) => void;
   setUserRole: (role: string) => void;
   setUserToken: (token: string | null) => void;
+  setUserAvatar: (avatar: string) => void;
   setIsMasked: (val: boolean) => void;
   refreshUserData: () => Promise<void>;
   logout: () => Promise<void>;
@@ -89,6 +91,7 @@ export const WellnessProvider = ({ children }: { children: React.ReactNode }) =>
   const [userAlias, setUserAliasState] = useState('');
   const [userRole, setUserRoleState] = useState('');
   const [userToken, setUserTokenState] = useState<string | null>(null);
+  const [userAvatar, setUserAvatarState] = useState('🌿');
   const [isAuthLoading, setIsAuthLoading] = useState(true);
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [isMasked, setIsMaskedState] = useState(false);
@@ -164,6 +167,8 @@ export const WellnessProvider = ({ children }: { children: React.ReactNode }) =>
         const storedAlias = await AsyncStorage.getItem('@jucoch_user_alias');
         const storedRole = await AsyncStorage.getItem('@jucoch_user_role');
         const storedMasked = await AsyncStorage.getItem('@jucoch_user_masked');
+        const storedAvatar = await AsyncStorage.getItem('@jucoch_user_avatar');
+        if (storedAvatar) setUserAvatarState(storedAvatar);
         
         // Load local cached logs so UI is immediately populated
         const storedMoods = await AsyncStorage.getItem('@jucoch_local_mood_logs');
@@ -248,12 +253,22 @@ export const WellnessProvider = ({ children }: { children: React.ReactNode }) =>
     }
   }, []);
 
+  const setUserAvatar = useCallback((avatar: string) => {
+    setUserAvatarState(avatar);
+    if (avatar) {
+      AsyncStorage.setItem('@jucoch_user_avatar', avatar).catch(console.error);
+    } else {
+      AsyncStorage.removeItem('@jucoch_user_avatar').catch(console.error);
+    }
+  }, []);
+
   const logout = useCallback(async () => {
     try {
       await AsyncStorage.multiRemove([
         '@jucoch_user_token',
         '@jucoch_user_alias',
         '@jucoch_user_role',
+        '@jucoch_user_avatar',
         '@jucoch_local_mood_logs',
         '@jucoch_local_sleep_logs',
         '@jucoch_local_activity_logs',
@@ -265,6 +280,7 @@ export const WellnessProvider = ({ children }: { children: React.ReactNode }) =>
     setUserTokenState(null);
     setUserAliasState('');
     setUserRoleState('');
+    setUserAvatarState('🌿');
     setMoodLogs([]);
     setSleepLogs([]);
     setActivityEntries([]);
@@ -412,6 +428,7 @@ export const WellnessProvider = ({ children }: { children: React.ReactNode }) =>
     userAlias,
     userRole,
     userToken,
+    userAvatar,
     isAuthLoading,
     isDarkMode,
     isMasked,
@@ -422,6 +439,7 @@ export const WellnessProvider = ({ children }: { children: React.ReactNode }) =>
     setUserAlias,
     setUserRole,
     setUserToken,
+    setUserAvatar,
     setIsMasked,
     refreshUserData,
     logout,

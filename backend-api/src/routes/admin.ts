@@ -26,6 +26,21 @@ const verifyAdmin = async (req: Request, res: Response, next: () => void): Promi
   }
 };
 
+// Helper function to mask journal text with asterisks (e.g. "Final Exam" -> "Fi***l Ex***m")
+const maskJournalText = (text: string): string => {
+  if (!text) return '*** (Protected)';
+  const words = text.trim().split(/\s+/).slice(0, 6);
+  const maskedWords = words.map(w => {
+    // strip punctuation for clean letter masking
+    const cleanWord = w.replace(/[^a-zA-Z0-9]/g, '');
+    if (cleanWord.length <= 1) return `${cleanWord}*`;
+    if (cleanWord.length <= 2) return `${cleanWord[0]}*`;
+    if (cleanWord.length === 3) return `${cleanWord[0]}*${cleanWord[2]}`;
+    return `${cleanWord.slice(0, 2)}***${cleanWord.slice(-1)}`;
+  });
+  return maskedWords.join(' ');
+};
+
 // Helper function to mask email for strict student privacy protection (e.g. j***z@gmail.com)
 const maskUserEmail = (email: string): string => {
   if (!email || !email.includes('@')) return '***@anonymous.protected';
@@ -69,7 +84,7 @@ router.get('/users', verifyAdmin, async (req: Request, res: Response): Promise<v
   }
 });
 
-// GET /api/admin/activities - Live user activity audit feed across mood, sleep, activity, and journal entries
+// GET /api/admin/activities - Live user activity audit feed across mood, sleep, activity, and masked journal entries
 router.get('/activities', verifyAdmin, async (req: Request, res: Response): Promise<void> => {
   try {
     const moodLogs = await prisma.moodLog.findMany({
@@ -96,19 +111,19 @@ router.get('/activities', verifyAdmin, async (req: Request, res: Response): Prom
       include: { user: { select: { alias: true, role: true, isAnonymous: true } } },
     });
 
-    // Format into a privacy-first real-time audit feed
+    // Format into a privacy-first real-time audit feed with masked text (***)
     const formattedFeed = [
       ...moodLogs.map(m => ({
         id: `mood-${m.id}`,
         alias: m.user.isAnonymous ? 'Anonymous User' : (m.user.alias || 'Encrypted User'),
         role: m.user.role,
         action: 'Mood Check-in',
-        detail: `${m.emoji} ${m.mood}${m.note ? ' • [🔒 Private Note Encrypted]' : ''}`,
+        detail: `${m.emoji} ${m.mood}${m.note ? ` • [🔒 ${maskJournalText(m.note)}]` : ''}`,
         createdAt: m.createdAt,
       })),
       ...sleepLogs.map(s => ({
         id: `sleep-${s.id}`,
-        alias: m.user.isAnonymous ? 'Anonymous User' : (s.user.alias || 'Encrypted User'),
+        alias: s.user.isAnonymous ? 'Anonymous User' : (s.user.alias || 'Encrypted User'),
         role: s.user.role,
         action: 'Sleep Recorded',
         detail: `${s.hours} hours (${s.quality} quality)`,
@@ -122,14 +137,18 @@ router.get('/activities', verifyAdmin, async (req: Request, res: Response): Prom
         detail: `${a.type} • ${a.duration} mins`,
         createdAt: a.createdAt,
       })),
-      ...journalEntries.map(j => ({
-        id: `journal-${j.id}`,
-        alias: j.user.isAnonymous ? 'Anonymous User' : (j.user.alias || 'Encrypted User'),
-        role: j.user.role,
-        action: 'Journal Reflection',
-        detail: '🔒 256-Bit Encrypted Personal Reflection (Confidential)',
-        createdAt: j.createdAt,
-      })),
+      ...journalEntries.map(j => {
+        const rawText = j.content || 'Personal Reflection';
+        const masked = maskJournalText(rawText);
+        return {
+          id: `journal-${j.id}`,
+          alias: j.user.isAnonymous ? 'Anonymous User' : (j.user.alias || 'Encrypted User'),
+          role: j.user.role,
+          action: 'Journal Reflection',
+          detail: `🔒 ${masked} (Masked Journal Entry)`,
+          createdAt: j.createdAt,
+        };
+      }),
     ].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
     res.json({ activities: formattedFeed.slice(0, 50) });

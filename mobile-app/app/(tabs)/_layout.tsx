@@ -67,22 +67,22 @@ export default function TabLayout() {
       <Tabs.Screen
         name="add"
         options={{
-          title: '',
+          tabBarLabel: () => null,
           href: isAdmin ? null : undefined,
           tabBarIcon: () => (
             <View style={{
-              width: 50,
-              height: 50,
-              borderRadius: 25,
+              width: 48,
+              height: 48,
+              borderRadius: 24,
               backgroundColor: JUCOCH_GREEN,
               justifyContent: 'center',
               alignItems: 'center',
-              marginTop: -28,
+              marginTop: Platform.OS === 'ios' ? -8 : -6,
               elevation: 6,
               shadowColor: JUCOCH_GREEN,
-              shadowOffset: { width: 0, height: 4 },
-              shadowOpacity: 0.4,
-              shadowRadius: 8,
+              shadowOffset: { width: 0, height: 3 },
+              shadowOpacity: 0.35,
+              shadowRadius: 6,
             }}>
               <PlusCircle size={26} color="#FFF" />
             </View>

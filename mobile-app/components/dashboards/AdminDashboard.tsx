@@ -41,6 +41,7 @@ export default function AdminDashboard() {
 
   const [registeredUsers, setRegisteredUsers] = useState<any[]>([]);
   const [dailyActivities, setDailyActivities] = useState<any[]>([]);
+  const [activityFilter, setActivityFilter] = useState<'All' | 'Student' | 'Individual'>('All');
 
   // Moderation state
   const [moderationMsg, setModerationMsg] = useState('');
@@ -98,8 +99,8 @@ export default function AdminDashboard() {
             action: a.action,
             detail: a.detail,
             time: formatEventDate(a.createdAt),
-            icon: a.action.includes('Mood') ? Smile : a.action.includes('Sleep') ? Moon : Activity,
-            color: a.action.includes('Mood') ? '#48BB78' : a.action.includes('Sleep') ? '#5F27CD' : JUCOCH_GREEN,
+            icon: a.action.includes('Mood') ? Smile : a.action.includes('Sleep') ? Moon : a.action.includes('Journal') ? BookOpen : Activity,
+            color: a.action.includes('Mood') ? '#48BB78' : a.action.includes('Sleep') ? '#5F27CD' : a.action.includes('Journal') ? '#D97706' : JUCOCH_GREEN,
           })));
         }
       }
@@ -383,85 +384,154 @@ export default function AdminDashboard() {
       )}
 
       {/* VIEW 2: DAILY USER ACTIVITY FEED */}
-      {activeTab === 'activity' && (
-        <Surface style={[styles.listContainer, { backgroundColor: dynamicCardBg, borderColor: dynamicBorder }]} elevation={2}>
-          <View style={styles.feedHeader}>
-            <Text style={styles.rosterTitle}>LIVE USER ENGAGEMENT AUDIT FEED</Text>
-            <Text style={styles.liveBadge}>● PRIVACY-ENCRYPTED</Text>
-          </View>
-          <Text style={[styles.feedSubtitle, { color: dynamicSub }]}>
-            🔒 End-to-End Privacy Active: User journals and personal notes are anonymized & 256-bit encrypted.
-          </Text>
-          <Divider style={{ marginVertical: 10 }} />
+      {activeTab === 'activity' && (() => {
+        const studentCount = dailyActivities.filter(a => a.role === 'Student').length;
+        const individualCount = dailyActivities.filter(a => a.role === 'Individual').length;
+        const filteredList = dailyActivities.filter(a => {
+          if (activityFilter === 'Student') return a.role === 'Student';
+          if (activityFilter === 'Individual') return a.role === 'Individual';
+          return true;
+        });
 
-          {/* Moderation Toast Message */}
-          {!!moderationMsg && (
-            <Surface style={styles.moderationToast} elevation={3}>
-              <CheckCircle size={16} color={JUCOCH_GREEN} style={{ marginRight: 6 }} />
-              <Text style={styles.moderationToastText}>{moderationMsg}</Text>
-            </Surface>
-          )}
-
-          {dailyActivities.length === 0 ? (
-            <View style={styles.emptyStateContainer}>
-              <Activity size={32} color={dynamicSub} style={{ marginBottom: 8 }} />
-              <Text style={[styles.emptyTitle, { color: dynamicText }]}>No Daily Activity Logged Today</Text>
-              <Text style={[styles.emptySub, { color: dynamicSub }]}>When users check in, log moods, or chat with AI, their live activities will display here.</Text>
+        return (
+          <Surface style={[styles.listContainer, { backgroundColor: dynamicCardBg, borderColor: dynamicBorder }]} elevation={2}>
+            <View style={styles.feedHeader}>
+              <View style={{ flex: 1, minWidth: 160 }}>
+                <Text style={styles.rosterTitle}>LIVE USER ENGAGEMENT AUDIT FEED</Text>
+              </View>
+              <Surface style={[styles.liveBadgeSurface, { backgroundColor: isDarkMode ? '#193324' : '#E8F5EE' }]} elevation={0}>
+                <Text style={styles.liveBadge}>● PRIVACY-ENCRYPTED</Text>
+              </Surface>
             </View>
-          ) : (
-            dailyActivities.map((act, index) => {
-              const IconComp = act.icon;
-              const isActMasked = act.alias === 'Anonymous User';
-              const displayActAlias = isActMasked ? 'Anonymous User (Masked)' : act.alias;
+            <Text style={[styles.feedSubtitle, { color: dynamicSub }]}>
+              🔒 End-to-End Privacy Active: User journals and personal notes are anonymized & 256-bit encrypted.
+            </Text>
 
-              return (
-                <View key={act.id}>
-                  {index > 0 && <Divider style={styles.divider} />}
-                  <View style={styles.activityRow}>
-                    <View style={[styles.activityIconBg, { backgroundColor: `${act.color}18` }]}>
-                      <IconComp size={18} color={act.color} />
-                    </View>
+            {/* SEPARATED ACTIVITIES FILTER TABS (STUDENT VS INDIVIDUAL) */}
+            <View style={styles.activityFilterRow}>
+              <TouchableOpacity
+                style={[
+                  styles.activityFilterBtn,
+                  { borderColor: dynamicBorder, backgroundColor: isDarkMode ? '#1E2521' : '#F3F8F5' },
+                  activityFilter === 'All' && { backgroundColor: JUCOCH_GREEN, borderColor: JUCOCH_GREEN }
+                ]}
+                onPress={() => setActivityFilter('All')}
+                activeOpacity={0.8}
+              >
+                <Text style={[styles.activityFilterBtnText, { color: dynamicSub }, activityFilter === 'All' && { color: '#FFF' }]}>
+                  All ({dailyActivities.length})
+                </Text>
+              </TouchableOpacity>
 
-                    <View style={styles.activityDetails}>
-                      <View style={styles.nameRow}>
-                        <Text style={[styles.userName, { color: dynamicText }]}>
-                          {displayActAlias}
-                        </Text>
-                        <Text style={[styles.activityTime, { color: dynamicSub }]}>{act.time}</Text>
+              <TouchableOpacity
+                style={[
+                  styles.activityFilterBtn,
+                  { borderColor: dynamicBorder, backgroundColor: isDarkMode ? '#1E2521' : '#F3F8F5' },
+                  activityFilter === 'Student' && { backgroundColor: '#1E88E5', borderColor: '#1E88E5' }
+                ]}
+                onPress={() => setActivityFilter('Student')}
+                activeOpacity={0.8}
+              >
+                <Text style={[styles.activityFilterBtnText, { color: dynamicSub }, activityFilter === 'Student' && { color: '#FFF' }]}>
+                  🎓 Students ({studentCount})
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.activityFilterBtn,
+                  { borderColor: dynamicBorder, backgroundColor: isDarkMode ? '#1E2521' : '#F3F8F5' },
+                  activityFilter === 'Individual' && { backgroundColor: JUCOCH_GREEN, borderColor: JUCOCH_GREEN }
+                ]}
+                onPress={() => setActivityFilter('Individual')}
+                activeOpacity={0.8}
+              >
+                <Text style={[styles.activityFilterBtnText, { color: dynamicSub }, activityFilter === 'Individual' && { color: '#FFF' }]}>
+                  👤 Individuals ({individualCount})
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            <Divider style={{ marginVertical: 8 }} />
+
+            {/* Moderation Toast Message */}
+            {!!moderationMsg && (
+              <Surface style={styles.moderationToast} elevation={3}>
+                <CheckCircle size={16} color={JUCOCH_GREEN} style={{ marginRight: 6 }} />
+                <Text style={styles.moderationToastText}>{moderationMsg}</Text>
+              </Surface>
+            )}
+
+            {filteredList.length === 0 ? (
+              <View style={styles.emptyStateContainer}>
+                <Activity size={32} color={dynamicSub} style={{ marginBottom: 8 }} />
+                <Text style={[styles.emptyTitle, { color: dynamicText }]}>No Activity Records Found</Text>
+                <Text style={[styles.emptySub, { color: dynamicSub }]}>
+                  {activityFilter === 'All'
+                    ? 'When users check in, log moods, or chat with AI, their live activities will display here.'
+                    : `No ${activityFilter} activity records currently logged.`}
+                </Text>
+              </View>
+            ) : (
+              filteredList.map((act, index) => {
+                const IconComp = act.icon;
+                const isActMasked = act.alias === 'Anonymous User';
+                const displayActAlias = isActMasked ? 'Anonymous User (Masked)' : act.alias;
+                const isJournal = act.action === 'Journal Reflection';
+
+                return (
+                  <View key={act.id}>
+                    {index > 0 && <Divider style={styles.divider} />}
+                    <View style={styles.activityRow}>
+                      <View style={[styles.activityIconBg, { backgroundColor: `${act.color}18` }]}>
+                        <IconComp size={18} color={act.color} />
                       </View>
-                      <Text style={[styles.actionText, { color: dynamicText }]}>
-                        <Text style={{ fontWeight: 'bold', color: act.color }}>{act.action}</Text>: {act.detail}
-                      </Text>
-                      <Text style={[styles.userRoleTag, { color: dynamicSub }]}>Account Role: {act.role}</Text>
-                    </View>
 
-                    {/* Admin Moderation Controls for Activity Log */}
-                    <View style={styles.rowControls}>
-                      <TouchableOpacity
-                        onPress={() => {
-                          setEditActivity(act);
-                          setEditActivityDetail(act.detail);
-                        }}
-                        style={[styles.smallActionBtn, { backgroundColor: isDarkMode ? '#25352A' : '#E8F5E9' }]}
-                        activeOpacity={0.7}
-                      >
-                        <Edit3 size={12} color={JUCOCH_GREEN} />
-                      </TouchableOpacity>
-                      <TouchableOpacity
-                        onPress={() => setDeletingActivityId(act.id)}
-                        style={[styles.smallActionBtn, { backgroundColor: isDarkMode ? '#3A1F1F' : '#FFE5E5' }]}
-                        activeOpacity={0.7}
-                      >
-                        <Trash2 size={12} color="#D90429" />
-                      </TouchableOpacity>
+                      <View style={styles.activityDetails}>
+                        <View style={styles.nameRow}>
+                          <Text style={[styles.userName, { color: dynamicText }]}>
+                            {displayActAlias}
+                          </Text>
+                          <Text style={[styles.activityTime, { color: dynamicSub }]}>{act.time}</Text>
+                        </View>
+                        <Text style={[styles.actionText, { color: dynamicText }]}>
+                          <Text style={{ fontWeight: 'bold', color: act.color }}>{act.action}</Text>: {act.detail}
+                        </Text>
+                        <Text style={[styles.userRoleTag, { color: dynamicSub }]}>
+                          Account Role: <Text style={{ fontWeight: 'bold' }}>{act.role}</Text>
+                        </Text>
+                      </View>
+
+                      {/* Admin Moderation Controls for Activity Log */}
+                      <View style={styles.rowControls}>
+                        {!isJournal && (
+                          <TouchableOpacity
+                            onPress={() => {
+                              setEditActivity(act);
+                              setEditActivityDetail(act.detail);
+                            }}
+                            style={[styles.smallActionBtn, { backgroundColor: isDarkMode ? '#25352A' : '#E8F5E9' }]}
+                            activeOpacity={0.7}
+                          >
+                            <Edit3 size={12} color={JUCOCH_GREEN} />
+                          </TouchableOpacity>
+                        )}
+                        <TouchableOpacity
+                          onPress={() => setDeletingActivityId(act.id)}
+                          style={[styles.smallActionBtn, { backgroundColor: isDarkMode ? '#3A1F1F' : '#FFE5E5' }]}
+                          activeOpacity={0.7}
+                        >
+                          <Trash2 size={12} color="#D90429" />
+                        </TouchableOpacity>
+                      </View>
                     </View>
                   </View>
-                </View>
-              );
-            })
-          )}
-        </Surface>
-      )}
+                );
+              })
+            )}
+          </Surface>
+        );
+      })()}
 
       {/* VIEW 3: 2 OFFICIAL CREATOR ADMIN GMAIL ACCOUNTS */}
       {activeTab === 'admins' && (
@@ -787,6 +857,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 4,
   },
   rosterTitle: {
     fontSize: 11,
@@ -794,14 +867,39 @@ const styles = StyleSheet.create({
     color: '#808983',
     letterSpacing: 1,
   },
+  liveBadgeSurface: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+    alignSelf: 'flex-start',
+  },
   liveBadge: {
     fontSize: 10,
     fontWeight: 'bold',
     color: JUCOCH_GREEN,
   },
+  activityFilterRow: {
+    flexDirection: 'row',
+    gap: 6,
+    marginTop: 10,
+    marginBottom: 4,
+  },
+  activityFilterBtn: {
+    flex: 1,
+    paddingVertical: 7,
+    paddingHorizontal: 6,
+    borderRadius: 12,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  activityFilterBtnText: {
+    fontSize: 10,
+    fontWeight: 'bold',
+  },
   feedSubtitle: {
     fontSize: 11,
-    marginTop: 4,
+    marginTop: 2,
   },
   activityRow: {
     flexDirection: 'row',

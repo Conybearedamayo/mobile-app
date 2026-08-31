@@ -260,17 +260,6 @@ router.post('/login', async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    // Role Mismatch Validation: ensure selected role matches registered account role
-    if (role && typeof role === 'string' && role.trim() && user.role !== 'Admin') {
-      const selectedRole = role.trim();
-      if (selectedRole.toLowerCase() !== user.role.toLowerCase()) {
-        res.status(400).json({
-          error: `Account Role Mismatch: This account is registered as a "${user.role}". Please select "${user.role}" on the login screen.`
-        });
-        return;
-      }
-    }
-
     // Automatic Role Detection from Neon PostgreSQL Database
     const activeRole = user.role;
 

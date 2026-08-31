@@ -21,7 +21,7 @@ const QUICK_ACTIONS = [
 
 export default function HomeScreen() {
   const router = useRouter();
-  const { userAlias, userRole, moodLogs, sleepLogs, activityEntries, wellnessScore, getCurrentStreak, addMoodLog, isDarkMode } = useWellness();
+  const { userAlias, userRole, userAvatar, moodLogs, sleepLogs, activityEntries, wellnessScore, getCurrentStreak, addMoodLog, isDarkMode } = useWellness();
 
   const [selectedMood, setSelectedMood] = useState<string | null>(null);
   const [moodSavedMsg, setMoodSavedMsg] = useState('');
@@ -144,6 +144,7 @@ export default function HomeScreen() {
   const displayName = userAlias || 'User';
   const displayRole = userRole || 'Individual';
   const isAdmin = displayRole === 'Admin';
+  const isStudent = displayRole === 'Student';
 
   const dynamicBg = isDarkMode ? '#121614' : '#F3F8F5';
   const dynamicCardBg = isDarkMode ? '#1C231F' : '#FFFFFF';
@@ -205,7 +206,9 @@ export default function HomeScreen() {
 
             <TouchableOpacity onPress={() => router.push('/(tabs)/profile')} activeOpacity={0.8}>
               <Surface style={[styles.avatarSurface, { backgroundColor: dynamicCardBg, borderColor: dynamicBorder }]} elevation={3}>
-                <Avatar.Text size={50} label={displayName.slice(0, 2).toUpperCase()} style={{ backgroundColor: JUCOCH_GREEN }} />
+                <View style={{ width: 50, height: 50, borderRadius: 25, backgroundColor: isStudent ? '#E3F2FD' : '#E8F5EE', justifyContent: 'center', alignItems: 'center' }}>
+                  <Text style={{ fontSize: 26 }}>{userAvatar || '🌿'}</Text>
+                </View>
                 <Badge style={styles.onlineBadge} size={12} />
               </Surface>
             </TouchableOpacity>

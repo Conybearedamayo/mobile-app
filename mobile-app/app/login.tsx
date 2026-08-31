@@ -16,7 +16,6 @@ export default function LoginScreen() {
   const { setUserAlias, setUserRole, setUserToken } = useWellness();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [role, setRole] = useState('Individual');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -43,13 +42,13 @@ export default function LoginScreen() {
     setError('');
     setLoading(true);
     try {
-      const res = await loginUser(trimmedEmail, password, role);
+      const res = await loginUser(trimmedEmail, password);
       if (res?.requiresOtp) {
         setOtpEmail(res.email || trimmedEmail);
         setShowOtpModal(true);
       } else if (res?.user && res?.token) {
         setUserAlias(res.user.alias);
-        setUserRole(res.user.role);
+        setUserRole(res.user.role || 'Individual');
         setUserToken(res.token);
         router.replace('/(tabs)');
       } else {
@@ -64,7 +63,7 @@ export default function LoginScreen() {
 
   const handleOtpVerified = (res: AuthResponse) => {
     setShowOtpModal(false);
-    const verifiedRole = res.user?.role || role;
+    const verifiedRole = res.user?.role || res.role || 'Individual';
     setUserAlias(res.user?.alias || email.split('@')[0] || 'User');
     setUserRole(verifiedRole);
     setUserToken(res.token || 'jwt-user-token');
@@ -75,11 +74,6 @@ export default function LoginScreen() {
     setEmail(resetEmail);
     setError('');
   };
-
-  const roles = [
-    { name: 'Individual', label: 'Personal Tracker', icon: User },
-    { name: 'Student', label: 'Campus Account', icon: GraduationCap },
-  ];
 
   return (
     <KeyboardAvoidingView 
@@ -130,37 +124,6 @@ export default function LoginScreen() {
           {/* Premium Glassmorphism Login Card */}
           <Surface style={styles.loginCard} elevation={4}>
             
-            {/* Public Role Selector (Individual & Student) */}
-            <View style={styles.roleSection}>
-              <Text style={styles.sectionLabel}>CHOOSE YOUR ACCOUNT TYPE</Text>
-              <View style={styles.roleChipGrid}>
-                {roles.map((r) => {
-                  const Icon = r.icon;
-                  const isSelected = role === r.name;
-                  return (
-                    <TouchableOpacity 
-                      key={r.name} 
-                      style={[styles.roleChip, isSelected && styles.selectedRoleChip]}
-                      onPress={() => setRole(r.name)}
-                      activeOpacity={0.8}
-                    >
-                      <View style={[styles.roleIconBg, isSelected && styles.selectedRoleIconBg]}>
-                        <Icon size={18} color={isSelected ? '#FFF' : JUCOCH_GREEN} />
-                      </View>
-                      <View style={{ flex: 1 }}>
-                        <Text style={[styles.roleChipText, isSelected && styles.selectedRoleChipText]}>
-                          {r.name}
-                        </Text>
-                        <Text style={[styles.roleSubText, isSelected && styles.selectedRoleSubText]}>
-                          {r.label}
-                        </Text>
-                      </View>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-            </View>
-
             {/* Input Form Fields */}
             <View style={styles.inputContainer}>
               <TextInput

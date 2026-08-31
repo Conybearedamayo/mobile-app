@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, ScrollView, TouchableOpacity, Platform } from 'react-native';
-import { Text, Avatar, Button, Surface, Divider, Portal, Modal, TextInput, Switch } from 'react-native-paper';
+import { View, StyleSheet, ScrollView, TouchableOpacity, Platform, KeyboardAvoidingView } from 'react-native';
+import { Text, Avatar, Surface, Divider, Portal, Modal, TextInput, Switch } from 'react-native-paper';
 import { 
   ChevronRight, 
   Settings, 
@@ -8,27 +8,25 @@ import {
   Bell, 
   LogOut, 
   Award, 
-  Zap, 
   BookOpen, 
   Star, 
   ShieldCheck, 
-  Key, 
-  CheckCircle, 
   GraduationCap, 
   Moon, 
   Sun, 
   Compass, 
   X, 
   RefreshCw, 
-  Edit3, 
   Sparkles, 
   Check, 
   Lock, 
-  Activity, 
   Clock, 
   Heart,
   Copy,
-  Smile
+  Smile,
+  User,
+  CheckCircle,
+  Palette
 } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { useWellness } from '@/context/WellnessContext';
@@ -37,12 +35,27 @@ import AppGuideModal from '@/components/AppGuideModal';
 
 const JUCOCH_GREEN = '#2D6A4F';
 
+const WELLNESS_AVATARS = [
+  { id: 'sprout', emoji: '🌿', name: 'Mindful Sprout', desc: 'Growth & Vitality' },
+  { id: 'fox', emoji: '🦊', name: 'Clever Fox', desc: 'Adaptable & Calm' },
+  { id: 'panda', emoji: '🐼', name: 'Zen Panda', desc: 'Peace & Balance' },
+  { id: 'owl', emoji: '🦉', name: 'Wise Owl', desc: 'Insight & Clarity' },
+  { id: 'lotus', emoji: '🌸', name: 'Calm Lotus', desc: 'Resilience & Purity' },
+  { id: 'lion', emoji: '🦁', name: 'Brave Lion', desc: 'Strength & Courage' },
+  { id: 'dolphin', emoji: '🐬', name: 'Peaceful Dolphin', desc: 'Harmony & Joy' },
+  { id: 'star', emoji: '🌟', name: 'Bright Star', desc: 'Hope & Radiance' },
+  { id: 'meditator', emoji: '🧘', name: 'Zen Meditator', desc: 'Inner Stillness' },
+  { id: 'sun', emoji: '🌻', name: 'Sunny Bloom', desc: 'Warmth & Optimism' },
+];
+
 export default function ProfileScreen() {
   const router = useRouter();
   const { 
     userAlias, 
     userRole, 
     userToken, 
+    userAvatar,
+    setUserAvatar,
     logout, 
     sleepLogs, 
     moodLogs, 
@@ -64,6 +77,7 @@ export default function ProfileScreen() {
   const [showAchievementsModal, setShowAchievementsModal] = useState(false);
   const [showPrivacyModal, setShowPrivacyModal] = useState(false);
   const [showNotificationsModal, setShowNotificationsModal] = useState(false);
+  const [showAvatarModal, setShowAvatarModal] = useState(false);
 
   // Settings State
   const [editAliasInput, setEditAliasInput] = useState(userAlias || '');
@@ -129,16 +143,19 @@ export default function ProfileScreen() {
           {/* Polished Profile Header */}
           <View style={styles.header}>
             <Surface style={[styles.avatarOutline, { backgroundColor: dynamicCardBg, borderColor: dynamicBorder }]} elevation={4}>
-              <Avatar.Text size={96} label={displayName.slice(0, 2).toUpperCase()} style={{ backgroundColor: isStudent ? '#1E88E5' : JUCOCH_GREEN }} />
+              <TouchableOpacity 
+                activeOpacity={0.8} 
+                onPress={() => setShowAvatarModal(true)}
+                style={[styles.avatarCircle, { backgroundColor: isStudent ? '#1E88E5' : JUCOCH_GREEN }]}
+              >
+                <Text style={styles.avatarLargeEmoji}>{userAvatar || '🌿'}</Text>
+              </TouchableOpacity>
               <TouchableOpacity 
                 style={[styles.editBadge, { backgroundColor: isStudent ? '#1E88E5' : JUCOCH_GREEN }]}
-                onPress={() => {
-                  setEditAliasInput(userAlias || '');
-                  setShowSettingsModal(true);
-                }}
+                onPress={() => setShowAvatarModal(true)}
                 activeOpacity={0.8}
               >
-                <Settings size={14} color="#FFF" />
+                <Sparkles size={14} color="#FFF" />
               </TouchableOpacity>
             </Surface>
             
@@ -188,7 +205,7 @@ export default function ProfileScreen() {
                 <StatBox value={journalEntries.length.toString()} label="Journals" color="#FF9F43" />
               </Surface>
 
-              {/* Wellness Section (Cleaned: Removed Wellness Circle) */}
+              {/* Wellness Section */}
               <View style={styles.section}>
                 <Text style={styles.sectionTitle}>MY WELLNESS JOURNEY</Text>
                 <Surface style={[styles.menuCard, { backgroundColor: dynamicCardBg, borderColor: dynamicBorder }]} elevation={1}>
@@ -218,6 +235,32 @@ export default function ProfileScreen() {
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>SYSTEM & PREFERENCES</Text>
             <Surface style={[styles.menuCard, { backgroundColor: dynamicCardBg, borderColor: dynamicBorder }]} elevation={1}>
+              
+              {/* CUSTOM AVATAR PICKER */}
+              <MenuItem 
+                icon={Palette} 
+                title="Anonymous Wellness Avatar" 
+                subtitle={`Current: ${userAvatar || '🌿'} (Tap to change)`} 
+                onPress={() => setShowAvatarModal(true)} 
+                dynamicText={dynamicText} 
+                dynamicSub={dynamicSub} 
+              />
+              <Divider style={styles.divider} />
+
+              {/* ACCOUNT SETTINGS */}
+              <MenuItem 
+                icon={Settings} 
+                title="Account & Display Alias" 
+                subtitle={`Alias: ${displayName}`} 
+                onPress={() => {
+                  setEditAliasInput(userAlias || '');
+                  setShowSettingsModal(true);
+                }} 
+                dynamicText={dynamicText} 
+                dynamicSub={dynamicSub} 
+              />
+              <Divider style={styles.divider} />
+
               {/* DARK MODE / LIGHT MODE TOGGLE */}
               <View style={styles.themeToggleItem}>
                 <View style={styles.menuIconWrapper}>
@@ -280,18 +323,70 @@ export default function ProfileScreen() {
             <Text style={styles.logoutText}>Sign Out Securely</Text>
           </TouchableOpacity>
 
-          <Text style={styles.versionText}>JUCOCH AI SYSTEM • BETA v1.0.0</Text>
-
+          <Text style={styles.versionText}>Jucoch Platform v2.6.0 • Capstone Edition</Text>
         </View>
       </ScrollView>
 
-      {/* APP ONBOARDING & GUIDED TOUR MODAL */}
-      <AppGuideModal
-        visible={showGuideModal}
-        onClose={() => setShowGuideModal(false)}
-      />
+      {/* MODAL 0: AVATAR PICKER */}
+      <Portal>
+        <Modal
+          visible={showAvatarModal}
+          onDismiss={() => setShowAvatarModal(false)}
+          contentContainerStyle={styles.modalContentStyle}
+        >
+          <Surface style={[styles.modalCard, { backgroundColor: dynamicCardBg }]} elevation={5}>
+            <View style={styles.modalHeader}>
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <Palette size={18} color={JUCOCH_GREEN} style={{ marginRight: 8 }} />
+                <Text style={[styles.modalTitle, { color: dynamicText }]}>Choose Your Wellness Avatar</Text>
+              </View>
+              <TouchableOpacity onPress={() => setShowAvatarModal(false)}>
+                <X size={20} color={dynamicSub} />
+              </TouchableOpacity>
+            </View>
 
-      {/* MODAL 1: ACCOUNT SETTINGS & ALIAS EDIT */}
+            <Text style={[styles.modalSub, { color: dynamicSub }]}>
+              Select an anonymous wellness character to represent your private profile.
+            </Text>
+
+            <ScrollView style={{ maxHeight: 340 }} showsVerticalScrollIndicator={false}>
+              <View style={styles.avatarGrid}>
+                {WELLNESS_AVATARS.map((av) => {
+                  const isSelected = userAvatar === av.emoji;
+                  return (
+                    <TouchableOpacity
+                      key={av.id}
+                      style={[
+                        styles.avatarOptionCard,
+                        { backgroundColor: isDarkMode ? '#17221C' : '#F4F9F6', borderColor: dynamicBorder },
+                        isSelected && { borderColor: JUCOCH_GREEN, borderWidth: 2, backgroundColor: isDarkMode ? '#1E3528' : '#E8F5EE' }
+                      ]}
+                      onPress={() => {
+                        setUserAvatar(av.emoji);
+                        showToast(`Avatar updated to ${av.emoji} ${av.name}!`);
+                        setShowAvatarModal(false);
+                      }}
+                      activeOpacity={0.75}
+                    >
+                      <Text style={styles.avatarOptionEmoji}>{av.emoji}</Text>
+                      <Text style={[styles.avatarOptionName, { color: dynamicText }, isSelected && { color: JUCOCH_GREEN, fontWeight: 'bold' }]}>
+                        {av.name}
+                      </Text>
+                      <Text style={[styles.avatarOptionDesc, { color: dynamicSub }]}>{av.desc}</Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </ScrollView>
+
+            <TouchableOpacity style={styles.closeReportBtn} onPress={() => setShowAvatarModal(false)}>
+              <Text style={{ color: '#FFF', fontWeight: 'bold' }}>Done</Text>
+            </TouchableOpacity>
+          </Surface>
+        </Modal>
+      </Portal>
+
+      {/* MODAL 1: ACCOUNT SETTINGS */}
       <Portal>
         <Modal
           visible={showSettingsModal}
@@ -313,34 +408,36 @@ export default function ProfileScreen() {
               Manage your anonymous display alias and sync your data with the cloud database.
             </Text>
 
-            <TextInput
-              label="Edit Anonymous Alias"
-              value={editAliasInput}
-              onChangeText={setEditAliasInput}
-              mode="outlined"
-              outlineColor={dynamicBorder}
-              activeOutlineColor={JUCOCH_GREEN}
-              style={[styles.modalInput, { backgroundColor: dynamicCardBg }]}
-              textColor={dynamicText}
-            />
+            <ScrollView style={{ maxHeight: 340 }} showsVerticalScrollIndicator={false}>
+              <TextInput
+                label="Edit Anonymous Alias"
+                value={editAliasInput}
+                onChangeText={setEditAliasInput}
+                mode="outlined"
+                outlineColor={dynamicBorder}
+                activeOutlineColor={JUCOCH_GREEN}
+                style={[styles.modalInput, { backgroundColor: dynamicCardBg }]}
+                textColor={dynamicText}
+              />
 
-            <View style={[styles.infoBanner, { backgroundColor: isDarkMode ? '#1E2E25' : '#E8F5EE', borderColor: dynamicBorder }]}>
-              <GraduationCap size={16} color={JUCOCH_GREEN} style={{ marginRight: 8 }} />
-              <Text style={[styles.infoBannerText, { color: dynamicText }]}>
-                Registered Role: <Text style={{ fontWeight: 'bold' }}>{displayRole}</Text>
-              </Text>
-            </View>
+              <View style={[styles.infoBanner, { backgroundColor: isDarkMode ? '#1E2E25' : '#E8F5EE', borderColor: dynamicBorder }]}>
+                <GraduationCap size={16} color={JUCOCH_GREEN} style={{ marginRight: 8 }} />
+                <Text style={[styles.infoBannerText, { color: dynamicText }]}>
+                  Registered Role: <Text style={{ fontWeight: 'bold' }}>{displayRole}</Text>
+                </Text>
+              </View>
 
-            <TouchableOpacity 
-              style={[styles.syncButton, { borderColor: dynamicBorder }]}
-              onPress={handleManualSync}
-              disabled={isSyncing}
-            >
-              <RefreshCw size={16} color={JUCOCH_GREEN} style={{ marginRight: 8 }} />
-              <Text style={{ color: JUCOCH_GREEN, fontWeight: 'bold', fontSize: 13 }}>
-                {isSyncing ? 'Syncing with Database...' : 'Sync Cloud Database Now'}
-              </Text>
-            </TouchableOpacity>
+              <TouchableOpacity 
+                style={[styles.syncButton, { borderColor: dynamicBorder }]}
+                onPress={handleManualSync}
+                disabled={isSyncing}
+              >
+                <RefreshCw size={16} color={JUCOCH_GREEN} style={{ marginRight: 8 }} />
+                <Text style={{ color: JUCOCH_GREEN, fontWeight: 'bold', fontSize: 13 }}>
+                  {isSyncing ? 'Syncing with Database...' : 'Sync Cloud Database Now'}
+                </Text>
+              </TouchableOpacity>
+            </ScrollView>
 
             <TouchableOpacity
               style={styles.submitModalBtn}
@@ -375,40 +472,42 @@ export default function ProfileScreen() {
               Summary of your emotional stability, sleep patterns, and daily habits.
             </Text>
 
-            <View style={styles.reportGrid}>
-              <View style={[styles.reportCard, { backgroundColor: isDarkMode ? '#1C2920' : '#E8F5EE' }]}>
-                <Clock size={18} color={JUCOCH_GREEN} style={{ marginBottom: 4 }} />
-                <Text style={[styles.reportValue, { color: JUCOCH_GREEN }]}>{avgSleep} hrs</Text>
-                <Text style={[styles.reportLabel, { color: dynamicSub }]}>Avg Sleep Rest</Text>
+            <ScrollView style={{ maxHeight: 360 }} showsVerticalScrollIndicator={false}>
+              <View style={styles.reportGrid}>
+                <View style={[styles.reportCard, { backgroundColor: isDarkMode ? '#1C2920' : '#E8F5EE' }]}>
+                  <Clock size={18} color={JUCOCH_GREEN} style={{ marginBottom: 4 }} />
+                  <Text style={[styles.reportValue, { color: JUCOCH_GREEN }]}>{avgSleep} hrs</Text>
+                  <Text style={[styles.reportLabel, { color: dynamicSub }]}>Avg Sleep Rest</Text>
+                </View>
+
+                <View style={[styles.reportCard, { backgroundColor: isDarkMode ? '#1E2538' : '#E3F2FD' }]}>
+                  <Smile size={18} color="#1E88E5" style={{ marginBottom: 4 }} />
+                  <Text style={[styles.reportValue, { color: '#1E88E5' }]}>{moodLogs.length}</Text>
+                  <Text style={[styles.reportLabel, { color: dynamicSub }]}>Mood Check-ins</Text>
+                </View>
+
+                <View style={[styles.reportCard, { backgroundColor: isDarkMode ? '#33271A' : '#FFF3E0' }]}>
+                  <Award size={18} color="#FF9F43" style={{ marginBottom: 4 }} />
+                  <Text style={[styles.reportValue, { color: '#FF9F43' }]}>{getCurrentStreak()} Days</Text>
+                  <Text style={[styles.reportLabel, { color: dynamicSub }]}>Active Streak</Text>
+                </View>
+
+                <View style={[styles.reportCard, { backgroundColor: isDarkMode ? '#2B1E38' : '#F3E5F5' }]}>
+                  <Heart size={18} color="#AB47BC" style={{ marginBottom: 4 }} />
+                  <Text style={[styles.reportValue, { color: '#AB47BC' }]}>{journalEntries.length}</Text>
+                  <Text style={[styles.reportLabel, { color: dynamicSub }]}>Journal Reflections</Text>
+                </View>
               </View>
 
-              <View style={[styles.reportCard, { backgroundColor: isDarkMode ? '#1E2538' : '#E3F2FD' }]}>
-                <Smile size={18} color="#1E88E5" style={{ marginBottom: 4 }} />
-                <Text style={[styles.reportValue, { color: '#1E88E5' }]}>{moodLogs.length}</Text>
-                <Text style={[styles.reportLabel, { color: dynamicSub }]}>Mood Check-ins</Text>
-              </View>
-
-              <View style={[styles.reportCard, { backgroundColor: isDarkMode ? '#33271A' : '#FFF3E0' }]}>
-                <Award size={18} color="#FF9F43" style={{ marginBottom: 4 }} />
-                <Text style={[styles.reportValue, { color: '#FF9F43' }]}>{getCurrentStreak()} Days</Text>
-                <Text style={[styles.reportLabel, { color: dynamicSub }]}>Active Streak</Text>
-              </View>
-
-              <View style={[styles.reportCard, { backgroundColor: isDarkMode ? '#2B1E38' : '#F3E5F5' }]}>
-                <Heart size={18} color="#AB47BC" style={{ marginBottom: 4 }} />
-                <Text style={[styles.reportValue, { color: '#AB47BC' }]}>{journalEntries.length}</Text>
-                <Text style={[styles.reportLabel, { color: dynamicSub }]}>Journal Reflections</Text>
-              </View>
-            </View>
-
-            <Surface style={[styles.aiInsightCard, { backgroundColor: dynamicCardBg, borderColor: dynamicBorder }]} elevation={1}>
-              <Sparkles size={16} color={JUCOCH_GREEN} style={{ marginRight: 8 }} />
-              <Text style={[styles.aiInsightText, { color: dynamicText }]}>
-                {moodLogs.length + sleepLogs.length === 0
-                  ? 'AI Evaluation: New Account Baseline (0%). Log your daily mood and sleep to generate personalized AI resilience analytics!'
-                  : `AI Evaluation: Your resilience score is at ${getWellnessScore()}%. Consistent sleep and daily reflection support healthy cognitive focus!`}
-              </Text>
-            </Surface>
+              <Surface style={[styles.aiInsightCard, { backgroundColor: dynamicCardBg, borderColor: dynamicBorder }]} elevation={1}>
+                <Sparkles size={16} color={JUCOCH_GREEN} style={{ marginRight: 8 }} />
+                <Text style={[styles.aiInsightText, { color: dynamicText }]}>
+                  {moodLogs.length + sleepLogs.length === 0
+                    ? 'AI Evaluation: New Account Baseline (0%). Log your daily mood and sleep to generate personalized AI resilience analytics!'
+                    : `AI Evaluation: Your resilience score is at ${getWellnessScore()}%. Consistent sleep and daily reflection support healthy cognitive focus!`}
+                </Text>
+              </Surface>
+            </ScrollView>
 
             <TouchableOpacity style={styles.closeReportBtn} onPress={() => setShowReportsModal(false)} activeOpacity={0.8}>
               <Text style={{ color: '#FFF', fontWeight: 'bold' }}>Close Report</Text>
@@ -439,7 +538,7 @@ export default function ProfileScreen() {
               Earn milestone badges by keeping up with your daily habits and reflections.
             </Text>
 
-            <ScrollView style={{ maxHeight: 320 }} showsVerticalScrollIndicator={false}>
+            <ScrollView style={{ maxHeight: 340 }} showsVerticalScrollIndicator={false}>
               <AchievementItem
                 title="Consistency Master"
                 desc="Maintained a 3+ day streak in the wellness tracker."
@@ -511,40 +610,42 @@ export default function ProfileScreen() {
               Your student privacy is guaranteed. No real names or emails are ever published.
             </Text>
 
-            <View style={styles.privacyItemRow}>
-              <View style={{ flex: 1, paddingRight: 10 }}>
-                <Text style={[styles.privacyItemTitle, { color: dynamicText }]}>Mask Alias in Activity Feed</Text>
-                <Text style={[styles.privacyItemSub, { color: dynamicSub }]}>Display as "Anonymous User" instead of your alias.</Text>
+            <ScrollView style={{ maxHeight: 340 }} showsVerticalScrollIndicator={false}>
+              <View style={styles.privacyItemRow}>
+                <View style={{ flex: 1, paddingRight: 10 }}>
+                  <Text style={[styles.privacyItemTitle, { color: dynamicText }]}>Mask Alias in Activity Feed</Text>
+                  <Text style={[styles.privacyItemSub, { color: dynamicSub }]}>Display as "Anonymous User" instead of your alias.</Text>
+                </View>
+                <Switch 
+                  value={isMasked} 
+                  onValueChange={(val) => {
+                    setIsMasked(val);
+                    showToast(val ? 'Alias masked as "Anonymous User".' : 'Alias visible to group.');
+                  }} 
+                  color={JUCOCH_GREEN} 
+                />
               </View>
-              <Switch 
-                value={isMasked} 
-                onValueChange={(val) => {
-                  setIsMasked(val);
-                  showToast(val ? 'Alias masked as "Anonymous User".' : 'Alias visible to group.');
-                }} 
-                color={JUCOCH_GREEN} 
-              />
-            </View>
 
-            <Divider style={{ marginVertical: 12 }} />
+              <Divider style={{ marginVertical: 12 }} />
 
-            <View style={[styles.encryptionCard, { backgroundColor: isDarkMode ? '#172B20' : '#E8F5EE' }]}>
-              <Lock size={16} color={JUCOCH_GREEN} style={{ marginRight: 8 }} />
-              <View style={{ flex: 1 }}>
-                <Text style={{ fontWeight: 'bold', fontSize: 12, color: JUCOCH_GREEN }}>256-Bit Encrypted Storage</Text>
-                <Text style={{ fontSize: 11, color: dynamicSub, marginTop: 2 }}>
-                  Reflections and mood check-ins are protected with strict student privacy protocols.
-                </Text>
+              <View style={[styles.encryptionCard, { backgroundColor: isDarkMode ? '#172B20' : '#E8F5EE' }]}>
+                <Lock size={16} color={JUCOCH_GREEN} style={{ marginRight: 8 }} />
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontWeight: 'bold', fontSize: 12, color: JUCOCH_GREEN }}>256-Bit Encrypted Storage</Text>
+                  <Text style={{ fontSize: 11, color: dynamicSub, marginTop: 2 }}>
+                    Reflections and mood check-ins are protected with strict student privacy protocols.
+                  </Text>
+                </View>
               </View>
-            </View>
 
-            <TouchableOpacity 
-              style={[styles.exportBtn, { borderColor: dynamicBorder }]}
-              onPress={() => showToast('Summary copied to clipboard!')}
-            >
-              <Copy size={16} color={JUCOCH_GREEN} style={{ marginRight: 8 }} />
-              <Text style={{ color: JUCOCH_GREEN, fontWeight: 'bold', fontSize: 13 }}>Export My Wellness Summary</Text>
-            </TouchableOpacity>
+              <TouchableOpacity 
+                style={[styles.exportBtn, { borderColor: dynamicBorder }]}
+                onPress={() => showToast('Summary copied to clipboard!')}
+              >
+                <Copy size={16} color={JUCOCH_GREEN} style={{ marginRight: 8 }} />
+                <Text style={{ color: JUCOCH_GREEN, fontWeight: 'bold', fontSize: 13 }}>Export My Wellness Summary</Text>
+              </TouchableOpacity>
+            </ScrollView>
 
             <TouchableOpacity style={styles.closeReportBtn} onPress={() => setShowPrivacyModal(false)}>
               <Text style={{ color: '#FFF', fontWeight: 'bold' }}>Done</Text>
@@ -575,79 +676,83 @@ export default function ProfileScreen() {
               Configure personalized wellness reminders and early distress alerts.
             </Text>
 
-            <View style={styles.privacyItemRow}>
-              <View style={{ flex: 1, paddingRight: 10 }}>
-                <Text style={[styles.privacyItemTitle, { color: dynamicText }]}>Daily Check-In (8:00 AM)</Text>
-                <Text style={[styles.privacyItemSub, { color: dynamicSub }]}>Gentle morning prompt to record how you feel.</Text>
+            <ScrollView style={{ maxHeight: 340 }} showsVerticalScrollIndicator={false}>
+              <View style={styles.privacyItemRow}>
+                <View style={{ flex: 1, paddingRight: 10 }}>
+                  <Text style={[styles.privacyItemTitle, { color: dynamicText }]}>Daily Check-In (8:00 AM)</Text>
+                  <Text style={[styles.privacyItemSub, { color: dynamicSub }]}>Gentle morning prompt to record how you feel.</Text>
+                </View>
+                <Switch 
+                  value={notifDailyCheckin} 
+                  onValueChange={(val) => {
+                    setNotifDailyCheckin(val);
+                    showToast(val ? 'Morning reminder enabled.' : 'Morning reminder disabled.');
+                  }} 
+                  color={JUCOCH_GREEN} 
+                />
               </View>
-              <Switch 
-                value={notifDailyCheckin} 
-                onValueChange={(val) => {
-                  setNotifDailyCheckin(val);
-                  showToast(val ? 'Morning reminder enabled.' : 'Morning reminder disabled.');
-                }} 
-                color={JUCOCH_GREEN} 
-              />
-            </View>
 
-            <Divider style={{ marginVertical: 10 }} />
+              <Divider style={{ marginVertical: 10 }} />
 
-            <View style={styles.privacyItemRow}>
-              <View style={{ flex: 1, paddingRight: 10 }}>
-                <Text style={[styles.privacyItemTitle, { color: dynamicText }]}>Sleep Wind-Down (10:00 PM)</Text>
-                <Text style={[styles.privacyItemSub, { color: dynamicSub }]}>Reminder to unwind and prepare for rest.</Text>
+              <View style={styles.privacyItemRow}>
+                <View style={{ flex: 1, paddingRight: 10 }}>
+                  <Text style={[styles.privacyItemTitle, { color: dynamicText }]}>Sleep Wind-Down (10:00 PM)</Text>
+                  <Text style={[styles.privacyItemSub, { color: dynamicSub }]}>Reminder to unwind and prepare for rest.</Text>
+                </View>
+                <Switch 
+                  value={notifBedtimePrompt} 
+                  onValueChange={(val) => {
+                    setNotifBedtimePrompt(val);
+                    showToast(val ? 'Sleep reminder enabled.' : 'Sleep reminder disabled.');
+                  }} 
+                  color={JUCOCH_GREEN} 
+                />
               </View>
-              <Switch 
-                value={notifBedtimePrompt} 
-                onValueChange={(val) => {
-                  setNotifBedtimePrompt(val);
-                  showToast(val ? 'Sleep reminder enabled.' : 'Sleep reminder disabled.');
-                }} 
-                color={JUCOCH_GREEN} 
-              />
-            </View>
 
-            <Divider style={{ marginVertical: 10 }} />
+              <Divider style={{ marginVertical: 10 }} />
 
-            <View style={styles.privacyItemRow}>
-              <View style={{ flex: 1, paddingRight: 10 }}>
-                <Text style={[styles.privacyItemTitle, { color: dynamicText }]}>Study Break & Hydration</Text>
-                <Text style={[styles.privacyItemSub, { color: dynamicSub }]}>Prompts for students during intense study sessions.</Text>
+              <View style={styles.privacyItemRow}>
+                <View style={{ flex: 1, paddingRight: 10 }}>
+                  <Text style={[styles.privacyItemTitle, { color: dynamicText }]}>Study Break & Hydration</Text>
+                  <Text style={[styles.privacyItemSub, { color: dynamicSub }]}>Prompts for students during intense study sessions.</Text>
+                </View>
+                <Switch 
+                  value={notifStudyBreak} 
+                  onValueChange={(val) => {
+                    setNotifStudyBreak(val);
+                    showToast(val ? 'Study break alerts enabled.' : 'Study break alerts disabled.');
+                  }} 
+                  color={JUCOCH_GREEN} 
+                />
               </View>
-              <Switch 
-                value={notifStudyBreak} 
-                onValueChange={(val) => {
-                  setNotifStudyBreak(val);
-                  showToast(val ? 'Study break alerts enabled.' : 'Study break alerts disabled.');
-                }} 
-                color={JUCOCH_GREEN} 
-              />
-            </View>
 
-            <Divider style={{ marginVertical: 10 }} />
+              <Divider style={{ marginVertical: 10 }} />
 
-            <View style={styles.privacyItemRow}>
-              <View style={{ flex: 1, paddingRight: 10 }}>
-                <Text style={[styles.privacyItemTitle, { color: dynamicText }]}>AI Early Distress Warnings</Text>
-                <Text style={[styles.privacyItemSub, { color: dynamicSub }]}>Safety tips when continuous stress patterns are detected.</Text>
+              <View style={styles.privacyItemRow}>
+                <View style={{ flex: 1, paddingRight: 10 }}>
+                  <Text style={[styles.privacyItemTitle, { color: dynamicText }]}>AI Early Distress Warnings</Text>
+                  <Text style={[styles.privacyItemSub, { color: dynamicSub }]}>Safety tips when continuous stress patterns are detected.</Text>
+                </View>
+                <Switch 
+                  value={notifAiDistressAlert} 
+                  onValueChange={(val) => {
+                    setNotifAiDistressAlert(val);
+                    showToast(val ? 'AI distress alerts active.' : 'AI distress alerts muted.');
+                  }} 
+                  color={JUCOCH_GREEN} 
+                />
               </View>
-              <Switch 
-                value={notifAiDistressAlert} 
-                onValueChange={(val) => {
-                  setNotifAiDistressAlert(val);
-                  showToast(val ? 'AI distress alerts active.' : 'AI distress alerts muted.');
-                }} 
-                color={JUCOCH_GREEN} 
-              />
-            </View>
+            </ScrollView>
 
-            <TouchableOpacity style={[styles.closeReportBtn, { marginTop: 18 }]} onPress={() => setShowNotificationsModal(false)}>
+            <TouchableOpacity style={styles.closeReportBtn} onPress={() => setShowNotificationsModal(false)}>
               <Text style={{ color: '#FFF', fontWeight: 'bold' }}>Save Preferences</Text>
             </TouchableOpacity>
           </Surface>
         </Modal>
       </Portal>
 
+      {/* Guide Modal */}
+      <AppGuideModal visible={showGuideModal} onClose={() => setShowGuideModal(false)} />
     </View>
   );
 }
@@ -706,7 +811,7 @@ const styles = StyleSheet.create({
   scrollContent: {
     flexGrow: 1,
     paddingTop: Platform.OS === 'ios' ? 60 : 40,
-    paddingBottom: 140, // Expanded padding so content scrolls past bottom tab bar freely
+    paddingBottom: 140,
     paddingHorizontal: 20,
     alignItems: 'center',
   },
@@ -730,14 +835,23 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 10,
   },
+  avatarCircle: {
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  avatarLargeEmoji: {
+    fontSize: 48,
+  },
   editBadge: {
     position: 'absolute',
     bottom: 0,
     right: 0,
-    backgroundColor: JUCOCH_GREEN,
-    borderRadius: 12,
-    width: 26,
-    height: 26,
+    borderRadius: 14,
+    width: 28,
+    height: 28,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 2,
@@ -748,61 +862,26 @@ const styles = StyleSheet.create({
   },
   userBio: {
     marginTop: 2,
-    marginBottom: 10,
+    fontSize: 13,
   },
   badgeRow: {
     flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 8,
     gap: 8,
   },
   statusBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#E8F5E9',
     paddingHorizontal: 10,
     paddingVertical: 4,
-    borderRadius: 14,
+    borderRadius: 12,
+    gap: 6,
   },
   statusText: {
     fontSize: 11,
     fontWeight: 'bold',
     color: JUCOCH_GREEN,
-    marginLeft: 4,
-  },
-  studentCodeCard: {
-    borderRadius: 20,
-    padding: 16,
-    marginBottom: 20,
-    borderWidth: 1.5,
-  },
-  codeCardHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 6,
-  },
-  codeCardTitle: {
-    fontSize: 11,
-    fontWeight: 'bold',
-    color: '#1565C0',
-    letterSpacing: 1,
-  },
-  codeCardDesc: {
-    fontSize: 12,
-    marginBottom: 12,
-  },
-  codeHighlight: {
-    fontWeight: 'bold',
-    color: '#1E88E5',
-  },
-  updateCodeBtn: {
-    backgroundColor: '#E3F2FD',
-    borderRadius: 14,
-    paddingVertical: 10,
-    alignItems: 'center',
-  },
-  updateCodeBtnText: {
-    color: '#1E88E5',
-    fontWeight: 'bold',
-    fontSize: 12,
   },
   statsContainer: {
     flexDirection: 'row',
@@ -921,16 +1000,16 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   modalContentStyle: {
-    padding: 20,
+    padding: 16,
     alignItems: 'center',
     justifyContent: 'center',
   },
   modalCard: {
     borderRadius: 24,
     padding: 20,
-    maxHeight: '90%',
+    maxHeight: '88%',
     width: '100%',
-    maxWidth: 520,
+    maxWidth: 500,
   },
   modalHeader: {
     flexDirection: 'row',
@@ -974,7 +1053,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     paddingVertical: 14,
     alignItems: 'center',
-    marginTop: 4,
+    marginTop: 10,
   },
   submitModalBtnText: {
     color: '#FFF',
@@ -991,8 +1070,6 @@ const styles = StyleSheet.create({
   },
   reportCard: {
     width: '48%',
-    flexBasis: '47%',
-    flexGrow: 1,
     borderRadius: 16,
     padding: 14,
     alignItems: 'center',
@@ -1027,7 +1104,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     width: '100%',
-    marginTop: 4,
+    marginTop: 10,
   },
   achievementRow: {
     flexDirection: 'row',
@@ -1066,7 +1143,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 6,
+    paddingVertical: 8,
   },
   privacyItemTitle: {
     fontSize: 13,
@@ -1091,5 +1168,33 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     borderWidth: 1.5,
     marginBottom: 14,
+  },
+  avatarGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    gap: 10,
+    paddingBottom: 8,
+  },
+  avatarOptionCard: {
+    width: '48%',
+    borderRadius: 16,
+    padding: 12,
+    alignItems: 'center',
+    borderWidth: 1,
+    marginBottom: 6,
+  },
+  avatarOptionEmoji: {
+    fontSize: 32,
+    marginBottom: 4,
+  },
+  avatarOptionName: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  avatarOptionDesc: {
+    fontSize: 10,
+    marginTop: 2,
+    textAlign: 'center',
   },
 });
