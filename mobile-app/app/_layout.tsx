@@ -3,6 +3,7 @@ import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect, useMemo } from 'react';
+import { Platform } from 'react-native';
 import { Provider as PaperProvider } from 'react-native-paper';
 
 import { useColorScheme } from '@/components/useColorScheme';
@@ -26,21 +27,23 @@ export default function RootLayout() {
   const [loaded, error] = useFonts({
     SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
     ...FontAwesome.font,
-    NotoColorEmoji: require('../assets/fonts/NotoColorEmoji.ttf'),
+    ...(Platform.OS !== 'ios' ? { NotoColorEmoji: require('../assets/fonts/NotoColorEmoji.ttf') } : {}),
   });
 
-  // Expo Router uses Error Boundaries to catch errors in the navigation tree.
+  // Log any non-critical font loading errors instead of crashing the app
   useEffect(() => {
-    if (error) throw error;
+    if (error) {
+      console.warn('Font loading error:', error);
+    }
   }, [error]);
 
   useEffect(() => {
-    if (loaded) {
+    if (loaded || error) {
       SplashScreen.hideAsync();
     }
-  }, [loaded]);
+  }, [loaded, error]);
 
-  if (!loaded) {
+  if (!loaded && !error) {
     return null;
   }
 
