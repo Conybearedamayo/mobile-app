@@ -81,12 +81,12 @@ export default function LoginScreen() {
       style={styles.container}
     >
       {/* Background Gradient Mesh */}
-      <View style={StyleSheet.absoluteFillObject}>
+      <View style={StyleSheet.absoluteFill}>
         <LinearGradient
           colors={['#E8F5E9', '#F3F8F5', '#EAF4EF']}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
-          style={StyleSheet.absoluteFillObject}
+          style={StyleSheet.absoluteFill}
         />
         {/* Ambient Top Glow Circle */}
         <View style={styles.ambientGlowTop} />

@@ -7,12 +7,6 @@
     "icon": "./assets/images/icon.png",
     "scheme": "mindbridge",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
-    "splash": {
-      "image": "./assets/images/splash-icon.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#2D6A4F"
-    },
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.jucoch.wellness"
@@ -24,7 +18,6 @@
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#2D6A4F"
       },
-      "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false
     },
     "web": {
@@ -34,17 +27,23 @@
     },
     "plugins": [
       "expo-router",
-      "expo-font"
+      "expo-font",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/images/splash-icon.png",
+          "resizeMode": "contain",
+          "backgroundColor": "#2D6A4F"
+        }
+      ],
+      "expo-status-bar",
+      "expo-web-browser"
     ],
     "experiments": {
       "typedRoutes": true
     },
     "extra": {
-      "router": {},
-      "eas": {
-        "projectId": "3a89c8ed-ad5e-4da3-81fc-3320c853341d"
-      }
-    },
-    "owner": "bearoys"
+      "router": {}
+    }
   }
 }
