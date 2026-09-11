@@ -329,40 +329,28 @@ router.get('/me', async (req: Request, res: Response): Promise<void> => {
   }
 });
 
-// PUT /api/auth/privacy - Toggle isAnonymous status
+// PUT /api/auth/privacy - Toggle isAnonymous status (Requires Authenticated User)
 router.put('/privacy', async (req: Request, res: Response): Promise<void> => {
   try {
     const authHeader = req.headers.authorization;
-    let userId: string | null = null;
-
-    if (authHeader && authHeader.startsWith('Bearer ')) {
-      const token = authHeader.split(' ')[1];
-      if (token && !token.includes('mock-token')) {
-        try {
-          const decoded = jwt.verify(token, JWT_SECRET) as any;
-          userId = decoded.userId;
-        } catch (e) {}
-      }
-    }
-
-    if (!userId && req.body.email) {
-      const foundUser = await prisma.user.findUnique({ where: { email: req.body.email } });
-      if (foundUser) userId = foundUser.id;
-    }
-
-    if (!userId) {
-      const lastUser = await prisma.user.findFirst({
-        where: { role: { not: 'Admin' } },
-        orderBy: { createdAt: 'desc' },
-      });
-      if (lastUser) userId = lastUser.id;
-    }
-
-    if (!userId) {
-      res.status(400).json({ error: 'User not found.' });
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      res.status(401).json({ error: 'Authentication token required to update privacy settings.' });
       return;
     }
 
+    const token = authHeader.split(' ')[1];
+    if (!token || token === 'null' || token === 'undefined') {
+      res.status(401).json({ error: 'Authentication token is missing or invalid.' });
+      return;
+    }
+
+    const decoded = jwt.verify(token, JWT_SECRET) as any;
+    if (!decoded?.userId) {
+      res.status(401).json({ error: 'Invalid authentication token payload.' });
+      return;
+    }
+
+    const userId = decoded.userId;
     const { isAnonymous } = req.body;
 
     const updatedUser = await prisma.user.update({
@@ -383,7 +371,7 @@ router.put('/privacy', async (req: Request, res: Response): Promise<void> => {
     });
   } catch (error: any) {
     console.error('Update Privacy Error:', error);
-    res.status(500).json({ error: 'Failed to update privacy settings.' });
+    res.status(401).json({ error: 'Invalid or expired authentication token.' });
   }
 });
 
@@ -460,16 +448,18 @@ router.get('/smtp-status', async (req: Request, res: Response): Promise<void> =>
     });
 
     await transporter.verify();
+    const maskedSender = smtpUser.replace(/^(..)(.*)(@.*)$/, (_, a, b, c) => `${a}***${c}`);
     res.json({
       configured: true,
-      sender: smtpUser,
+      sender: maskedSender,
       status: 'AUTHENTICATED_OK',
       message: 'Gmail SMTP is fully configured and operational on Render!',
     });
   } catch (err: any) {
+    const maskedSender = smtpUser ? smtpUser.replace(/^(..)(.*)(@.*)$/, (_, a, b, c) => `${a}***${c}`) : '***';
     res.json({
       configured: true,
-      sender: smtpUser,
+      sender: maskedSender,
       status: 'AUTHENTICATION_FAILED',
       error: err?.message || err,
     });

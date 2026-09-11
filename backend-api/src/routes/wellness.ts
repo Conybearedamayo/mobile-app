@@ -1,38 +1,34 @@
 import { Router, Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
 import { prisma } from '../prisma';
+import { encryptSensitiveText, decryptSensitiveText } from '../services/cryptoService';
 
 const router = Router();
 const JWT_SECRET = process.env.JWT_SECRET || 'jucoch_secret_key_2026';
 
-// Helper middleware to extract user from JWT Token (optional or authorization header)
-const extractUserId = (req: Request): string | null => {
+// Middleware to strictly enforce Authentication for personal wellness data
+const requireAuthUser = (req: Request, res: Response, next: () => void): void => {
   const authHeader = req.headers.authorization;
-  if (!authHeader || !authHeader.startsWith('Bearer ')) return null;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    res.status(401).json({ error: 'Authentication required. Please log in.' });
+    return;
+  }
   const token = authHeader.split(' ')[1];
-  if (!token) return null;
+  if (!token || token === 'null' || token === 'undefined') {
+    res.status(401).json({ error: 'Authentication token missing or invalid.' });
+    return;
+  }
   try {
     const decoded = jwt.verify(token, JWT_SECRET) as any;
-    return decoded.userId || null;
+    if (!decoded?.userId) {
+      res.status(401).json({ error: 'Invalid token payload.' });
+      return;
+    }
+    (req as any).userId = decoded.userId;
+    next();
   } catch (error) {
-    return null;
+    res.status(401).json({ error: 'Invalid or expired authentication token. Please log in again.' });
   }
-};
-
-// Helper to resolve user ID from token or fallback to latest student/individual user
-const resolveUserId = async (req: Request): Promise<string | null> => {
-  const tokenUserId = extractUserId(req);
-  if (tokenUserId) return tokenUserId;
-
-  if (req.body.userId) return req.body.userId;
-
-  // Fallback to latest registered student or individual
-  const lastUser = await prisma.user.findFirst({
-    where: { role: { not: 'Admin' } },
-    orderBy: { createdAt: 'desc' },
-  });
-
-  return lastUser ? lastUser.id : null;
 };
 
 // ==========================================
@@ -40,33 +36,34 @@ const resolveUserId = async (req: Request): Promise<string | null> => {
 // ==========================================
 
 // POST /api/wellness/mood
-router.post('/mood', async (req: Request, res: Response): Promise<void> => {
+router.post('/mood', requireAuthUser, async (req: Request, res: Response): Promise<void> => {
   try {
+    const userId = (req as any).userId;
     const { mood, emoji, note } = req.body;
-    const userId = await resolveUserId(req);
 
     if (!mood || !emoji) {
       res.status(400).json({ error: 'Mood and emoji are required.' });
       return;
     }
 
-    if (!userId) {
-      res.status(400).json({ error: 'User account required to log mood.' });
-      return;
-    }
+    // Encrypt mood note with AES-256 for student privacy
+    const encryptedNote = encryptSensitiveText(note ? note.trim() : null);
 
     const newLog = await prisma.moodLog.create({
       data: {
         mood,
         emoji,
-        note: note ? note.trim() : null,
+        note: encryptedNote,
         userId,
       },
     });
 
     res.status(201).json({
       message: 'Mood check-in recorded successfully!',
-      moodLog: newLog,
+      moodLog: {
+        ...newLog,
+        note: decryptSensitiveText(newLog.note),
+      },
     });
   } catch (error: any) {
     console.error('Mood Log Error:', error);
@@ -75,21 +72,22 @@ router.post('/mood', async (req: Request, res: Response): Promise<void> => {
 });
 
 // GET /api/wellness/mood
-router.get('/mood', async (req: Request, res: Response): Promise<void> => {
+router.get('/mood', requireAuthUser, async (req: Request, res: Response): Promise<void> => {
   try {
-    const userId = await resolveUserId(req);
-
-    if (!userId) {
-      res.status(400).json({ error: 'User ID or Auth token is required.' });
-      return;
-    }
+    const userId = (req as any).userId;
 
     const logs = await prisma.moodLog.findMany({
       where: { userId },
       orderBy: { createdAt: 'desc' },
     });
 
-    res.json({ moodLogs: logs });
+    // Decrypt mood notes for the authenticated user
+    const decryptedLogs = logs.map(l => ({
+      ...l,
+      note: decryptSensitiveText(l.note),
+    }));
+
+    res.json({ moodLogs: decryptedLogs });
   } catch (error: any) {
     console.error('Fetch Mood Logs Error:', error);
     res.status(500).json({ error: 'Failed to fetch mood logs.' });
@@ -101,18 +99,13 @@ router.get('/mood', async (req: Request, res: Response): Promise<void> => {
 // ==========================================
 
 // POST /api/wellness/sleep
-router.post('/sleep', async (req: Request, res: Response): Promise<void> => {
+router.post('/sleep', requireAuthUser, async (req: Request, res: Response): Promise<void> => {
   try {
+    const userId = (req as any).userId;
     const { hours, quality } = req.body;
-    const userId = await resolveUserId(req);
 
     if (hours === undefined || !quality) {
       res.status(400).json({ error: 'Sleep hours and quality rating are required.' });
-      return;
-    }
-
-    if (!userId) {
-      res.status(400).json({ error: 'User account required to log sleep.' });
       return;
     }
 
@@ -135,14 +128,9 @@ router.post('/sleep', async (req: Request, res: Response): Promise<void> => {
 });
 
 // GET /api/wellness/sleep
-router.get('/sleep', async (req: Request, res: Response): Promise<void> => {
+router.get('/sleep', requireAuthUser, async (req: Request, res: Response): Promise<void> => {
   try {
-    const userId = await resolveUserId(req);
-
-    if (!userId) {
-      res.status(400).json({ error: 'User ID or Auth token is required.' });
-      return;
-    }
+    const userId = (req as any).userId;
 
     const logs = await prisma.sleepLog.findMany({
       where: { userId },
@@ -161,18 +149,13 @@ router.get('/sleep', async (req: Request, res: Response): Promise<void> => {
 // ==========================================
 
 // POST /api/wellness/activity
-router.post('/activity', async (req: Request, res: Response): Promise<void> => {
+router.post('/activity', requireAuthUser, async (req: Request, res: Response): Promise<void> => {
   try {
+    const userId = (req as any).userId;
     const { type, duration } = req.body;
-    const userId = await resolveUserId(req);
 
     if (!type || !duration) {
       res.status(400).json({ error: 'Activity type and duration in minutes are required.' });
-      return;
-    }
-
-    if (!userId) {
-      res.status(400).json({ error: 'User account required to log activity.' });
       return;
     }
 
@@ -195,14 +178,9 @@ router.post('/activity', async (req: Request, res: Response): Promise<void> => {
 });
 
 // GET /api/wellness/activity
-router.get('/activity', async (req: Request, res: Response): Promise<void> => {
+router.get('/activity', requireAuthUser, async (req: Request, res: Response): Promise<void> => {
   try {
-    const userId = await resolveUserId(req);
-
-    if (!userId) {
-      res.status(400).json({ error: 'User ID or Auth token is required.' });
-      return;
-    }
+    const userId = (req as any).userId;
 
     const logs = await prisma.activityLog.findMany({
       where: { userId },
@@ -217,35 +195,36 @@ router.get('/activity', async (req: Request, res: Response): Promise<void> => {
 });
 
 // ==========================================
-// 4. JOURNAL ENTRIES ENDPOINTS
+// 4. JOURNAL ENTRIES ENDPOINTS (AES-256 ENCRYPTED)
 // ==========================================
 
 // POST /api/wellness/journal
-router.post('/journal', async (req: Request, res: Response): Promise<void> => {
+router.post('/journal', requireAuthUser, async (req: Request, res: Response): Promise<void> => {
   try {
+    const userId = (req as any).userId;
     const { content } = req.body;
-    const userId = await resolveUserId(req);
 
     if (!content || !content.trim()) {
       res.status(400).json({ error: 'Journal content cannot be empty.' });
       return;
     }
 
-    if (!userId) {
-      res.status(400).json({ error: 'User account required to save journal.' });
-      return;
-    }
+    // Encrypt reflection content with AES-256 for student privacy
+    const encryptedContent = encryptSensitiveText(content.trim()) || '';
 
     const newEntry = await prisma.journalEntry.create({
       data: {
-        content: content.trim(),
+        content: encryptedContent,
         userId,
       },
     });
 
     res.status(201).json({
       message: 'Reflection journal saved successfully!',
-      journalEntry: newEntry,
+      journalEntry: {
+        ...newEntry,
+        content: decryptSensitiveText(newEntry.content),
+      },
     });
   } catch (error: any) {
     console.error('Journal Entry Error:', error);
@@ -254,22 +233,22 @@ router.post('/journal', async (req: Request, res: Response): Promise<void> => {
 });
 
 // GET /api/wellness/journal
-router.get('/journal', async (req: Request, res: Response): Promise<void> => {
+router.get('/journal', requireAuthUser, async (req: Request, res: Response): Promise<void> => {
   try {
-    const queryUserId = req.query.userId as string;
-    const userId = extractUserId(req) || queryUserId;
-
-    if (!userId) {
-      res.status(400).json({ error: 'User ID or Auth token is required.' });
-      return;
-    }
+    const userId = (req as any).userId;
 
     const entries = await prisma.journalEntry.findMany({
       where: { userId },
       orderBy: { createdAt: 'desc' },
     });
 
-    res.json({ journalEntries: entries });
+    // Decrypt reflections for the authenticated user
+    const decryptedEntries = entries.map(e => ({
+      ...e,
+      content: decryptSensitiveText(e.content),
+    }));
+
+    res.json({ journalEntries: decryptedEntries });
   } catch (error: any) {
     console.error('Fetch Journal Entries Error:', error);
     res.status(500).json({ error: 'Failed to fetch journal entries.' });
@@ -277,34 +256,40 @@ router.get('/journal', async (req: Request, res: Response): Promise<void> => {
 });
 
 // PUT /api/wellness/journal/:id
-router.put('/journal/:id', async (req: Request, res: Response): Promise<void> => {
+router.put('/journal/:id', requireAuthUser, async (req: Request, res: Response): Promise<void> => {
   try {
+    const userId = (req as any).userId;
     const id = req.params.id as string;
     const { content } = req.body;
-    const userId = await resolveUserId(req);
 
     if (!content || !content.trim()) {
       res.status(400).json({ error: 'Journal content cannot be empty.' });
       return;
     }
 
-    const existing = await prisma.journalEntry.findUnique({
-      where: { id },
+    // Strictly ensure user owns this journal entry
+    const existing = await prisma.journalEntry.findFirst({
+      where: { id, userId },
     });
 
     if (!existing) {
-      res.status(404).json({ error: 'Journal entry not found.' });
+      res.status(404).json({ error: 'Journal entry not found or unauthorized.' });
       return;
     }
 
+    const encryptedContent = encryptSensitiveText(content.trim()) || '';
+
     const updated = await prisma.journalEntry.update({
       where: { id },
-      data: { content: content.trim() },
+      data: { content: encryptedContent },
     });
 
     res.json({
       message: 'Journal entry updated successfully!',
-      journalEntry: updated,
+      journalEntry: {
+        ...updated,
+        content: decryptSensitiveText(updated.content),
+      },
     });
   } catch (error: any) {
     console.error('Update Journal Entry Error:', error);
@@ -313,16 +298,18 @@ router.put('/journal/:id', async (req: Request, res: Response): Promise<void> =>
 });
 
 // DELETE /api/wellness/journal/:id
-router.delete('/journal/:id', async (req: Request, res: Response): Promise<void> => {
+router.delete('/journal/:id', requireAuthUser, async (req: Request, res: Response): Promise<void> => {
   try {
+    const userId = (req as any).userId;
     const id = req.params.id as string;
 
-    const existing = await prisma.journalEntry.findUnique({
-      where: { id },
+    // Strictly ensure user owns this journal entry
+    const existing = await prisma.journalEntry.findFirst({
+      where: { id, userId },
     });
 
     if (!existing) {
-      res.status(404).json({ error: 'Journal entry not found.' });
+      res.status(404).json({ error: 'Journal entry not found or unauthorized.' });
       return;
     }
 
@@ -340,13 +327,9 @@ router.delete('/journal/:id', async (req: Request, res: Response): Promise<void>
 });
 
 // GET /api/wellness/all - Load all user wellness records on startup/login
-router.get('/all', async (req: Request, res: Response): Promise<void> => {
+router.get('/all', requireAuthUser, async (req: Request, res: Response): Promise<void> => {
   try {
-    const userId = await resolveUserId(req);
-    if (!userId) {
-      res.status(400).json({ error: 'User ID or Auth token is required.' });
-      return;
-    }
+    const userId = (req as any).userId;
 
     const [moodLogs, sleepLogs, activityLogs, journalEntries] = await Promise.all([
       prisma.moodLog.findMany({ where: { userId }, orderBy: { createdAt: 'desc' } }),
@@ -355,11 +338,22 @@ router.get('/all', async (req: Request, res: Response): Promise<void> => {
       prisma.journalEntry.findMany({ where: { userId }, orderBy: { createdAt: 'desc' } }),
     ]);
 
+    // Decrypt sensitive content for the authenticated user
+    const decryptedMoodLogs = moodLogs.map(m => ({
+      ...m,
+      note: decryptSensitiveText(m.note),
+    }));
+
+    const decryptedJournalEntries = journalEntries.map(j => ({
+      ...j,
+      content: decryptSensitiveText(j.content),
+    }));
+
     res.json({
-      moodLogs,
+      moodLogs: decryptedMoodLogs,
       sleepLogs,
       activityLogs,
-      journalEntries,
+      journalEntries: decryptedJournalEntries,
     });
   } catch (error: any) {
     console.error('Fetch All Wellness Data Error:', error);

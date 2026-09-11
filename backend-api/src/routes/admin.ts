@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
 import { prisma } from '../prisma';
+import { encryptSensitiveText, decryptSensitiveText } from '../services/cryptoService';
 
 const router = Router();
 const JWT_SECRET = process.env.JWT_SECRET || 'jucoch_secret_key_2026';
@@ -10,19 +11,23 @@ const verifyAdmin = async (req: Request, res: Response, next: () => void): Promi
   try {
     const authHeader = req.headers.authorization;
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      next();
+      res.status(401).json({ error: 'Access denied. Authentication token required.' });
       return;
     }
     const token = authHeader.split(' ')[1];
-    if (!token || token.includes('mock-token')) {
-      next();
+    if (!token || token === 'null' || token === 'undefined') {
+      res.status(401).json({ error: 'Access denied. Token is missing or invalid.' });
       return;
     }
     const decoded = jwt.verify(token, JWT_SECRET) as any;
+    if (!decoded || decoded.role !== 'Admin') {
+      res.status(403).json({ error: 'Forbidden. Admin privileges required to access this resource.' });
+      return;
+    }
+    (req as any).user = decoded;
     next();
-  } catch (error) {
-    // Allow proceeding in dev mode so admin dashboard displays DB users reliably
-    next();
+  } catch (error: any) {
+    res.status(401).json({ error: 'Invalid or expired authorization token. Please log in as Admin.' });
   }
 };
 
@@ -118,7 +123,7 @@ router.get('/activities', verifyAdmin, async (req: Request, res: Response): Prom
         alias: m.user.isAnonymous ? 'Anonymous User' : (m.user.alias || 'Encrypted User'),
         role: m.user.role,
         action: 'Mood Check-in',
-        detail: `${m.emoji} ${m.mood}${m.note ? ` • [🔒 ${maskJournalText(m.note)}]` : ''}`,
+        detail: `${m.emoji} ${m.mood}${m.note ? ` • [🔒 ${maskJournalText(decryptSensitiveText(m.note))}]` : ''}`,
         createdAt: m.createdAt,
       })),
       ...sleepLogs.map(s => ({
@@ -138,7 +143,7 @@ router.get('/activities', verifyAdmin, async (req: Request, res: Response): Prom
         createdAt: a.createdAt,
       })),
       ...journalEntries.map(j => {
-        const rawText = j.content || 'Personal Reflection';
+        const rawText = decryptSensitiveText(j.content) || 'Personal Reflection';
         const masked = maskJournalText(rawText);
         return {
           id: `journal-${j.id}`,
@@ -232,13 +237,13 @@ router.put('/activities/:id', verifyAdmin, async (req: Request, res: Response): 
       const realId = id.replace('journal-', '');
       await prisma.journalEntry.updateMany({
         where: { id: realId },
-        data: { content: detail.trim() },
+        data: { content: encryptSensitiveText(detail.trim()) || '' },
       });
     } else if (id.startsWith('mood-')) {
       const realId = id.replace('mood-', '');
       await prisma.moodLog.updateMany({
         where: { id: realId },
-        data: { note: detail.trim() },
+        data: { note: encryptSensitiveText(detail.trim()) },
       });
     } else if (id.startsWith('act-')) {
       const realId = id.replace('act-', '');
