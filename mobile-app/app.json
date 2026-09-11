@@ -43,7 +43,11 @@
       "typedRoutes": true
     },
     "extra": {
-      "router": {}
-    }
+      "router": {},
+      "eas": {
+        "projectId": "019b7903-63e0-4239-b3b6-23c847fa73d2"
+      }
+    },
+    "owner": "bearoy"
   }
 }
