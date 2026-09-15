@@ -75,12 +75,16 @@ Jucoch enforces **3 distinct role levels** with strict security and privacy cont
 
 3. Start the Expo development server:
    ```bash
+   # For everyone / Any network (Public Tunnel):
+   npm run tunnel
+   # or standard LAN:
    npx expo start -c
    ```
 
-4. **Running on Mobile**:
-   - Open **Expo Go** app on your Android or iPhone and scan the displayed **QR Code**.
-   - Or press **`a`** to launch on Android Emulator / Physical USB device.
+4. **Running on Mobile (iOS & Android)**:
+   - **iOS (iPhone)**: Open the **native iPhone Camera app** (NOT inside Expo Go, as Apple disallows in-app scanners). Point the camera at the terminal QR code, then tap the yellow popup banner **"Open in Expo Go"**.
+   - **Android**: Open the **Expo Go** app and tap **"Scan QR code"**.
+   - Or press **`a`** to launch on Android Emulator.
    - Or press **`i`** to launch on iOS Simulator.
 
 ---

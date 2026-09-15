@@ -169,8 +169,33 @@ export default function ChatScreen() {
     if (text.includes('hello') || text.includes('hi') || text.includes('hey') || text.includes('hello ai')) {
       return `Hello! I am Jucoch AI, your mental health companion. I'm here to listen, track your wellness patterns, and provide relaxation exercises. How can I help you today, ${userAlias || 'friend'}?`;
     }
-    if (text.includes('quote') || text.includes('positive') || text.includes('mindset') || text.includes('inspire')) {
-      return "🌱 Here is your reminder for today: 'You do not have to control your thoughts; you just have to stop letting them control you.' Take things one step at a time!";
+    if (text.includes('quote') || text.includes('positive') || text.includes('mindset') || text.includes('inspire') || text.includes('motivate')) {
+      const inspiringQuotes = [
+        "🌱 'It is okay to rest. Even the sun sets to rise again tomorrow.'\n(Okey ra kaayo mopahuway. Bisan ang adlaw mosalop aron mosubang pag-usab ugma.)",
+        "✨ 'You don’t have to see the whole staircase, just take the first step.'\n(Dili kinahanglan makita nimo ang tibuok hagdanan, paghimo lang una sa unang lakang.)",
+        "🌿 'Be gentle with yourself. You are doing the best you can with what you have today.'\n(Ampingi ug sabta ang imong kaugalingon. Gibuhat na nimo ang imong pinakamaayo karong adlawa.)",
+        "🕊️ 'You do not have to control all your thoughts; you just have to stop letting them control you.'\nTake things one gentle breath at a time!",
+        "🤍 'Bad days do not mean a bad life. Breathe, you’ve survived 100% of your hardest days so far.'",
+      ];
+      const picked = inspiringQuotes[Math.floor(Math.random() * inspiringQuotes.length)];
+      return `Here is your reminder for today:\n\n${picked}`;
+    }
+    // Bisaya emotional keywords fallback
+    if (text.includes('kapoy') || text.includes('gikapoy')) {
+      return "Nakasabot ko nga gikapoy ka. Ang pagpahulay dili usa ka ganti; usa kini ka panginahanglan. Paminawa ang imong lawas ug pahuway kadiyot karon. 🌿";
+    }
+    if (text.includes('guol') || text.includes('subo') || text.includes('hilak')) {
+      return "Naguol ko nga nakadungog ana. Normal ra gyud nga mobati og kaguol usahay. Ania ra ko maminaw nimo. Gusto ba nimo mosulay og guided breathing exercise o isulat sa imong journal?";
+    }
+    if (text.includes('kabalaka') || text.includes('hadlok') || text.includes('kulba')) {
+      return "Maka-overwhelm gyud ang kabalaka, apan luwas ka dinhi. Sulayi ang hinay nga pagginhawa: suyop og 4 segundos, pugngi og 4, ug ipagawas og 4. Ania ra ko uban nimo.";
+    }
+    // Tagalog emotional keywords fallback
+    if (text.includes('pagod') || text.includes('napagod')) {
+      return "Naiintindihan ko na pagod ka na. Hindi kasalanan ang magpahinga. Pakinggan ang iyong katawan at bigyan ang sarili ng oras para mag-recharge ngayon. 🌿";
+    }
+    if (text.includes('lungkot') || text.includes('nalulungkot')) {
+      return "Nalulungkot akong marinig iyan. Tandaan mong hindi ka nag-iisa at normal lang maramdaman iyan paminsan-minsan. Nandito lang ako para makinig sa iyo.";
     }
     if (text.includes('breathe') || text.includes('calm') || text.includes('relax') || text.includes('panic')) {
       return "🌿 Let's pause together right now. Inhale gently through your nose (1... 2... 3... 4), hold peace in your mind (1... 2... 3... 4), and exhale slowly (1... 2... 3... 4). How does your body feel now?";

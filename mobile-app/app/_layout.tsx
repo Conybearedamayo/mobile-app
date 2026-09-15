@@ -2,8 +2,8 @@ import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
-import { useEffect, useMemo } from 'react';
-import { Platform } from 'react-native';
+import React, { useEffect } from 'react';
+import { Platform, View, StyleSheet } from 'react-native';
 import { Provider as PaperProvider } from 'react-native-paper';
 
 import { useColorScheme } from '@/components/useColorScheme';
@@ -53,7 +53,7 @@ export default function RootLayout() {
 function RootLayoutNav() {
   const colorScheme = useColorScheme();
 
-  return (
+  const appContent = (
     <PaperProvider theme={colorScheme === 'dark' ? darkTheme : lightTheme}>
       <WellnessProvider>
         <Stack initialRouteName="index">
@@ -71,4 +71,43 @@ function RootLayoutNav() {
       </WellnessProvider>
     </PaperProvider>
   );
+
+  if (Platform.OS === 'web') {
+    return (
+      <View style={webStyles.outerWrapper}>
+        <View style={webStyles.phoneContainer}>
+          {appContent}
+        </View>
+      </View>
+    );
+  }
+
+  return appContent;
 }
+
+const webStyles = StyleSheet.create({
+  outerWrapper: {
+    flex: 1,
+    width: '100%',
+    height: '100%',
+    minHeight: '100vh' as any,
+    backgroundColor: '#0F172A', // Sleek neutral slate dark canvas so the mobile app stands out
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  phoneContainer: {
+    flex: 1,
+    width: '100%',
+    maxWidth: 460,
+    height: '100%',
+    minHeight: '100vh' as any,
+    backgroundColor: '#F3F8F5',
+    overflow: 'hidden',
+    position: 'relative',
+    ...Platform.select({
+      web: {
+        boxShadow: '0 20px 60px rgba(0, 0, 0, 0.35)',
+      } as any,
+    }),
+  },
+});
