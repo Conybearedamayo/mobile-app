@@ -25,10 +25,11 @@ export default function AdminDashboard() {
     try {
       const d = new Date(timestamp);
       if (isNaN(d.getTime())) return timestamp;
+      const weekday = d.toLocaleDateString('en-US', { weekday: 'short' });
       const month = d.toLocaleDateString('en-US', { month: 'short' });
       const day = d.getDate();
       const time = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
-      return `${month} ${day} • ${time}`;
+      return `${weekday}, ${month} ${day} • ${time}`;
     } catch (e) {
       return timestamp;
     }

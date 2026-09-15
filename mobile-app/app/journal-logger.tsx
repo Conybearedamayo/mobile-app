@@ -37,6 +37,21 @@ export default function JournalLoggerScreen() {
   const dynamicSub = isDarkMode ? '#9EB3A5' : '#707571';
   const dynamicBorder = isDarkMode ? '#2C3A31' : '#E2EFE7';
 
+  const formatEventDate = (timestamp?: string) => {
+    if (!timestamp) return 'Today';
+    try {
+      const d = new Date(timestamp);
+      if (isNaN(d.getTime())) return timestamp;
+      const weekday = d.toLocaleDateString('en-US', { weekday: 'short' });
+      const month = d.toLocaleDateString('en-US', { month: 'short' });
+      const day = d.getDate();
+      const time = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+      return `${weekday}, ${month} ${day} • ${time}`;
+    } catch (e) {
+      return 'Today';
+    }
+  };
+
   const handleSelectPrompt = (promptText: string) => {
     setContent((prev) => (prev ? `${prev}\n\n${promptText} ` : `${promptText} `));
   };
@@ -191,7 +206,7 @@ export default function JournalLoggerScreen() {
                 <View style={styles.entryHeader}>
                   <View style={styles.dateRow}>
                     <Calendar size={14} color={JUCOCH_GREEN} style={{ marginRight: 6 }} />
-                    <Text style={[styles.entryDate, { color: dynamicSub }]}>{entry.timestamp || 'Today'}</Text>
+                    <Text style={[styles.entryDate, { color: dynamicSub }]}>{formatEventDate(entry.timestamp)}</Text>
                   </View>
                   
                   {/* Action Controls: Edit & Delete */}

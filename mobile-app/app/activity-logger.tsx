@@ -72,6 +72,21 @@ export default function ActivityLoggerScreen() {
   const currentActivityList = isStudent ? STUDENT_ACTIVITIES : INDIVIDUAL_ACTIVITIES;
   const themeColor = isStudent ? '#1E88E5' : JUCOCH_GREEN;
 
+  const formatEventDate = (timestamp?: string) => {
+    if (!timestamp) return 'Today';
+    try {
+      const d = new Date(timestamp);
+      if (isNaN(d.getTime())) return timestamp;
+      const weekday = d.toLocaleDateString('en-US', { weekday: 'short' });
+      const month = d.toLocaleDateString('en-US', { month: 'short' });
+      const day = d.getDate();
+      const time = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+      return `${weekday}, ${month} ${day} • ${time}`;
+    } catch (e) {
+      return 'Today';
+    }
+  };
+
   const toggleActivity = (name: string) => {
     if (selectedActivities.includes(name)) {
       setSelectedActivities(selectedActivities.filter(a => a !== name));
@@ -261,7 +276,7 @@ export default function ActivityLoggerScreen() {
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={[styles.recentTitle, { color: dynamicText }]}>{entry.type.replace('[Individual] ', '').replace('[Student] ', '')}</Text>
-                  <Text style={[styles.recentSub, { color: dynamicSub }]}>{entry.timestamp}</Text>
+                  <Text style={[styles.recentSub, { color: dynamicSub }]}>{formatEventDate(entry.timestamp)}</Text>
                 </View>
                 <View style={[styles.durationBadge, { backgroundColor: `${themeColor}20` }]}>
                   <Text style={[styles.durationBadgeText, { color: themeColor }]}>{entry.duration} mins</Text>
