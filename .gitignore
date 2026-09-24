@@ -14,6 +14,7 @@ build/
 .expo/
 .next/
 out/
+*.apk
 
 # Database & Storage
 prisma/*.db
