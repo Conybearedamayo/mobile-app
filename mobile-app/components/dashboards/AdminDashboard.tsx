@@ -7,10 +7,11 @@ import { API_BASE_URL } from '@/constants/apiConfig';
 
 const JUCOCH_GREEN = '#2D6A4F';
 
-// The 2 Official Creator Admin Accounts
+// The 3 Official Creator Admin Accounts
 const OFFICIAL_ADMIN_GROUP = [
   { name: 'Admin Conybeare', email: 'conybeared69@gmail.com', alias: 'Admin_Conybeare' },
   { name: 'Admin Christian', email: 'christiancarlmacan@gmail.com', alias: 'Admin_Christian' },
+  { name: 'Juspher', email: 'djuciper143@gmail.com', alias: 'Admin_Juspher' },
 ];
 
 export default function AdminDashboard() {
@@ -534,10 +535,10 @@ export default function AdminDashboard() {
         );
       })()}
 
-      {/* VIEW 3: 2 OFFICIAL CREATOR ADMIN GMAIL ACCOUNTS */}
+      {/* VIEW 3: OFFICIAL CREATOR ADMIN GMAIL ACCOUNTS */}
       {activeTab === 'admins' && (
         <Surface style={[styles.listContainer, { backgroundColor: dynamicCardBg, borderColor: dynamicBorder }]} elevation={2}>
-          <Text style={styles.rosterTitle}>AUTHORIZED SYSTEM CREATOR ADMINS (2 MEMBERS)</Text>
+          <Text style={styles.rosterTitle}>AUTHORIZED SYSTEM CREATOR ADMINS ({OFFICIAL_ADMIN_GROUP.length} MEMBERS)</Text>
           <Text style={[styles.feedSubtitle, { color: dynamicSub }]}>Public signups cannot register as Admin. Reserved exclusively for designated creator Gmails.</Text>
           <Divider style={{ marginVertical: 10 }} />
 

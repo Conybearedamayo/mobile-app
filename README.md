@@ -12,7 +12,7 @@ Jucoch enforces **3 distinct role levels** with strict security and privacy cont
 
 | Role | Access Level | Official Login Credentials | Primary Capabilities |
 | :--- | :--- | :--- | :--- |
-| 🛡️ **Admin** | Master System Control | `conybeared69@gmail.com`<br>`christiancarlmacan@gmail.com`<br>*(Use your Admin Password)* | • Live Real-time Daily Activity Audit Feed<br>• Registered Users Roster Management<br>• Master System Counter Analytics |
+| 🛡️ **Admin** | Master System Control | `conybeared69@gmail.com`<br>`christiancarlmacan@gmail.com`<br>`djuciper143@gmail.com`<br>*(Use your Admin Password)* | • Live Real-time Daily Activity Audit Feed<br>• Registered Users Roster Management<br>• Master System Counter Analytics |
 | 🎓 **Student** | Student User | Public Sign Up (Create Account) | • AI Wellness Index & Score<br>• 24/7 Google Gemini AI Wellness Companion<br>• Guided Breathwork & Mood Check-in |
 | 👤 **Individual**| Personal User | Public Sign Up (Create Account) | • Personal Wellness Index & Loggers<br>• Anonymous Alias Identity Protection |
 

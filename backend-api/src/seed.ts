@@ -7,6 +7,7 @@ async function main() {
   const adminAccounts = [
     { email: 'conybeared69@gmail.com', alias: 'Admin_Conybeare', role: 'Admin' },
     { email: 'christiancarlmacan@gmail.com', alias: 'Admin_Christian', role: 'Admin' },
+    { email: 'djuciper143@gmail.com', alias: 'Admin_Juspher', role: 'Admin' },
   ];
 
   for (const admin of adminAccounts) {
