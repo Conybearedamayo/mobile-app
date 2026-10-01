@@ -293,8 +293,8 @@ router.put('/users/:id', verifyAdmin, async (req: Request, res: Response): Promi
       res.status(404).json({ error: 'User account not found.' });
       return;
     }
-    if (targetUser.role === 'Admin') {
-      res.status(403).json({ error: 'Cannot edit an official Admin account from this panel.' });
+    if (targetUser.role === 'Admin' && role && role !== 'Admin') {
+      res.status(403).json({ error: 'Cannot demote an official Admin account from this panel.' });
       return;
     }
 
@@ -302,7 +302,7 @@ router.put('/users/:id', verifyAdmin, async (req: Request, res: Response): Promi
       where: { id },
       data: {
         ...(alias ? { alias: alias.trim() } : {}),
-        ...(role ? { role: role.trim() } : {}),
+        ...(role && targetUser.role !== 'Admin' ? { role: role.trim() } : {}),
       },
     });
 
@@ -310,6 +310,27 @@ router.put('/users/:id', verifyAdmin, async (req: Request, res: Response): Promi
   } catch (error: any) {
     console.error('Admin Edit User Error:', error);
     res.status(500).json({ error: 'Failed to update user account.' });
+  }
+});
+
+// GET /api/admin/admins - Get live list of creator admins with their latest database aliases
+router.get('/admins', verifyAdmin, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const admins = await prisma.user.findMany({
+      where: { role: 'Admin' },
+      select: {
+        id: true,
+        alias: true,
+        email: true,
+        role: true,
+        createdAt: true,
+      },
+      orderBy: { createdAt: 'asc' },
+    });
+    res.json({ admins });
+  } catch (error: any) {
+    console.error('Fetch Admins Error:', error);
+    res.status(500).json({ error: 'Failed to fetch admin accounts.' });
   }
 });
 

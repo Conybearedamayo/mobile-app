@@ -375,6 +375,74 @@ router.put('/privacy', async (req: Request, res: Response): Promise<void> => {
   }
 });
 
+// PUT /api/auth/alias - Update user/admin own display alias in database
+router.put('/alias', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      res.status(401).json({ error: 'Authentication token required.' });
+      return;
+    }
+
+    const token = authHeader.split(' ')[1];
+    if (!token || token === 'null' || token === 'undefined') {
+      res.status(401).json({ error: 'Authentication token is missing or invalid.' });
+      return;
+    }
+
+    const decoded = jwt.verify(token, JWT_SECRET) as any;
+    if (!decoded?.userId) {
+      res.status(401).json({ error: 'Invalid authentication token.' });
+      return;
+    }
+
+    const { alias } = req.body;
+    if (!alias || !alias.trim()) {
+      res.status(400).json({ error: 'Alias is required.' });
+      return;
+    }
+
+    const trimmedAlias = alias.trim();
+    if (trimmedAlias.length < 2) {
+      res.status(400).json({ error: 'Alias must be at least 2 characters long.' });
+      return;
+    }
+
+    // Check if alias is already taken by another user
+    const existing = await prisma.user.findFirst({
+      where: {
+        alias: trimmedAlias,
+        id: { not: decoded.userId },
+      },
+    });
+
+    if (existing) {
+      res.status(400).json({ error: 'This alias is already taken. Please choose another.' });
+      return;
+    }
+
+    const updatedUser = await prisma.user.update({
+      where: { id: decoded.userId },
+      data: { alias: trimmedAlias },
+      select: {
+        id: true,
+        alias: true,
+        email: true,
+        role: true,
+        isAnonymous: true,
+      },
+    });
+
+    res.json({
+      message: 'Display alias updated successfully.',
+      user: updatedUser,
+    });
+  } catch (error: any) {
+    console.error('Update Alias Error:', error);
+    res.status(500).json({ error: 'Failed to update display alias.' });
+  }
+});
+
 // POST /api/auth/reset-password - Real database password update
 router.post('/reset-password', async (req: Request, res: Response): Promise<void> => {
   try {

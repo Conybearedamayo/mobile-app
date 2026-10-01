@@ -150,3 +150,21 @@ export const updatePrivacySettingsApi = async (token: string, isAnonymous: boole
     return null;
   }
 };
+
+export const updateUserAliasApi = async (token: string, alias: string): Promise<any> => {
+  if (!token) return null;
+  const response = await fetchWithTimeout(`${API_BASE_URL}/api/auth/alias`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`,
+    },
+    body: JSON.stringify({ alias }),
+  });
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data.error || 'Failed to update display alias in cloud database.');
+  }
+  return data;
+};
+

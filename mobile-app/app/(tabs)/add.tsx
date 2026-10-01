@@ -108,11 +108,6 @@ export default function FeaturesHub() {
             </View>
           ))}
 
-          <View style={styles.footer}>
-            <ShieldCheck size={16} color={JUCOCH_GREEN} style={{ marginBottom: 4 }} />
-            <Text style={[styles.versionText, { color: dynamicSub }]}>JUCOCH AI SYSTEM • BETA v1.0.0</Text>
-          </View>
-
         </View>
       </ScrollView>
     </View>

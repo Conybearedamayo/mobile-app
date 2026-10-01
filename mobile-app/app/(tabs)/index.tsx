@@ -1,16 +1,61 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { View, StyleSheet, ScrollView, TouchableOpacity, Dimensions, StatusBar, Platform, Animated } from 'react-native';
 import { Text, Avatar, Badge, Surface, Portal, Modal } from 'react-native-paper';
-import { Smile, Moon, Zap, Activity, ChevronRight, Bell, Sparkles, MessageCircle, HeartPulse, BookOpen, Flame, Compass, X, Wind, CheckCircle2, Play, Pause } from 'lucide-react-native';
-import { useRouter } from 'expo-router';
+import { Smile, Moon, Zap, Activity, ChevronRight, ChevronLeft, Bell, Sparkles, MessageCircle, HeartPulse, BookOpen, Flame, Compass, X, Wind, CheckCircle2, Play, Pause, AlertTriangle } from 'lucide-react-native';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useWellness } from '@/context/WellnessContext';
 import { LinearGradient } from 'expo-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import AdminDashboard from '@/components/dashboards/AdminDashboard';
-import AppGuideModal from '@/components/AppGuideModal';
 
 const { width } = Dimensions.get('window');
 const JUCOCH_GREEN = '#2D6A4F';
+
+interface TourStepInfo {
+  step: number;
+  tag: string;
+  title: string;
+  desc: string;
+  color: string;
+}
+
+const TOUR_STEPS: TourStepInfo[] = [
+  {
+    step: 1,
+    tag: 'STEP 1 OF 5 • AI RESILIENCE INDEX',
+    title: 'AI Wellness Index & Streaks 🌟',
+    desc: 'Calculates your overall emotional resilience score (0–100) and tracks consecutive check-in days. Tap anytime to view detailed charts.',
+    color: '#2D6A4F',
+  },
+  {
+    step: 2,
+    tag: 'STEP 2 OF 5 • MOOD TRACKING',
+    title: 'Quick Daily Mood Check-In 🎭',
+    desc: 'Tap an emoji anytime to record your current emotions in 2 seconds. Regular check-ins build your streak and unlock milestone badges!',
+    color: '#48BB78',
+  },
+  {
+    step: 3,
+    tag: 'STEP 3 OF 5 • WELLNESS TOOLS',
+    title: 'Daily Loggers & Private Journal 📝',
+    desc: 'Record sleep hours, log academic routines, and write private 256-bit encrypted reflections in your gratitude journal.',
+    color: '#5F27CD',
+  },
+  {
+    step: 4,
+    tag: 'STEP 4 OF 5 • GUIDED BREATHWORK',
+    title: '2-Minute Guided Box Breathing 🫁',
+    desc: 'Tap "Start Breath" for live animated 4-4-4-4 breath pacing (Inhale ➔ Hold ➔ Exhale ➔ Rest) to calm anxiety fast.',
+    color: '#00B4D8',
+  },
+  {
+    step: 5,
+    tag: 'STEP 5 OF 5 • 24/7 AI COMPANION',
+    title: 'Jucoch AI Companion Chat 🤖',
+    desc: 'Tap the Chat icon below in the bottom bar to speak with your 24/7 confidential AI mental health coach.',
+    color: '#1E88E5',
+  },
+];
 
 const QUICK_ACTIONS = [
   { id: 'mood', label: 'Log Mood', icon: Smile, color: '#48BB78', route: '/mood-logger', desc: 'How are you feeling?' },
@@ -21,32 +66,105 @@ const QUICK_ACTIONS = [
 
 export default function HomeScreen() {
   const router = useRouter();
-  const { userAlias, userRole, userAvatar, moodLogs, sleepLogs, activityEntries, wellnessScore, getCurrentStreak, addMoodLog, isDarkMode } = useWellness();
+  const params = useLocalSearchParams<{ startTour?: string }>();
+  const { userAlias, userRole, userAvatar, moodLogs, sleepLogs, activityEntries, wellnessScore, getCurrentStreak, addMoodLog, isDarkMode, notificationPrefs } = useWellness();
+  const isAdmin = (userRole || 'Individual') === 'Admin';
 
   const [selectedMood, setSelectedMood] = useState<string | null>(null);
   const [moodSavedMsg, setMoodSavedMsg] = useState('');
   const [showBreathingModal, setShowBreathingModal] = useState(false);
-  const [showGuideModal, setShowGuideModal] = useState(false);
+  const [dismissedReminderId, setDismissedReminderId] = useState<string | null>(null);
+  const [tourStep, setTourStep] = useState<number | null>(null);
+  const [cardLayoutY, setCardLayoutY] = useState<{ [key: number]: number }>({
+    1: 180,
+    2: 450,
+    3: 650,
+    4: 900,
+  });
+  const homeScrollRef = useRef<ScrollView>(null);
+  const tourPulseAnim = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
+    if (tourStep !== null) {
+      const pulseLoop = Animated.loop(
+        Animated.sequence([
+          Animated.timing(tourPulseAnim, {
+            toValue: 1.18,
+            duration: 700,
+            useNativeDriver: Platform.OS !== 'web',
+          }),
+          Animated.timing(tourPulseAnim, {
+            toValue: 1.0,
+            duration: 700,
+            useNativeDriver: Platform.OS !== 'web',
+          }),
+        ])
+      );
+      pulseLoop.start();
+      return () => pulseLoop.stop();
+    }
+  }, [tourStep]);
+
+  useEffect(() => {
+    if (params?.startTour === '1' && !isAdmin) {
+      setTimeout(() => {
+        handleStartTour();
+      }, 400);
+    }
+  }, [params?.startTour, isAdmin]);
+
+  useEffect(() => {
+    if (isAdmin) return;
     const checkFirstTimeTour = async () => {
       try {
         const hasSeen = await AsyncStorage.getItem('@jucoch_tour_shown');
         if (!hasSeen) {
           setTimeout(() => {
-            setShowGuideModal(true);
-          }, 1200);
+            if (!isAdmin) {
+              handleStartTour();
+            }
+          }, 1500);
         }
       } catch (e) {}
     };
     checkFirstTimeTour();
-  }, []);
+  }, [isAdmin]);
 
-  const handleCloseGuideModal = async () => {
-    setShowGuideModal(false);
-    try {
-      await AsyncStorage.setItem('@jucoch_tour_shown', 'true');
-    } catch (e) {}
+  const handleStartTour = () => {
+    if (isAdmin) return;
+    setTourStep(1);
+    const targetY = cardLayoutY[1] !== undefined ? Math.max(0, cardLayoutY[1] - 40) : 0;
+    homeScrollRef.current?.scrollTo({ y: targetY, animated: true });
+  };
+
+  const handleNextTourStep = () => {
+    if (tourStep === null) return;
+    if (tourStep >= 5) {
+      setTourStep(null);
+      AsyncStorage.setItem('@jucoch_tour_shown', 'true').catch(() => {});
+      return;
+    }
+    const next = tourStep + 1;
+    setTourStep(next);
+    if (next <= 4) {
+      const targetY = cardLayoutY[next] !== undefined ? Math.max(0, cardLayoutY[next] - 40) : 0;
+      homeScrollRef.current?.scrollTo({ y: targetY, animated: true });
+    } else {
+      homeScrollRef.current?.scrollToEnd({ animated: true });
+    }
+  };
+
+  const handlePrevTourStep = () => {
+    if (tourStep === null || tourStep <= 1) return;
+    const prev = tourStep - 1;
+    setTourStep(prev);
+    const targetY = cardLayoutY[prev] !== undefined ? Math.max(0, cardLayoutY[prev] - 40) : 0;
+    homeScrollRef.current?.scrollTo({ y: targetY, animated: true });
+  };
+
+  const handleSkipTour = () => {
+    setTourStep(null);
+    AsyncStorage.setItem('@jucoch_tour_shown', 'true').catch(() => {});
   };
 
   // Live Guided Breathing Exercise Timer & Animation State
@@ -143,7 +261,6 @@ export default function HomeScreen() {
 
   const displayName = userAlias || 'User';
   const displayRole = userRole || 'Individual';
-  const isAdmin = displayRole === 'Admin';
   const isStudent = displayRole === 'Student';
 
   const dynamicBg = isDarkMode ? '#121614' : '#F3F8F5';
@@ -169,10 +286,180 @@ export default function HomeScreen() {
 
   const totalUserLogs = moodLogs.length + sleepLogs.length + activityEntries.length;
 
+  // Contextual In-App Smart Reminders based on user preferences and time of day
+  const getActiveSmartReminder = () => {
+    const currentHour = new Date().getHours();
+    const todayStr = new Date().toDateString();
+
+    const loggedMoodToday = moodLogs.some(
+      (m) => new Date(m.timestamp).toDateString() === todayStr
+    );
+
+    const loggedSleepToday = sleepLogs.some(
+      (s) => new Date(s.timestamp).toDateString() === todayStr
+    );
+
+    // 1. AI Distress Notice if distress pattern is present
+    const recentNegativeMoods = moodLogs.slice(0, 3).filter((m) => m.mood === 'Awful' || m.mood === 'Bad');
+    const isDistress = wellnessScore < 50 && recentNegativeMoods.length >= 2;
+    if (notificationPrefs?.aiDistressAlert && isDistress && dismissedReminderId !== 'distress') {
+      return {
+        id: 'distress',
+        title: 'Emotional Support Notice',
+        message: 'Your recent check-ins show heightened strain. Connect with Jucoch AI coach or try a relaxing breathing session.',
+        actionText: 'Talk to AI',
+        route: '/(tabs)/chat' as const,
+        color: '#D90429',
+        bgColor: isDarkMode ? '#2D1517' : '#FFF0F0',
+        borderColor: '#FFB8B8',
+        icon: AlertTriangle,
+      };
+    }
+
+    // 2. Daily Check-in (Morning: before 2 PM, or if not logged mood today)
+    if (notificationPrefs?.dailyCheckin && !loggedMoodToday && currentHour < 14 && dismissedReminderId !== 'daily_checkin') {
+      return {
+        id: 'daily_checkin',
+        title: 'Daily Check-In',
+        message: 'How is your day starting off? Tap a mood emoji below to record your morning baseline.',
+        actionText: 'Log Mood',
+        route: '/mood-logger' as const,
+        color: JUCOCH_GREEN,
+        bgColor: isDarkMode ? '#1B2E24' : '#E8F5EE',
+        borderColor: JUCOCH_GREEN,
+        icon: Bell,
+      };
+    }
+
+    // 3. Bedtime Prompt (Evening: 8:00 PM onwards)
+    if (notificationPrefs?.bedtimePrompt && currentHour >= 20 && !loggedSleepToday && dismissedReminderId !== 'bedtime') {
+      return {
+        id: 'bedtime',
+        title: 'Sleep Wind-Down Prompt',
+        message: 'Preparing for rest? Unwind your screen time and log your rest schedule for tonight.',
+        actionText: 'Sleep Log',
+        route: '/sleep-logger' as const,
+        color: '#5F27CD',
+        bgColor: isDarkMode ? '#231D38' : '#F3EFFF',
+        borderColor: '#9B51E0',
+        icon: Moon,
+      };
+    }
+
+    // 4. Study Break & Hydration (Midday/Afternoon: 11 AM - 6 PM)
+    if (notificationPrefs?.studyBreak && currentHour >= 11 && currentHour < 18 && dismissedReminderId !== 'study_break') {
+      return {
+        id: 'study_break',
+        title: 'Mindful Break & Hydration',
+        message: 'Study session in progress? Stand up, drink a glass of water, and do 1 minute of deep breathing.',
+        actionText: 'Guided Breathing',
+        actionFn: handleOpenBreathingModal,
+        color: '#0284C7',
+        bgColor: isDarkMode ? '#142738' : '#E0F2FE',
+        borderColor: '#38BDF8',
+        icon: Wind,
+      };
+    }
+
+    return null;
+  };
+
+  const activeReminder = getActiveSmartReminder();
+
+  // Reusable Target Circle Pointer Component ("Circle na mo adtu sa target")
+  const renderCirclePointer = (label: string, color: string, style?: any, badgePosition: 'bottom' | 'top' = 'bottom') => {
+    return (
+      <Animated.View
+        style={[
+          styles.circlePointerWrapper,
+          style,
+          {
+            transform: [{ scale: tourPulseAnim }],
+          },
+        ]}
+        pointerEvents="none"
+      >
+        <View style={[styles.circlePointerRadar, { borderColor: color, backgroundColor: `${color}25` }]} />
+        <View style={[styles.circlePointerCore, { backgroundColor: color }]}>
+          <Text style={{ fontSize: 16 }}>🎯</Text>
+        </View>
+        <View style={[badgePosition === 'top' ? styles.circlePointerBadgeTop : styles.circlePointerBadge, { backgroundColor: color }]}>
+          <Text style={styles.circlePointerBadgeText}>{label}</Text>
+        </View>
+      </Animated.View>
+    );
+  };
+
+  // Reusable Compact Popover Card Component ("Gamay na explanation")
+  const renderPopoverCard = (stepNum: number, arrow: 'up' | 'down' = 'up') => {
+    const stepData = TOUR_STEPS[stepNum - 1];
+    if (!stepData) return null;
+    const isLast = stepNum === 5;
+
+    return (
+      <View style={styles.popoverCardWrapper}>
+        {arrow === 'up' && (
+          <View style={[styles.popoverArrowUp, { borderBottomColor: dynamicCardBg }]} />
+        )}
+
+        <Surface
+          style={[
+            styles.popoverSurface,
+            { backgroundColor: dynamicCardBg, borderColor: stepData.color },
+          ]}
+          elevation={5}
+        >
+          {/* Header: Tag & Skip ✕ */}
+          <View style={styles.popoverHeaderRow}>
+            <View style={[styles.popoverPill, { backgroundColor: `${stepData.color}20` }]}>
+              <Text style={[styles.popoverPillText, { color: stepData.color }]}>{stepData.tag}</Text>
+            </View>
+            <TouchableOpacity onPress={handleSkipTour} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+              <Text style={styles.popoverSkipText}>Skip Tour ✕</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Title */}
+          <Text style={[styles.popoverTitle, { color: dynamicText }]}>{stepData.title}</Text>
+
+          {/* 2-line explanation ("gamay na explaination") */}
+          <Text style={[styles.popoverDesc, { color: dynamicSub }]}>{stepData.desc}</Text>
+
+          {/* Footer Navigation */}
+          <View style={styles.popoverFooter}>
+            {stepNum > 1 ? (
+              <TouchableOpacity onPress={handlePrevTourStep} style={styles.popoverBackBtn} activeOpacity={0.7}>
+                <ChevronLeft size={16} color={dynamicSub} />
+                <Text style={[styles.popoverBackText, { color: dynamicSub }]}>Back</Text>
+              </TouchableOpacity>
+            ) : (
+              <View style={{ width: 60 }} />
+            )}
+
+            <TouchableOpacity
+              onPress={handleNextTourStep}
+              style={[styles.popoverNextBtn, { backgroundColor: stepData.color }]}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.popoverNextText}>
+                {isLast ? 'Got It! 🎉' : 'Next Step ➔'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </Surface>
+
+        {arrow === 'down' && (
+          <View style={[styles.popoverArrowDown, { borderTopColor: dynamicCardBg }]} />
+        )}
+      </View>
+    );
+  };
+
   return (
     <View style={[styles.container, { backgroundColor: dynamicBg }]}>
       <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
       <ScrollView 
+        ref={homeScrollRef}
         style={styles.scrollView} 
         contentContainerStyle={styles.scrollContent} 
         showsVerticalScrollIndicator={false}
@@ -181,19 +468,18 @@ export default function HomeScreen() {
         <View style={styles.responsiveWrapper}>
           
           {/* Top Header */}
-          <View style={styles.header}>
+          <View style={[styles.header, tourStep !== null && styles.dimmedTourSection]}>
             <View style={{ flex: 1 }}>
-              <Text variant="bodyMedium" style={[styles.greetingText, { color: dynamicSub }]}>Welcome back 👋</Text>
               <Text variant="headlineSmall" style={[styles.welcomeText, { color: dynamicText }]}>
-                {isAdmin ? 'Master Control Panel' : displayName}
+                {displayName}
               </Text>
               <View style={styles.roleBadgeWrapper}>
                 <Surface style={[styles.roleBadgeSurface, { backgroundColor: isDarkMode ? '#1E3A2B' : '#E8F5E9' }]} elevation={0}>
-                  <Text style={styles.roleBadgeText}>{displayRole} Account</Text>
+                  <Text style={styles.roleBadgeText}>{isAdmin ? '🛡️ Administrator' : `${displayRole} Account`}</Text>
                 </Surface>
                 {!isAdmin && (
                   <TouchableOpacity 
-                    onPress={() => setShowGuideModal(true)} 
+                    onPress={handleStartTour} 
                     style={[styles.tourBadgeSurface, { backgroundColor: isDarkMode ? '#1B382B' : '#E0F2E9' }]}
                     activeOpacity={0.75}
                   >
@@ -221,7 +507,7 @@ export default function HomeScreen() {
             /* PERSONAL WELLNESS DASHBOARD FOR STUDENT AND INDIVIDUAL ONLY */
             <>
               {/* Daily Quote Banner */}
-              <Surface style={[styles.motivationCard, { backgroundColor: dynamicCardBg, borderColor: dynamicBorder }]} elevation={1}>
+              <Surface style={[styles.motivationCard, { backgroundColor: dynamicCardBg, borderColor: dynamicBorder }, tourStep !== null && styles.dimmedTourSection]} elevation={1}>
                 <View style={styles.motivationIconBg}>
                   <Sparkles size={18} color={JUCOCH_GREEN} />
                 </View>
@@ -230,58 +516,142 @@ export default function HomeScreen() {
                 </Text>
               </Surface>
 
-              {/* High-Impact AI Wellness Hero Card */}
-              <TouchableOpacity activeOpacity={0.92} onPress={() => router.push('/(tabs)/insights')}>
-                <LinearGradient
-                  colors={['#1B4332', '#2D6A4F', '#40916C']}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={styles.heroCardGradient}
+              {/* Contextual In-App Smart Reminder Card */}
+              {activeReminder && (
+                <Surface 
+                  style={[
+                    styles.smartReminderCard, 
+                    { backgroundColor: activeReminder.bgColor, borderColor: activeReminder.borderColor },
+                    tourStep !== null && styles.dimmedTourSection
+                  ]} 
+                  elevation={2}
                 >
-                  <View style={styles.heroHeader}>
-                    <View style={styles.heroTag}>
-                      <Activity size={12} color="#FFF" style={{ marginRight: 4 }} />
-                      <Text style={styles.heroTagText}>AI WELLNESS INDEX</Text>
-                    </View>
-                    <View style={styles.streakTag}>
-                      <Flame size={14} color="#FFB703" fill="#FFB703" style={{ marginRight: 4 }} />
-                      <Text style={styles.streakTagText}>{getCurrentStreak()} Day Streak</Text>
-                    </View>
-                  </View>
-
-                  <View style={styles.heroMainRow}>
-                    <View style={styles.scoreInfo}>
-                      <View style={styles.scoreMain}>
-                        <Text style={styles.scoreValue}>{wellnessScore}</Text>
-                        <Text style={styles.scoreScale}>/100</Text>
+                  <View style={styles.smartReminderTop}>
+                    <View style={styles.smartReminderHeader}>
+                      <View style={[styles.smartReminderIconBg, { backgroundColor: activeReminder.color + '22' }]}>
+                        <activeReminder.icon size={16} color={activeReminder.color} />
                       </View>
-                      <Text style={styles.scoreSub}>
-                        {totalUserLogs === 0
-                          ? '🌱 New user baseline: Log your daily mood or rest to calculate your AI index!'
-                          : wellnessScore >= 80 ? '🌟 Excellent emotional balance today!'
-                          : wellnessScore >= 60 ? '✨ Stable emotional state. Keep it up!'
-                          : '💙 Rest and talk with Jucoch AI for support.'}
+                      <Text style={[styles.smartReminderTitle, { color: activeReminder.color }]}>
+                        {activeReminder.title}
                       </Text>
                     </View>
+                    <TouchableOpacity 
+                      onPress={() => setDismissedReminderId(activeReminder.id)}
+                      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                      style={styles.smartReminderDismiss}
+                    >
+                      <X size={15} color={dynamicSub} />
+                    </TouchableOpacity>
+                  </View>
 
-                    <View style={styles.scoreRingWrapper}>
-                      <View style={styles.outerCircle}>
-                        <View style={styles.innerCircle}>
-                          <HeartPulse size={26} color={JUCOCH_GREEN} />
+                  <Text style={[styles.smartReminderMsg, { color: dynamicText }]}>
+                    {activeReminder.message}
+                  </Text>
+
+                  <View style={styles.smartReminderFooter}>
+                    <TouchableOpacity
+                      style={[styles.smartReminderActionBtn, { backgroundColor: activeReminder.color }]}
+                      activeOpacity={0.8}
+                      onPress={() => {
+                        if (activeReminder.actionFn) {
+                          activeReminder.actionFn();
+                        } else if (activeReminder.route) {
+                          router.push(activeReminder.route as any);
+                        }
+                      }}
+                    >
+                      <Text style={styles.smartReminderActionText}>{activeReminder.actionText}</Text>
+                      <ChevronRight size={14} color="#FFF" style={{ marginLeft: 4 }} />
+                    </TouchableOpacity>
+                  </View>
+                </Surface>
+              )}
+
+              {/* High-Impact AI Wellness Hero Card */}
+              <View
+                onLayout={(e) => {
+                  const layoutY = e.nativeEvent.layout.y;
+                  setCardLayoutY((prev) => ({ ...prev, 1: layoutY }));
+                }}
+                style={[
+                  styles.tourTargetSection,
+                  tourStep !== null && tourStep !== 1 && styles.dimmedTourSection,
+                ]}
+              >
+                <TouchableOpacity 
+                  activeOpacity={0.92} 
+                  onPress={() => router.push('/(tabs)/insights')}
+                  style={[tourStep === 1 && styles.activeTargetGlow]}
+                >
+                  <LinearGradient
+                    colors={['#1B4332', '#2D6A4F', '#40916C']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={styles.heroCardGradient}
+                  >
+                    <View style={styles.heroHeader}>
+                      <View style={styles.heroTag}>
+                        <Activity size={12} color="#FFF" style={{ marginRight: 4 }} />
+                        <Text style={styles.heroTagText}>AI WELLNESS INDEX</Text>
+                      </View>
+                      <View style={styles.streakTag}>
+                        <Flame size={14} color="#FFB703" fill="#FFB703" style={{ marginRight: 4 }} />
+                        <Text style={styles.streakTagText}>{getCurrentStreak()} Day Streak</Text>
+                      </View>
+                    </View>
+
+                    <View style={styles.heroMainRow}>
+                      <View style={styles.scoreInfo}>
+                        <View style={styles.scoreMain}>
+                          <Text style={styles.scoreValue}>{wellnessScore}</Text>
+                          <Text style={styles.scoreScale}>/100</Text>
+                        </View>
+                        <Text style={styles.scoreSub}>
+                          {totalUserLogs === 0
+                            ? '🌱 New user baseline: Log your daily mood or rest to calculate your AI index!'
+                            : wellnessScore >= 80 ? '🌟 Excellent emotional balance today!'
+                            : wellnessScore >= 60 ? '✨ Stable emotional state. Keep it up!'
+                            : '💙 Rest and talk with Jucoch AI for support.'}
+                        </Text>
+                      </View>
+
+                      <View style={styles.scoreRingWrapper}>
+                        {tourStep === 1 && renderCirclePointer('Resilience Score', '#48BB78', {
+                          position: 'absolute',
+                          top: -12,
+                          alignSelf: 'center',
+                          zIndex: 10005,
+                        })}
+                        <View style={styles.outerCircle}>
+                          <View style={styles.innerCircle}>
+                            <HeartPulse size={26} color={JUCOCH_GREEN} />
+                          </View>
                         </View>
                       </View>
                     </View>
-                  </View>
 
-                  <View style={styles.heroFooter}>
-                    <Text style={styles.heroFooterText}>View Full Analytics & Reports</Text>
-                    <ChevronRight size={16} color="#FFF" />
-                  </View>
-                </LinearGradient>
-              </TouchableOpacity>
+                    <View style={styles.heroFooter}>
+                      <Text style={styles.heroFooterText}>View Full Analytics & Reports</Text>
+                      <ChevronRight size={16} color="#FFF" />
+                    </View>
+                  </LinearGradient>
+                </TouchableOpacity>
+
+                {tourStep === 1 && renderPopoverCard(1, 'up')}
+              </View>
 
               {/* Quick Interactive Mood Check-in Bar */}
-              <View style={styles.sectionContainer}>
+              <View 
+                onLayout={(e) => {
+                  const layoutY = e.nativeEvent.layout.y;
+                  setCardLayoutY((prev) => ({ ...prev, 2: layoutY }));
+                }}
+                style={[
+                  styles.sectionContainer,
+                  styles.tourTargetSection,
+                  tourStep !== null && tourStep !== 2 && styles.dimmedTourSection,
+                ]}
+              >
                 <View style={styles.sectionHeader}>
                   <Text style={styles.sectionTitle}>QUICK MOOD CHECK-IN</Text>
                   {moodSavedMsg ? (
@@ -291,72 +661,141 @@ export default function HomeScreen() {
                   )}
                 </View>
 
-                <Surface style={[styles.moodBarCard, { backgroundColor: dynamicCardBg, borderColor: dynamicBorder }]} elevation={2}>
-                  {MOOD_OPTIONS.map((m) => {
-                    const isSelected = selectedMood === m.label;
-                    return (
-                      <TouchableOpacity
-                        key={m.label}
-                        style={[styles.moodItem, isSelected && { backgroundColor: `${m.color}25`, borderColor: m.color }]}
-                        onPress={() => handleQuickMoodSelect(m)}
-                        activeOpacity={0.7}
-                      >
-                        <Text style={styles.moodEmoji}>{m.emoji}</Text>
-                        <Text style={[styles.moodLabel, { color: dynamicSub }, isSelected && { color: m.color, fontWeight: 'bold' }]}>
-                          {m.label}
-                        </Text>
-                      </TouchableOpacity>
-                    );
+                <View style={{ position: 'relative' }}>
+                  {tourStep === 2 && renderCirclePointer('Tap Your Mood', '#FFB703', {
+                    position: 'absolute',
+                    top: -16,
+                    alignSelf: 'center',
+                    zIndex: 10005,
                   })}
-                </Surface>
+
+                  <Surface 
+                    style={[
+                      styles.moodBarCard, 
+                      { backgroundColor: dynamicCardBg, borderColor: dynamicBorder },
+                      tourStep === 2 && styles.activeTargetGlow,
+                    ]} 
+                    elevation={2}
+                  >
+                    {MOOD_OPTIONS.map((m) => {
+                      const isSelected = selectedMood === m.label;
+                      return (
+                        <TouchableOpacity
+                          key={m.label}
+                          style={[styles.moodItem, isSelected && { backgroundColor: `${m.color}25`, borderColor: m.color }]}
+                          onPress={() => handleQuickMoodSelect(m)}
+                          activeOpacity={0.7}
+                        >
+                          <Text style={styles.moodEmoji}>{m.emoji}</Text>
+                          <Text style={[styles.moodLabel, { color: dynamicSub }, isSelected && { color: m.color, fontWeight: 'bold' }]}>
+                            {m.label}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </Surface>
+                </View>
+
+                {tourStep === 2 && renderPopoverCard(2, 'up')}
               </View>
 
               {/* Quick Action Navigation Grid */}
-              <View style={styles.sectionContainer}>
+              <View 
+                onLayout={(e) => {
+                  const layoutY = e.nativeEvent.layout.y;
+                  setCardLayoutY((prev) => ({ ...prev, 3: layoutY }));
+                }}
+                style={[
+                  styles.sectionContainer,
+                  styles.tourTargetSection,
+                  tourStep !== null && tourStep !== 3 && styles.dimmedTourSection,
+                ]}
+              >
                 <Text style={styles.sectionTitle}>WELLNESS TOOLS</Text>
-                <View style={styles.quickGrid}>
-                  {QUICK_ACTIONS.map((action) => {
-                    const IconComp = action.icon;
-                    return (
-                      <TouchableOpacity
-                        key={action.id}
-                        style={styles.gridCardWrapper}
-                        onPress={() => router.push(action.route as any)}
-                        activeOpacity={0.8}
-                      >
-                        <Surface style={[styles.gridCard, { backgroundColor: dynamicCardBg, borderColor: dynamicBorder }]} elevation={2}>
-                          <View style={[styles.gridIconBg, { backgroundColor: `${action.color}20` }]}>
-                            <IconComp size={22} color={action.color} />
-                          </View>
-                          <Text style={[styles.gridTitle, { color: dynamicText }]}>{action.label}</Text>
-                          <Text style={[styles.gridDesc, { color: dynamicSub }]}>{action.desc}</Text>
-                        </Surface>
-                      </TouchableOpacity>
-                    );
+                
+                <View style={{ position: 'relative' }}>
+                  {tourStep === 3 && renderCirclePointer('Wellness Tools', '#38BDF8', {
+                    position: 'absolute',
+                    top: '32%',
+                    alignSelf: 'center',
+                    zIndex: 10005,
                   })}
+
+                  <View style={[styles.quickGrid, tourStep === 3 && styles.activeTargetGlow, tourStep === 3 && { padding: 4 }]}>
+                    {QUICK_ACTIONS.map((action) => {
+                      const IconComp = action.icon;
+                      return (
+                        <TouchableOpacity
+                          key={action.id}
+                          style={styles.gridCardWrapper}
+                          onPress={() => router.push(action.route as any)}
+                          activeOpacity={0.8}
+                        >
+                          <Surface style={[styles.gridCard, { backgroundColor: dynamicCardBg, borderColor: dynamicBorder }]} elevation={2}>
+                            <View style={[styles.gridIconBg, { backgroundColor: `${action.color}20` }]}>
+                              <IconComp size={22} color={action.color} />
+                            </View>
+                            <Text style={[styles.gridTitle, { color: dynamicText }]}>{action.label}</Text>
+                            <Text style={[styles.gridDesc, { color: dynamicSub }]}>{action.desc}</Text>
+                          </Surface>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
                 </View>
+
+                {tourStep === 3 && renderPopoverCard(3, 'up')}
               </View>
 
               {/* Breathing Exercise Card */}
-              <Surface style={[styles.breathingCard, { backgroundColor: dynamicCardBg, borderColor: isDarkMode ? '#2C3A31' : '#D8F3DC' }]} elevation={2}>
-                <View style={styles.breathingLeft}>
-                  <View style={styles.windIconBg}>
-                    <Wind size={22} color={JUCOCH_GREEN} />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={[styles.breathingTitle, { color: dynamicText }]}>Guided Breathing Exercise</Text>
-                    <Text style={[styles.breathingSub, { color: dynamicSub }]}>Take 2 minutes to calm your vagus nerve and reduce anxiety.</Text>
-                  </View>
-                </View>
-
-                <TouchableOpacity 
-                  style={styles.startBreatheBtn}
-                  onPress={handleOpenBreathingModal}
-                  activeOpacity={0.8}
+              <View
+                onLayout={(e) => {
+                  const layoutY = e.nativeEvent.layout.y;
+                  setCardLayoutY((prev) => ({ ...prev, 4: layoutY }));
+                }}
+                style={[
+                  styles.tourTargetSection,
+                  tourStep !== null && tourStep !== 4 && styles.dimmedTourSection,
+                ]}
+              >
+                <Surface 
+                  style={[
+                    styles.breathingCard, 
+                    { backgroundColor: dynamicCardBg, borderColor: isDarkMode ? '#2C3A31' : '#D8F3DC' },
+                    tourStep === 4 && styles.activeTargetGlow,
+                  ]} 
+                  elevation={2}
                 >
-                  <Text style={styles.startBreatheBtnText}>Start Breath</Text>
-                </TouchableOpacity>
-              </Surface>
+                  <View style={styles.breathingLeft}>
+                    <View style={styles.windIconBg}>
+                      <Wind size={22} color={JUCOCH_GREEN} />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.breathingTitle, { color: dynamicText }]}>Guided Breathing Exercise</Text>
+                      <Text style={[styles.breathingSub, { color: dynamicSub }]}>Take 2 minutes to calm your vagus nerve and reduce anxiety.</Text>
+                    </View>
+                  </View>
+
+                  <View style={{ position: 'relative' }}>
+                    {tourStep === 4 && renderCirclePointer('Start Breath', '#00B4D8', {
+                      position: 'absolute',
+                      top: -18,
+                      alignSelf: 'center',
+                      zIndex: 10005,
+                    })}
+
+                    <TouchableOpacity 
+                      style={styles.startBreatheBtn}
+                      onPress={handleOpenBreathingModal}
+                      activeOpacity={0.8}
+                    >
+                      <Text style={styles.startBreatheBtnText}>Start Breath</Text>
+                    </TouchableOpacity>
+                  </View>
+                </Surface>
+
+                {tourStep === 4 && renderPopoverCard(4, 'up')}
+              </View>
             </>
           )}
 
@@ -483,11 +922,37 @@ export default function HomeScreen() {
           </Surface>
         </Modal>
       </Portal>
-      {/* APP ONBOARDING & GUIDED TOUR MODAL */}
-      <AppGuideModal
-        visible={showGuideModal}
-        onClose={handleCloseGuideModal}
-      />
+
+      {/* Floating Interactive App Guide Tour for Step 5 (Chat Tab) in Portal */}
+      {tourStep === 5 && (
+        <Portal>
+          <View style={styles.tourStep5Container} pointerEvents="box-none">
+            {/* Dimmed backdrop covering screen above the tab bar */}
+            <TouchableOpacity 
+              activeOpacity={1}
+              style={styles.tourStep5DimBackdrop} 
+              onPress={handleSkipTour}
+            />
+
+            {/* Pulsing Target Circle pointing directly at the Chat Tab icon in the bottom bar */}
+            <TouchableOpacity
+              activeOpacity={0.8}
+              style={styles.tourStep5PointerTouchable}
+              onPress={() => {
+                handleSkipTour();
+                router.push('/(tabs)/chat');
+              }}
+            >
+              {renderCirclePointer('Chat Tab (4th Tab)', '#1E88E5', undefined, 'top')}
+            </TouchableOpacity>
+
+            {/* Popover Card with Down Arrow right above the bottom tab bar */}
+            <View style={styles.tourStep5PopoverWrapper}>
+              {renderPopoverCard(5, 'down')}
+            </View>
+          </View>
+        </Portal>
+      )}
     </View>
   );
 }
@@ -523,6 +988,7 @@ const styles = StyleSheet.create({
   welcomeText: {
     fontWeight: 'bold',
     marginTop: 2,
+    marginLeft: 5,
   },
   roleBadgeWrapper: {
     marginTop: 4,
@@ -950,5 +1416,268 @@ const styles = StyleSheet.create({
   restartBreatheBtnText: {
     fontWeight: 'bold',
     fontSize: 13,
+  },
+  smartReminderCard: {
+    borderRadius: 20,
+    padding: 16,
+    marginBottom: 16,
+    borderWidth: 1.5,
+  },
+  smartReminderTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  smartReminderHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  smartReminderIconBg: {
+    width: 28,
+    height: 28,
+    borderRadius: 9,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 8,
+  },
+  smartReminderTitle: {
+    fontSize: 12,
+    fontWeight: 'bold',
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
+  },
+  smartReminderDismiss: {
+    padding: 4,
+  },
+  smartReminderMsg: {
+    fontSize: 13,
+    lineHeight: 18,
+    marginBottom: 12,
+  },
+  smartReminderFooter: {
+    flexDirection: 'row',
+    justifyContent: 'flex-start',
+  },
+  smartReminderActionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 7,
+    paddingHorizontal: 14,
+    borderRadius: 12,
+  },
+  smartReminderActionText: {
+    color: '#FFF',
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
+  tourTargetSection: {
+    position: 'relative',
+    width: '100%',
+  },
+  dimmedTourSection: {
+    opacity: 0.22,
+  },
+  activeTargetGlow: {
+    borderWidth: 2.5,
+    borderStyle: 'dashed',
+    borderColor: '#48BB78',
+    borderRadius: 24,
+    shadowColor: '#48BB78',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.8,
+    shadowRadius: 16,
+    elevation: 8,
+  },
+  popoverCardWrapper: {
+    width: '100%',
+    marginTop: 8,
+    marginBottom: 16,
+    zIndex: 10002,
+  },
+  tourStep5Container: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 99999,
+  },
+  tourStep5DimBackdrop: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 95,
+    backgroundColor: 'rgba(5, 14, 9, 0.55)',
+  },
+  tourStep5PointerTouchable: {
+    position: 'absolute',
+    bottom: 34,
+    left: '70%',
+    marginLeft: -18,
+    zIndex: 100005,
+  },
+  tourStep5PopoverWrapper: {
+    position: 'absolute',
+    bottom: 108,
+    left: 16,
+    right: 16,
+    maxWidth: 500,
+    alignSelf: 'center',
+    width: '100%',
+    zIndex: 100010,
+  },
+  circlePointerWrapper: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 10001,
+  },
+  circlePointerRadar: {
+    position: 'absolute',
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    borderWidth: 2.5,
+    borderStyle: 'dashed',
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  circlePointerCore: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    elevation: 6,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.35,
+    shadowRadius: 6,
+  },
+  circlePointerBadge: {
+    position: 'absolute',
+    bottom: -20,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 8,
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3,
+  },
+  circlePointerBadgeTop: {
+    position: 'absolute',
+    top: -24,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 8,
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3,
+  },
+  circlePointerBadgeText: {
+    color: '#FFF',
+    fontSize: 9,
+    fontWeight: 'bold',
+  },
+  popoverArrowUp: {
+    width: 0,
+    height: 0,
+    backgroundColor: 'transparent',
+    borderStyle: 'solid',
+    borderLeftWidth: 10,
+    borderRightWidth: 10,
+    borderBottomWidth: 10,
+    borderLeftColor: 'transparent',
+    borderRightColor: 'transparent',
+    alignSelf: 'center',
+    marginBottom: -1,
+    zIndex: 10002,
+  },
+  popoverArrowDown: {
+    width: 0,
+    height: 0,
+    backgroundColor: 'transparent',
+    borderStyle: 'solid',
+    borderLeftWidth: 10,
+    borderRightWidth: 10,
+    borderTopWidth: 10,
+    borderLeftColor: 'transparent',
+    borderRightColor: 'transparent',
+    alignSelf: 'center',
+    marginTop: -1,
+    zIndex: 10002,
+  },
+  popoverSurface: {
+    borderRadius: 20,
+    borderWidth: 1.5,
+    padding: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.25,
+    shadowRadius: 16,
+    elevation: 10,
+    zIndex: 10002,
+  },
+  popoverHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  popoverPill: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+  },
+  popoverPillText: {
+    fontSize: 10,
+    fontWeight: 'bold',
+    letterSpacing: 0.5,
+  },
+  popoverSkipText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#8E9992',
+  },
+  popoverTitle: {
+    fontSize: 15,
+    fontWeight: 'bold',
+    marginBottom: 4,
+  },
+  popoverDesc: {
+    fontSize: 12,
+    lineHeight: 18,
+    marginBottom: 14,
+  },
+  popoverFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  popoverBackBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 6,
+    paddingHorizontal: 8,
+  },
+  popoverBackText: {
+    fontSize: 12,
+    fontWeight: '600',
+    marginLeft: 2,
+  },
+  popoverNextBtn: {
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    elevation: 3,
+  },
+  popoverNextText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: 'bold',
   },
 });

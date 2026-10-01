@@ -66,7 +66,14 @@ export default function ChatScreen() {
     }
   ];
 
-  const storageKey = `@jucoch_ai_sessions_${userAlias || 'default'}`;
+  const getStorageKey = async () => {
+    let alias = userAlias;
+    if (!alias) {
+      alias = (await AsyncStorage.getItem('@jucoch_user_alias')) || '';
+    }
+    const cleanAlias = alias ? alias.trim().toLowerCase().replace(/[^a-z0-9_-]/g, '_') : 'guest';
+    return `@jucoch_ai_sessions_${cleanAlias}`;
+  };
 
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [currentSessionId, setCurrentSessionId] = useState<string>('');
@@ -75,47 +82,126 @@ export default function ChatScreen() {
   const [isTyping, setIsTyping] = useState(false);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
 
-  // Load chat sessions from AsyncStorage scoped to the active user
+  const upsertSessionInList = (
+    existingSessions: ChatSession[],
+    targetId: string,
+    title: string,
+    msgs: Message[]
+  ): { updatedList: ChatSession[]; activeId: string } => {
+    const activeId = targetId || `session-${Date.now()}`;
+    const idx = existingSessions.findIndex(s => s.id === activeId);
+
+    let resolvedTitle = title;
+    if (!resolvedTitle || resolvedTitle === 'New Conversation') {
+      const firstUserMsg = msgs.find(m => m.sender === 'user');
+      resolvedTitle = firstUserMsg 
+        ? firstUserMsg.text.slice(0, 32) + (firstUserMsg.text.length > 32 ? '...' : '')
+        : 'Conversation';
+    }
+
+    if (idx >= 0) {
+      const updated = [...existingSessions];
+      updated[idx] = {
+        ...updated[idx],
+        id: activeId,
+        title: resolvedTitle,
+        messages: msgs,
+        createdAt: updated[idx].createdAt || new Date().toISOString(),
+      };
+      // Bring active session to the top of the history list
+      const [target] = updated.splice(idx, 1);
+      return { updatedList: [target, ...updated], activeId };
+    } else {
+      const newSession: ChatSession = {
+        id: activeId,
+        title: resolvedTitle,
+        createdAt: new Date().toISOString(),
+        messages: msgs,
+      };
+      return { updatedList: [newSession, ...existingSessions], activeId };
+    }
+  };
+
+  const saveSessionsToStorage = async (updatedSessions: ChatSession[]) => {
+    try {
+      if (!Array.isArray(updatedSessions)) return;
+      const key = await getStorageKey();
+      await AsyncStorage.setItem(key, JSON.stringify(updatedSessions));
+    } catch (e) {
+      console.error('Error saving chat sessions:', e);
+    }
+  };
+
+  // Load chat sessions strictly for the current logged-in user
   useEffect(() => {
     const loadSessions = async () => {
       try {
-        const stored = await AsyncStorage.getItem(storageKey);
+        // Purge legacy global keys that caused cross-account leaks
+        await AsyncStorage.multiRemove([
+          '@jucoch_ai_sessions_unified',
+          '@jucoch_ai_sessions_active_user',
+          '@jucoch_ai_sessions_default',
+        ]).catch(() => {});
+
+        const key = await getStorageKey();
+        const stored = await AsyncStorage.getItem(key);
+
         if (stored) {
-          const parsed = JSON.parse(stored);
-          if (Array.isArray(parsed) && parsed.length > 0) {
-            setSessions(parsed);
-            const latestSession = parsed[0];
-            setCurrentSessionId(latestSession.id);
-            setMessages(latestSession.messages || makeInitialGreeting());
-            return;
-          }
+          try {
+            const parsed: ChatSession[] = JSON.parse(stored);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+              // Safety check: ensure these sessions actually belong to the current user
+              const isAlienSession = parsed.some((s) => {
+                const firstGreeting = s.messages?.[0]?.text || '';
+                return (
+                  userAlias &&
+                  firstGreeting.includes('Hello ') &&
+                  !firstGreeting.toLowerCase().includes(`hello ${userAlias.toLowerCase()}`)
+                );
+              });
+
+              if (!isAlienSession) {
+                const hasValidMessages = parsed.some(
+                  (s) => Array.isArray(s.messages) && s.messages.length > 0
+                );
+                if (hasValidMessages) {
+                  setSessions(parsed);
+                  const latestSession = parsed[0];
+                  setCurrentSessionId(latestSession.id);
+                  setMessages(
+                    latestSession.messages && latestSession.messages.length > 0
+                      ? latestSession.messages
+                      : makeInitialGreeting()
+                  );
+                  return;
+                }
+              } else {
+                // Remove the leaked alien session from this user's storage
+                await AsyncStorage.removeItem(key).catch(() => {});
+              }
+            }
+          } catch (e) {}
         }
-        
-        // If no stored sessions, initialize a brand new session
+
+        // Initialize a brand new clean conversation for this user
         const freshId = `session-${Date.now()}`;
+        const freshGreeting = makeInitialGreeting();
         const newSession: ChatSession = {
           id: freshId,
           title: 'New Conversation',
           createdAt: new Date().toISOString(),
-          messages: makeInitialGreeting()
+          messages: freshGreeting,
         };
         setSessions([newSession]);
         setCurrentSessionId(freshId);
-        setMessages(newSession.messages);
+        setMessages(freshGreeting);
+        await AsyncStorage.setItem(key, JSON.stringify([newSession]));
       } catch (e) {
         console.error('Error loading chat sessions:', e);
       }
     };
     loadSessions();
   }, [userAlias]);
-
-  const saveSessionsToStorage = async (updatedSessions: ChatSession[]) => {
-    try {
-      await AsyncStorage.setItem(storageKey, JSON.stringify(updatedSessions));
-    } catch (e) {
-      console.error('Error saving chat sessions:', e);
-    }
-  };
 
   const handleStartNewChat = () => {
     const freshId = `session-${Date.now()}`;
@@ -127,7 +213,9 @@ export default function ChatScreen() {
       messages: freshGreeting
     };
 
-    const updatedSessions = [newSession, ...sessions.filter(s => s.id !== freshId)];
+    // Filter out previous empty conversation placeholders
+    const filtered = sessions.filter(s => s.messages && s.messages.length > 1);
+    const updatedSessions = [newSession, ...filtered];
     setSessions(updatedSessions);
     setCurrentSessionId(freshId);
     setMessages(freshGreeting);
@@ -137,21 +225,35 @@ export default function ChatScreen() {
 
   const handleSelectSession = (session: ChatSession) => {
     setCurrentSessionId(session.id);
-    setMessages(session.messages || makeInitialGreeting());
+    setMessages(session.messages && session.messages.length > 0 ? session.messages : makeInitialGreeting());
     setShowHistoryModal(false);
+    setTimeout(() => {
+      scrollViewRef.current?.scrollToEnd({ animated: true });
+    }, 150);
   };
 
-  const handleDeleteSession = (sessionId: string) => {
+  const handleDeleteSession = async (sessionId: string) => {
     const remaining = sessions.filter(s => s.id !== sessionId);
     setSessions(remaining);
-    saveSessionsToStorage(remaining);
 
-    if (currentSessionId === sessionId) {
-      if (remaining.length > 0) {
+    if (remaining.length > 0) {
+      saveSessionsToStorage(remaining);
+      if (currentSessionId === sessionId) {
         handleSelectSession(remaining[0]);
-      } else {
-        handleStartNewChat();
       }
+    } else {
+      const freshId = `session-${Date.now()}`;
+      const freshGreeting = makeInitialGreeting();
+      const newSession: ChatSession = {
+        id: freshId,
+        title: 'New Conversation',
+        createdAt: new Date().toISOString(),
+        messages: freshGreeting
+      };
+      setSessions([newSession]);
+      setCurrentSessionId(freshId);
+      setMessages(freshGreeting);
+      saveSessionsToStorage([newSession]);
     }
   };
 
@@ -166,8 +268,12 @@ export default function ChatScreen() {
     if (text.includes('sad') || text.includes('down') || text.includes('depressed') || text.includes('lonely') || text.includes('hurt')) {
       return "I'm really sorry to hear you're feeling down. Remember that it's completely okay to feel this way. You don't have to carry it all alone. Writing down your specific thoughts in your Gratitude Journal can help release some weight.";
     }
-    if (text.includes('hello') || text.includes('hi') || text.includes('hey') || text.includes('hello ai')) {
-      return `Hello! I am Jucoch AI, your mental health companion. I'm here to listen, track your wellness patterns, and provide relaxation exercises. How can I help you today, ${userAlias || 'friend'}?`;
+    const isBisaya = /kumusta|musta|maayong|bai|bay|agy|kaayo|nako|gikapoy|guol|karon/i.test(text);
+    if (text.includes('hello') || text.includes('hi') || text.includes('hey') || text.includes('jucoch') || text.includes('kumusta') || text.includes('kamusta')) {
+      if (isBisaya) {
+        return `Hello ug welcome sa Jucoch! 👋 Ako si Jucoch AI, ang imong kauban alang sa mental health ug emotional wellness. Kumusta man ang imong adlaw o gibati karon, ${userAlias || 'amigo'}?`;
+      }
+      return `Hello and welcome to Jucoch! 👋 I am Jucoch AI, your specialized mental health companion. How are you feeling today, ${userAlias || 'friend'}?`;
     }
     if (text.includes('quote') || text.includes('positive') || text.includes('mindset') || text.includes('inspire') || text.includes('motivate')) {
       const inspiringQuotes = [
@@ -203,7 +309,9 @@ export default function ChatScreen() {
     if (text.includes('good') || text.includes('happy') || text.includes('great') || text.includes('amazing')) {
       return "That's wonderful to hear! Capitalizing on positive moments is just as important for building emotional resilience. What made today feel so good?";
     }
-    return "Thank you for sharing that with me. I'm analyzing your thoughts with care. Remember, taking baby steps matters. What is one small kind thing you can do for yourself in the next 5 minutes?";
+    return isBisaya
+      ? "Salamat sa pagpaambit niana kanako. Ania ra ko kanunay maminaw nimo. Unsa may usa ka gamay nga butang nga makapahayahay nimo karong adlawa?"
+      : "Thank you for sharing your thoughts with me. I'm right here with you. What is one small, kind thing you can do for yourself in the next 5 minutes?";
   };
 
   const sendMessage = async (overrideText?: string) => {
@@ -221,22 +329,23 @@ export default function ChatScreen() {
     setMessages(updatedMessages);
     setInputText('');
 
-    // Update session title dynamically if it is still generic
-    const currentSession = sessions.find(s => s.id === currentSessionId);
+    const targetId = currentSessionId || `session-${Date.now()}`;
+    const currentSession = sessions.find(s => s.id === targetId);
     let sessionTitle = currentSession?.title || 'Conversation';
     if (sessionTitle === 'New Conversation' || !sessionTitle) {
       sessionTitle = query.slice(0, 32) + (query.length > 32 ? '...' : '');
     }
 
-    const updatedSessions = sessions.map(s => {
-      if (s.id === currentSessionId) {
-        return { ...s, title: sessionTitle, messages: updatedMessages };
-      }
-      return s;
-    });
+    const { updatedList: initialSessions, activeId } = upsertSessionInList(
+      sessions,
+      targetId,
+      sessionTitle,
+      updatedMessages
+    );
 
-    setSessions(updatedSessions);
-    saveSessionsToStorage(updatedSessions);
+    setCurrentSessionId(activeId);
+    setSessions(initialSessions);
+    saveSessionsToStorage(initialSessions);
 
     setTimeout(() => {
       scrollViewRef.current?.scrollToEnd({ animated: true });
@@ -246,7 +355,19 @@ export default function ChatScreen() {
 
     try {
       const res = await sendAiChatApi(query);
-      const aiResponseText = res?.reply || getAIResponse(query);
+      let aiResponseText = res?.reply || getAIResponse(query);
+
+      const lowerQuery = query.toLowerCase().trim();
+      const isGreeting = /^(hi|hello|hey|yo|sup|kumusta|kamusta|musta|morning|good morning|good afternoon|good evening|maayong buntag|maayong hapon|maayong gabii)\b/i.test(lowerQuery) || ['hi', 'hello', 'hey', 'kumusta', 'kamusta', 'musta'].includes(lowerQuery);
+
+      // If user is just greeting, ensure response is a warm greeting rather than a robotic "thank you for sharing"
+      if (isGreeting && (aiResponseText.includes("Thank you for sharing that with me") || aiResponseText.includes("Salamat sa pagpaambit") || aiResponseText.includes("How has your mood or sleep been"))) {
+        const isBisayaQuery = /kumusta|musta|maayong|bai|bay|agy/i.test(lowerQuery);
+        aiResponseText = isBisayaQuery
+          ? `Hello ug welcome sa Jucoch! 👋 Ako si Jucoch AI, ang imong kauban alang sa mental health ug emotional wellness. Kumusta man ang imong adlaw o gibati karon, ${userAlias || 'amigo'}?`
+          : `Hello and welcome to Jucoch! 👋 I am Jucoch AI, your specialized mental health companion. How are you feeling today, ${userAlias || 'friend'}?`;
+      }
+
       const aiMsg: Message = {
         id: `ai-${Date.now() + 1}`,
         text: aiResponseText,
@@ -257,12 +378,12 @@ export default function ChatScreen() {
       const finalMessages = [...updatedMessages, aiMsg];
       setMessages(finalMessages);
 
-      const finalSessions = updatedSessions.map(s => {
-        if (s.id === currentSessionId) {
-          return { ...s, messages: finalMessages };
-        }
-        return s;
-      });
+      const { updatedList: finalSessions } = upsertSessionInList(
+        initialSessions,
+        activeId,
+        sessionTitle,
+        finalMessages
+      );
       setSessions(finalSessions);
       saveSessionsToStorage(finalSessions);
     } catch (error) {
@@ -277,12 +398,12 @@ export default function ChatScreen() {
       const finalMessages = [...updatedMessages, aiMsg];
       setMessages(finalMessages);
 
-      const finalSessions = updatedSessions.map(s => {
-        if (s.id === currentSessionId) {
-          return { ...s, messages: finalMessages };
-        }
-        return s;
-      });
+      const { updatedList: finalSessions } = upsertSessionInList(
+        initialSessions,
+        activeId,
+        sessionTitle,
+        finalMessages
+      );
       setSessions(finalSessions);
       saveSessionsToStorage(finalSessions);
     } finally {

@@ -19,22 +19,26 @@ const STRICT_MENTAL_HEALTH_INSTRUCTION = `You are Jucoch AI, an exclusive, speci
      -> YOU MUST RESPOND IN NATURAL, EMPATHETIC TAGALOG / FILIPINO.
    - If the user chats in Bislish or Taglish (code-switching between English and local language):
      -> Respond naturally in the same conversational blend.
-   - If the user chats in English:
-     -> Respond in fluent, empathetic English.
+   - If the user chats in English (e.g., "hi", "hi jucoch", "hello", "how are you?", "I feel stressed"):
+     -> YOU MUST RESPOND IN PURE, FLUENT, EMPATHETIC ENGLISH (e.g., "Hello and welcome to Jucoch! I am Jucoch AI..."). Never switch to Tagalog or Bisaya if the user writes in English.
    - If the user chats in any other language:
      -> Respond in that exact language.
 
+👋 GREETINGS & WARM WELCOME:
+3. When the user greets you (e.g., "hi", "hello", "hi jucoch", "kumusta", "hey", "good morning"):
+   -> Warmly welcome them to Jucoch Wellness Platform in their language, introduce yourself as Jucoch AI, and gently ask how they are feeling today.
+
 🛡️ STRICT SCOPE & DOMAIN RESTRICTIONS (MENTAL HEALTH ONLY):
-3. YOU ARE STRICTLY RESTRICTED TO MENTAL HEALTH, EMOTIONAL WELLBEING, STRESS MANAGEMENT, ANXIETY, SLEEP, MOODS, MINDFULNESS, SELF-CARE, AND RELAXATION TOPICS ONLY.
-4. IF A USER ASKS ANYTHING UNRELATED TO MENTAL HEALTH (for example: coding, programming, math, history, trivia, science, geography, sports, pop culture, news, gaming, business, general advice, or random tasks):
+4. YOU ARE STRICTLY RESTRICTED TO MENTAL HEALTH, EMOTIONAL WELLBEING, STRESS MANAGEMENT, ANXIETY, SLEEP, MOODS, MINDFULNESS, SELF-CARE, AND RELAXATION TOPICS ONLY.
+5. IF A USER ASKS ANYTHING UNRELATED TO MENTAL HEALTH (for example: coding, programming, math, history, trivia, science, geography, sports, pop culture, news, gaming, business, general advice, or random tasks):
    -> Politely refuse and re-direct them back to mental wellness IN THE USER'S OWN LANGUAGE:
    - Bisaya refusal: "Ako si Jucoch AI, ang imong kauban alang sa mental health ug emotional wellness. Makatabang lamang ako sa mga topiko bahin sa emosyonal nga kahimsog, stress, kabalaka, pagkatulog, ug self-care. Palihug ipaambit kanako kung unsa ang imong gibati karon!"
    - Tagalog refusal: "Ako si Jucoch AI, ang iyong kasama para sa mental health at emotional wellness. Maaari lamang akong tumugon sa mga paksang may kinalaman sa emosyonal na kalusugan, stress, pagtulog, at self-care. Huwag mag-atubiling ibahagi kung ano ang iyong nararamdaman ngayon!"
    - English refusal: "I am Jucoch AI, a specialized Mental Health and Emotional Wellness Companion. I can only assist with topics related to mental health, emotional wellbeing, stress management, sleep, and self-care. Please feel free to share how you are feeling today!"
-5. IF A USER ASKS INAPPROPRIATE, VULGAR, OFFENSIVE, OR BATI/BAD QUESTIONS:
+6. IF A USER ASKS INAPPROPRIATE, VULGAR, OFFENSIVE, OR BATI/BAD QUESTIONS:
    -> Politely refuse and re-direct them back to mental health & wellbeing in their language.
-6. TONE & BREVITY: Maintain a warm, gentle, empathetic, respectful, and non-judgmental tone. Keep responses concise, supportive, and under 120 words.
-7. CRISIS SAFETY: If a user expresses self-harm or severe emotional crisis, provide immediate comforting words in their language and gently advise seeking professional emergency assistance or a trusted counselor.`;
+7. TONE & BREVITY: Maintain a warm, gentle, empathetic, respectful, and non-judgmental tone. Keep responses concise, supportive, and under 120 words.
+8. CRISIS SAFETY: If a user expresses self-harm or severe emotional crisis, provide immediate comforting words in their language and gently advise seeking professional emergency assistance or a trusted counselor.`;
 
 // Language detector helper for fallback responses
 const detectLanguage = (text: string): 'ceb' | 'tl' | 'en' => {
@@ -42,12 +46,14 @@ const detectLanguage = (text: string): 'ceb' | 'tl' | 'en' => {
   const cebWords = [
     'unsa', 'ngano', 'nganong', 'kaayo', 'kayo', 'nako', 'ko', 'nimo', 'akong', 
     'karon', 'gani', 'diay', 'gyud', 'jud', 'bai', 'bay', 'kapoy', 'gikapoy', 
-    'guol', 'subo', 'kaguol', 'kasubo', 'hilak', 'hadlok', 'katulog', 'lipay', 'ginhawa'
+    'guol', 'subo', 'kaguol', 'kasubo', 'hilak', 'hadlok', 'katulog', 'lipay', 'ginhawa',
+    'kumusta', 'musta', 'maayong'
   ];
   const tlWords = [
     'ano', 'bakit', 'sobra', 'sobrang', 'ako', 'mo', 'aking', 'ngayon', 'pala', 
     'naman', 'talaga', 'tol', 'pre', 'pagod', 'napagod', 'lungkot', 'nalulungkot', 
-    'iyak', 'takot', 'tulog', 'antok', 'saya', 'masaya', 'hinga'
+    'iyak', 'takot', 'tulog', 'antok', 'saya', 'masaya', 'hinga',
+    'kamusta', 'magandang'
   ];
 
   if (cebWords.some(w => new RegExp(`\\b${w}\\b`, 'i').test(lower))) return 'ceb';
@@ -65,6 +71,14 @@ interface KeywordCategory {
 }
 
 const MULTILINGUAL_FALLBACK_CATEGORIES: KeywordCategory[] = [
+  {
+    keywords: ['hi', 'hello', 'hey', 'jucoch', 'kumusta', 'kamusta', 'musta', 'welcome', 'morning', 'hapon', 'gabi'],
+    replies: {
+      ceb: "Hello ug welcome sa Jucoch! 👋 Ako si Jucoch AI, ang imong kauban alang sa mental health ug emotional wellness. Kumusta man ang imong gibati karong adlawa?",
+      tl: "Hello at welcome sa Jucoch! 👋 Ako si Jucoch AI, ang iyong kasama para sa mental health at emotional wellness. Kumusta ang iyong pakiramdam ngayong araw?",
+      en: "Hello and welcome to Jucoch! 👋 I am Jucoch AI, your specialized mental health and emotional wellness companion. How are you feeling today?",
+    },
+  },
   {
     keywords: ['sad', 'down', 'depressed', 'subo', 'guol', 'kaguol', 'kasubo', 'hilak', 'lungkot', 'nalulungkot', 'iyak'],
     replies: {
@@ -161,9 +175,27 @@ router.post('/chat', async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
+    // Instant Natural Greeting Handler: If user simply greets (hi, hello, kumusta, etc.)
+    const isPureGreeting = /^(hi|hello|hey|yo|sup|kumusta|kamusta|musta|morning|good morning|good afternoon|good evening|maayong buntag|maayong hapon|maayong gabii|welcome)\b/i.test(lower) || ['hi', 'hello', 'hey', 'kumusta', 'kamusta', 'musta'].includes(lower);
+    if (isPureGreeting && trimmedMsg.split(/\s+/).length <= 4) {
+      let greetReply = "Hello and welcome to Jucoch! 👋 I am Jucoch AI, your specialized mental health companion. How are you feeling today?";
+      if (lang === 'ceb') {
+        greetReply = "Hello ug welcome sa Jucoch! 👋 Ako si Jucoch AI, ang imong kauban alang sa mental health ug emotional wellness. Kumusta man ang imong adlaw o gibati karon?";
+      } else if (lang === 'tl') {
+        greetReply = "Hello at welcome sa Jucoch! 👋 Ako si Jucoch AI, ang iyong kasama para sa mental health at emotional wellness. Kumusta ang iyong pakiramdam ngayong araw?";
+      }
+
+      res.json({
+        reply: greetReply,
+        timestamp: new Date().toISOString(),
+        source: 'jucoch-greeting',
+      });
+      return;
+    }
+
     // Call Google Gemini AI with Universal Multilingual Mental Health System Instructions
     if (genAI) {
-      const candidateModels = ['gemini-1.5-flash', 'gemini-2.0-flash', 'gemini-1.5-pro', 'gemini-pro'];
+      const candidateModels = ['gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-flash-latest', 'gemini-2.5-pro'];
       for (const modelName of candidateModels) {
         try {
           const model = genAI.getGenerativeModel({ 
@@ -189,11 +221,11 @@ router.post('/chat', async (req: Request, res: Response): Promise<void> => {
     }
 
     // Multilingual Fallback generator if Gemini call is offline
-    let defaultReply = "Thank you for sharing that with me. I'm Jucoch AI, your specialized 24/7 mental health companion. How has your mood or sleep been over the past few days?";
+    let defaultReply = "I'm right here with you. As your Jucoch AI mental wellness companion, how can I support you today? Feel free to share your thoughts or ask for a calming exercise.";
     if (lang === 'ceb') {
-      defaultReply = "Salamat sa pagpaambit niana kanako. Ako si Jucoch AI, ang imong 24/7 mental health companion. Kumusta man ang imong gibati o pagkatulog karong mga adlawa?";
+      defaultReply = "Ania ra ko uban nimo. Isip imong Jucoch AI mental wellness companion, unsaon nako pagtabang kanimo karong adlawa? Pwede nimo ipaambit ang imong gibati o magpatabang og relaxation exercise.";
     } else if (lang === 'tl') {
-      defaultReply = "Salamat sa pagbahagi niyan sa akin. Ako si Jucoch AI, ang iyong 24/7 mental health companion. Kumusta ang iyong pakiramdam o pagtulog nitong mga nakaraang araw?";
+      defaultReply = "Nandito lang ako kasama mo. Bilang iyong Jucoch AI mental wellness companion, paano kita matutulungan ngayong araw? Maaari mong ibahagi ang iyong nararamdaman o humingi ng relaxation exercise.";
     }
 
     for (const cat of MULTILINGUAL_FALLBACK_CATEGORIES) {

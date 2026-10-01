@@ -47,7 +47,8 @@ interface SpotlightStep {
     top?: number;
     bottom?: number;
     left?: number | string;
-    width: number;
+    right?: number | string;
+    width: number | string;
     height: number;
     borderRadius: number;
     label: string;
@@ -58,27 +59,8 @@ interface SpotlightStep {
 const SPOTLIGHT_STEPS: SpotlightStep[] = [
   {
     step: 1,
-    tag: 'STEP 1 OF 5 • MOOD & STREAK',
-    title: 'Daily Mood Tracking 🎭',
-    icon: Smile,
-    iconColor: '#48BB78',
-    iconBg: '#E8F5E9',
-    headline: 'Check in with one tap on the top emojis',
-    description: 'Tap an emoji to record your daily emotions. Consistent check-ins build your daily wellness streak and unlock milestone badges.',
-    tip: '💡 Pro-Tip: Check in as often as your mood shifts throughout the day.',
-    spotlight: {
-      top: Platform.OS === 'ios' ? 100 : 75,
-      width: Math.min(width - 40, 360),
-      height: 85,
-      borderRadius: 24,
-      label: '1. Daily Mood Emojis & Streak',
-    },
-    cardPosition: 'bottom',
-  },
-  {
-    step: 2,
-    tag: 'STEP 2 OF 5 • AI WELLNESS INDEX',
-    title: 'Hero AI Wellness Score 🌟',
+    tag: 'STEP 1 OF 5 • AI WELLNESS INDEX',
+    title: 'Hero AI Wellness Score & Streak 🌟',
     icon: HeartPulse,
     iconColor: '#FF9F43',
     iconBg: '#FFF3E0',
@@ -86,18 +68,37 @@ const SPOTLIGHT_STEPS: SpotlightStep[] = [
     description: 'Calculates an emotional resilience score (0–100) combining your sleep hours, check-ins, journal reflections, and daily activities.',
     tip: '💡 Pro-Tip: Maintain 75%+ score for optimal emotional equilibrium.',
     spotlight: {
-      top: Platform.OS === 'ios' ? 200 : 175,
-      width: Math.min(width - 40, 360),
-      height: 140,
-      borderRadius: 26,
-      label: '2. Hero AI Wellness Index',
+      top: Platform.OS === 'ios' ? 140 : 120,
+      width: Math.min(width - 32, 380),
+      height: 175,
+      borderRadius: 24,
+      label: '1. Hero AI Wellness Index & Streaks',
+    },
+    cardPosition: 'bottom',
+  },
+  {
+    step: 2,
+    tag: 'STEP 2 OF 5 • MOOD & EMOTIONS',
+    title: 'Daily Quick Mood Check-In 🎭',
+    icon: Smile,
+    iconColor: '#48BB78',
+    iconBg: '#E8F5E9',
+    headline: 'Check in with one tap on the mood emojis',
+    description: 'Tap an emoji to record your daily emotions. Consistent check-ins build your daily wellness streak and unlock milestone badges.',
+    tip: '💡 Pro-Tip: Check in as often as your mood shifts throughout the day.',
+    spotlight: {
+      top: Platform.OS === 'ios' ? 335 : 315,
+      width: Math.min(width - 32, 380),
+      height: 85,
+      borderRadius: 20,
+      label: '2. Daily Mood Check-In Emojis',
     },
     cardPosition: 'bottom',
   },
   {
     step: 3,
     tag: 'STEP 3 OF 5 • DAILY LOGGERS',
-    title: 'Categorized Activities & Journal 📝',
+    title: 'Categorized Activities, Sleep & Journal 📝',
     icon: BookOpen,
     iconColor: '#5F27CD',
     iconBg: '#EDE7F6',
@@ -105,13 +106,13 @@ const SPOTLIGHT_STEPS: SpotlightStep[] = [
     description: 'Log activities tailored for Individuals or Students, monitor sleep quality, and write 256-bit encrypted gratitude reflections.',
     tip: '💡 Pro-Tip: Express yourself safely—journals are 100% private.',
     spotlight: {
-      top: Platform.OS === 'ios' ? 360 : 330,
-      width: Math.min(width - 40, 360),
-      height: 110,
-      borderRadius: 24,
-      label: '3. Activities, Sleep & Journal',
+      top: Platform.OS === 'ios' ? 440 : 420,
+      width: Math.min(width - 32, 380),
+      height: 140,
+      borderRadius: 22,
+      label: '3. Activities, Sleep & Journal Tools',
     },
-    cardPosition: 'bottom',
+    cardPosition: 'top',
   },
   {
     step: 4,
@@ -124,10 +125,10 @@ const SPOTLIGHT_STEPS: SpotlightStep[] = [
     description: 'A 2-minute visual box breathwork tool with live animated pacing (Inhale 4s ➔ Hold 4s ➔ Exhale 4s ➔ Rest 4s) to soothe your nerves.',
     tip: '💡 Pro-Tip: Use before exams, study sessions, or bedtime.',
     spotlight: {
-      top: Platform.OS === 'ios' ? 485 : 455,
-      width: Math.min(width - 40, 360),
-      height: 95,
-      borderRadius: 22,
+      top: Platform.OS === 'ios' ? 600 : 580,
+      width: Math.min(width - 32, 380),
+      height: 85,
+      borderRadius: 20,
       label: '4. Live Guided Breathwork Banner',
     },
     cardPosition: 'top',
@@ -140,13 +141,14 @@ const SPOTLIGHT_STEPS: SpotlightStep[] = [
     iconColor: '#1E88E5',
     iconBg: '#E3F2FD',
     headline: '24/7 confidential mental health coach',
-    description: 'Tap the Chat Tab below to speak with your private AI companion for coping tips, exam stress advice, and positive affirmations.',
+    description: 'Tap the Chat Tab below on the right to speak with your private AI companion for coping tips, exam stress advice, and positive affirmations.',
     tip: '💡 Pro-Tip: Identified only by your alias. Zero real names exposed.',
     spotlight: {
-      bottom: Platform.OS === 'ios' ? 20 : 10,
-      width: 100,
-      height: 70,
-      borderRadius: 35,
+      bottom: Platform.OS === 'ios' ? 24 : 20,
+      right: Platform.OS === 'web' && width > 500 ? (width - 500) / 2 + 75 : Math.max(16, width * 0.18 - 8),
+      width: 68,
+      height: 62,
+      borderRadius: 22,
       label: '5. AI Companion Chat Tab',
     },
     cardPosition: 'top',
@@ -218,7 +220,11 @@ export default function AppGuideModal({ visible, onClose }: AppGuideModalProps) 
     width: currentStep.spotlight.width,
     height: currentStep.spotlight.height,
     borderRadius: currentStep.spotlight.borderRadius,
-    alignSelf: 'center',
+    ...(currentStep.spotlight.left !== undefined ? { left: currentStep.spotlight.left } : {}),
+    ...(currentStep.spotlight.right !== undefined ? { right: currentStep.spotlight.right } : {}),
+    ...(currentStep.spotlight.left === undefined && currentStep.spotlight.right === undefined 
+      ? { alignSelf: 'center' } 
+      : {}),
     ...(currentStep.spotlight.top !== undefined ? { top: currentStep.spotlight.top } : {}),
     ...(currentStep.spotlight.bottom !== undefined ? { bottom: currentStep.spotlight.bottom } : {}),
   };

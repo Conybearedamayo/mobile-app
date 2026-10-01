@@ -94,6 +94,77 @@ router.get('/mood', requireAuthUser, async (req: Request, res: Response): Promis
   }
 });
 
+// PUT /api/wellness/mood/:id
+router.put('/mood/:id', requireAuthUser, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const userId = (req as any).userId;
+    const id = req.params.id as string;
+    const { mood, emoji, note } = req.body;
+
+    if (!mood || !emoji) {
+      res.status(400).json({ error: 'Mood and emoji are required.' });
+      return;
+    }
+
+    const existing = await prisma.moodLog.findFirst({
+      where: { id, userId },
+    });
+
+    if (!existing) {
+      res.status(404).json({ error: 'Mood log not found or unauthorized.' });
+      return;
+    }
+
+    const encryptedNote = encryptSensitiveText(note ? note.trim() : null);
+
+    const updated = await prisma.moodLog.update({
+      where: { id },
+      data: {
+        mood,
+        emoji,
+        note: encryptedNote,
+      },
+    });
+
+    res.json({
+      message: 'Mood check-in updated successfully!',
+      moodLog: {
+        ...updated,
+        note: decryptSensitiveText(updated.note),
+      },
+    });
+  } catch (error: any) {
+    console.error('Update Mood Log Error:', error);
+    res.status(500).json({ error: 'Failed to update mood log.' });
+  }
+});
+
+// DELETE /api/wellness/mood/:id
+router.delete('/mood/:id', requireAuthUser, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const userId = (req as any).userId;
+    const id = req.params.id as string;
+
+    const existing = await prisma.moodLog.findFirst({
+      where: { id, userId },
+    });
+
+    if (!existing) {
+      res.status(404).json({ error: 'Mood log not found or unauthorized.' });
+      return;
+    }
+
+    await prisma.moodLog.delete({
+      where: { id },
+    });
+
+    res.json({ message: 'Mood log deleted successfully!' });
+  } catch (error: any) {
+    console.error('Delete Mood Log Error:', error);
+    res.status(500).json({ error: 'Failed to delete mood log.' });
+  }
+});
+
 // ==========================================
 // 2. SLEEP LOGS ENDPOINTS
 // ==========================================
@@ -144,6 +215,71 @@ router.get('/sleep', requireAuthUser, async (req: Request, res: Response): Promi
   }
 });
 
+// PUT /api/wellness/sleep/:id
+router.put('/sleep/:id', requireAuthUser, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const userId = (req as any).userId;
+    const id = req.params.id as string;
+    const { hours, quality } = req.body;
+
+    if (hours === undefined || !quality) {
+      res.status(400).json({ error: 'Sleep hours and quality rating are required.' });
+      return;
+    }
+
+    const existing = await prisma.sleepLog.findFirst({
+      where: { id, userId },
+    });
+
+    if (!existing) {
+      res.status(404).json({ error: 'Sleep record not found or unauthorized.' });
+      return;
+    }
+
+    const updated = await prisma.sleepLog.update({
+      where: { id },
+      data: {
+        hours: parseFloat(hours),
+        quality,
+      },
+    });
+
+    res.json({
+      message: 'Sleep record updated successfully!',
+      sleepLog: updated,
+    });
+  } catch (error: any) {
+    console.error('Update Sleep Log Error:', error);
+    res.status(500).json({ error: 'Failed to update sleep record.' });
+  }
+});
+
+// DELETE /api/wellness/sleep/:id
+router.delete('/sleep/:id', requireAuthUser, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const userId = (req as any).userId;
+    const id = req.params.id as string;
+
+    const existing = await prisma.sleepLog.findFirst({
+      where: { id, userId },
+    });
+
+    if (!existing) {
+      res.status(404).json({ error: 'Sleep record not found or unauthorized.' });
+      return;
+    }
+
+    await prisma.sleepLog.delete({
+      where: { id },
+    });
+
+    res.json({ message: 'Sleep record deleted successfully!' });
+  } catch (error: any) {
+    console.error('Delete Sleep Log Error:', error);
+    res.status(500).json({ error: 'Failed to delete sleep record.' });
+  }
+});
+
 // ==========================================
 // 3. ACTIVITY LOGS ENDPOINTS
 // ==========================================
@@ -191,6 +327,71 @@ router.get('/activity', requireAuthUser, async (req: Request, res: Response): Pr
   } catch (error: any) {
     console.error('Fetch Activity Logs Error:', error);
     res.status(500).json({ error: 'Failed to fetch activity logs.' });
+  }
+});
+
+// PUT /api/wellness/activity/:id
+router.put('/activity/:id', requireAuthUser, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const userId = (req as any).userId;
+    const id = req.params.id as string;
+    const { type, duration } = req.body;
+
+    if (!type || !duration) {
+      res.status(400).json({ error: 'Activity type and duration in minutes are required.' });
+      return;
+    }
+
+    const existing = await prisma.activityLog.findFirst({
+      where: { id, userId },
+    });
+
+    if (!existing) {
+      res.status(404).json({ error: 'Activity log not found or unauthorized.' });
+      return;
+    }
+
+    const updated = await prisma.activityLog.update({
+      where: { id },
+      data: {
+        type,
+        duration: parseInt(duration, 10),
+      },
+    });
+
+    res.json({
+      message: 'Activity log updated successfully!',
+      activityLog: updated,
+    });
+  } catch (error: any) {
+    console.error('Update Activity Log Error:', error);
+    res.status(500).json({ error: 'Failed to update activity log.' });
+  }
+});
+
+// DELETE /api/wellness/activity/:id
+router.delete('/activity/:id', requireAuthUser, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const userId = (req as any).userId;
+    const id = req.params.id as string;
+
+    const existing = await prisma.activityLog.findFirst({
+      where: { id, userId },
+    });
+
+    if (!existing) {
+      res.status(404).json({ error: 'Activity log not found or unauthorized.' });
+      return;
+    }
+
+    await prisma.activityLog.delete({
+      where: { id },
+    });
+
+    res.json({ message: 'Activity log deleted successfully!' });
+  } catch (error: any) {
+    console.error('Delete Activity Log Error:', error);
+    res.status(500).json({ error: 'Failed to delete activity log.' });
   }
 });
 

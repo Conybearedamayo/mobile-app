@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, StyleSheet, ScrollView, TouchableOpacity, Dimensions, Animated, Platform } from 'react-native';
+import { View, StyleSheet, ScrollView, TouchableOpacity, Dimensions, Animated, Platform, Modal as NativeModal } from 'react-native';
 import { Text, Portal, Modal, Surface } from 'react-native-paper';
-import { ChevronLeft, Info, X } from 'lucide-react-native';
+import { ChevronLeft, Info, X, Trash2, Edit3, Clock, AlertTriangle, CheckCircle } from 'lucide-react-native';
 import { useRouter, Stack } from 'expo-router';
-import { useWellness } from '@/context/WellnessContext';
+import { useWellness, MoodEntry } from '@/context/WellnessContext';
 import { LinearGradient } from 'expo-linear-gradient';
 
 const { height } = Dimensions.get('window');
@@ -66,11 +66,56 @@ function ConfettiPiece({ delay }: { delay: number }) {
 
 export default function MoodLoggerScreen() {
   const router = useRouter();
-  const { addMoodLog, setWellnessScore, isDarkMode } = useWellness();
+  const { addMoodLog, editMoodLog, deleteMoodLog, moodLogs, setWellnessScore, isDarkMode } = useWellness();
 
   const [selectedMood, setSelectedMood] = useState<any>(null);
   const [showModal, setShowModal] = useState(false);
   const [showConfetti, setShowConfetti] = useState(false);
+  const [successMsg, setSuccessMsg] = useState('');
+
+  // Edit Mood State
+  const [editingMood, setEditingMood] = useState<MoodEntry | null>(null);
+  const [editMoodChoice, setEditMoodChoice] = useState<string>('Good');
+
+  // Delete Mood State
+  const [deletingMoodId, setDeletingMoodId] = useState<string | number | null>(null);
+
+  const formatEventDate = (timestamp?: string) => {
+    if (!timestamp) return 'Today';
+    try {
+      const d = new Date(timestamp);
+      if (isNaN(d.getTime())) return timestamp;
+      const weekday = d.toLocaleDateString('en-US', { weekday: 'short' });
+      const month = d.toLocaleDateString('en-US', { month: 'short' });
+      const day = d.getDate();
+      const time = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+      return `${weekday}, ${month} ${day} • ${time}`;
+    } catch (e) {
+      return 'Today';
+    }
+  };
+
+  const handleStartEdit = (entry: MoodEntry) => {
+    setEditingMood(entry);
+    setEditMoodChoice(entry.mood);
+  };
+
+  const handleSaveEdit = () => {
+    if (!editingMood) return;
+    const moodObj = MOODS.find(m => m.label === editMoodChoice) || MOODS[2];
+    editMoodLog(editingMood.id, moodObj.label, moodObj.emoji, editingMood.note);
+    setEditingMood(null);
+    setSuccessMsg('Mood entry updated successfully!');
+    setTimeout(() => setSuccessMsg(''), 2500);
+  };
+
+  const handleConfirmDelete = () => {
+    if (!deletingMoodId) return;
+    deleteMoodLog(deletingMoodId);
+    setDeletingMoodId(null);
+    setSuccessMsg('Mood entry deleted successfully.');
+    setTimeout(() => setSuccessMsg(''), 2500);
+  };
 
   const dynamicBg = isDarkMode ? '#121614' : '#F3F8F5';
   const dynamicCardBg = isDarkMode ? '#1C231F' : '#FFFFFF';
@@ -191,7 +236,138 @@ export default function MoodLoggerScreen() {
             <Text style={styles.gradientButtonText}>Save Mood Entry</Text>
           </LinearGradient>
         </TouchableOpacity>
+
+        {/* Success Banner */}
+        {!!successMsg && (
+          <Surface style={styles.successCard} elevation={2}>
+            <CheckCircle size={18} color={JUCOCH_GREEN} style={{ marginRight: 8 }} />
+            <Text style={styles.successText}>{successMsg}</Text>
+          </Surface>
+        )}
+
+        {/* Recently Logged Moods */}
+        {moodLogs && moodLogs.length > 0 && (
+          <View style={{ marginTop: 28 }}>
+            <View style={styles.sectionHeaderRow}>
+              <Clock size={14} color={JUCOCH_GREEN} style={{ marginRight: 6 }} />
+              <Text style={[styles.sectionLabel, { color: dynamicSub }]}>RECENT MOOD CHECK-INS ({moodLogs.length})</Text>
+            </View>
+
+            {moodLogs.slice(0, 5).map((entry) => (
+              <Surface key={entry.id} style={[styles.recentMoodItem, { backgroundColor: dynamicCardBg, borderColor: dynamicBorder }]} elevation={1}>
+                <Text style={styles.recentEmoji}>{entry.emoji}</Text>
+                <View style={{ flex: 1, marginLeft: 12 }}>
+                  <Text style={[styles.recentMoodTitle, { color: dynamicText }]}>{entry.mood}</Text>
+                  <Text style={[styles.recentMoodDate, { color: dynamicSub }]}>{formatEventDate(entry.timestamp)}</Text>
+                </View>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  <TouchableOpacity 
+                    onPress={() => handleStartEdit(entry)}
+                    style={{ padding: 6, borderRadius: 8, backgroundColor: isDarkMode ? '#28332C' : '#F0F7F2' }}
+                  >
+                    <Edit3 size={15} color={JUCOCH_GREEN} />
+                  </TouchableOpacity>
+                  <TouchableOpacity 
+                    onPress={() => setDeletingMoodId(entry.id)}
+                    style={{ padding: 6, borderRadius: 8, backgroundColor: isDarkMode ? '#331F21' : '#FFE5E5' }}
+                  >
+                    <Trash2 size={15} color="#D90429" />
+                  </TouchableOpacity>
+                </View>
+              </Surface>
+            ))}
+          </View>
+        )}
+
       </ScrollView>
+
+      {/* Edit Mood Modal */}
+      <NativeModal
+        visible={!!editingMood}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setEditingMood(null)}
+      >
+        <View style={styles.modalOverlay}>
+          <Surface style={[styles.editModalCard, { backgroundColor: dynamicCardBg }]} elevation={4}>
+            <View style={styles.modalHeaderRow}>
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <Edit3 size={18} color={JUCOCH_GREEN} style={{ marginRight: 8 }} />
+                <Text style={{ fontSize: 16, fontWeight: 'bold', color: dynamicText }}>Edit Mood Entry</Text>
+              </View>
+              <TouchableOpacity onPress={() => setEditingMood(null)}>
+                <X size={20} color={dynamicSub} />
+              </TouchableOpacity>
+            </View>
+
+            <Text style={[styles.sectionLabel, { color: dynamicSub, marginBottom: 14 }]}>SELECT UPDATED MOOD</Text>
+            <View style={[styles.moodGrid, { marginBottom: 16 }]}>
+              {MOODS.map((m) => {
+                const isSelected = editMoodChoice === m.label;
+                return (
+                  <TouchableOpacity
+                    key={m.label}
+                    style={[
+                      styles.moodCard,
+                      { backgroundColor: dynamicCardBg, borderColor: dynamicBorder, paddingVertical: 12 },
+                      isSelected && { borderColor: m.color, borderWidth: 2, backgroundColor: `${m.color}20` }
+                    ]}
+                    onPress={() => setEditMoodChoice(m.label)}
+                  >
+                    <Text style={{ fontSize: 28, marginBottom: 2 }}>{m.emoji}</Text>
+                    <Text style={[styles.moodLabel, { color: dynamicSub }, isSelected && { color: m.color, fontWeight: 'bold' }]}>{m.label}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+
+            <View style={styles.modalFooterRow}>
+              <TouchableOpacity style={[styles.modalCancelBtn, { borderColor: dynamicBorder }]} onPress={() => setEditingMood(null)}>
+                <Text style={{ color: dynamicSub, fontWeight: '600' }}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[styles.modalSaveBtn, { backgroundColor: JUCOCH_GREEN }]} onPress={handleSaveEdit}>
+                <Text style={styles.modalSaveBtnText}>Save Changes</Text>
+              </TouchableOpacity>
+            </View>
+          </Surface>
+        </View>
+      </NativeModal>
+
+      {/* Delete Mood Modal */}
+      <NativeModal
+        visible={!!deletingMoodId}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setDeletingMoodId(null)}
+      >
+        <View style={styles.modalOverlay}>
+          <Surface style={[styles.deleteModalCard, { backgroundColor: dynamicCardBg }]} elevation={4}>
+            <View style={styles.deleteIconCircle}>
+              <AlertTriangle size={24} color="#D90429" />
+            </View>
+            <Text style={{ fontSize: 16, fontWeight: 'bold', color: dynamicText, marginTop: 12, marginBottom: 6 }}>
+              Delete Mood Entry?
+            </Text>
+            <Text style={{ fontSize: 13, color: dynamicSub, textAlign: 'center', marginBottom: 20 }}>
+              This will permanently delete this mood log from your timeline, streak, and emotional analytics.
+            </Text>
+            <View style={{ flexDirection: 'row', gap: 12, width: '100%' }}>
+              <TouchableOpacity 
+                style={[styles.modalCancelBtn, { flex: 1, borderColor: dynamicBorder }]} 
+                onPress={() => setDeletingMoodId(null)}
+              >
+                <Text style={{ color: dynamicSub, fontWeight: '600' }}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={[styles.deleteConfirmBtn, { flex: 1 }]} 
+                onPress={handleConfirmDelete}
+              >
+                <Text style={{ color: '#FFF', fontWeight: 'bold' }}>Delete</Text>
+              </TouchableOpacity>
+            </View>
+          </Surface>
+        </View>
+      </NativeModal>
 
       {showConfetti && (
         <View style={styles.confettiContainer}>
@@ -269,4 +445,111 @@ const styles = StyleSheet.create({
   modalBtnSolid: { flex: 1, height: 48, marginLeft: 6 },
   modalBtnGradient: { flex: 1, height: '100%', borderRadius: 16, justifyContent: 'center', alignItems: 'center' },
   modalBtnSolidText: { color: '#FFF', fontWeight: '700', fontSize: 14 },
+  successCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#E8F5E9',
+    padding: 12,
+    borderRadius: 14,
+    marginTop: 16,
+    borderWidth: 1,
+    borderColor: '#A3D9A5',
+  },
+  successText: {
+    color: JUCOCH_GREEN,
+    fontSize: 12,
+    fontWeight: 'bold',
+    flex: 1,
+  },
+  sectionHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  recentMoodItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    borderRadius: 16,
+    borderWidth: 1,
+    marginBottom: 10,
+  },
+  recentEmoji: {
+    fontSize: 26,
+  },
+  recentMoodTitle: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  recentMoodDate: {
+    fontSize: 10,
+    marginTop: 2,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  editModalCard: {
+    width: '100%',
+    maxWidth: 420,
+    borderRadius: 24,
+    padding: 20,
+  },
+  modalHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  modalFooterRow: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: 12,
+  },
+  modalCancelBtn: {
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalSaveBtn: {
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalSaveBtnText: {
+    color: '#FFF',
+    fontWeight: 'bold',
+    fontSize: 14,
+  },
+  deleteModalCard: {
+    width: '100%',
+    maxWidth: 380,
+    borderRadius: 24,
+    padding: 24,
+    alignItems: 'center',
+  },
+  deleteIconCircle: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: '#FFE5E5',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  deleteConfirmBtn: {
+    backgroundColor: '#D90429',
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
 });

@@ -30,8 +30,8 @@ import {
 } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { useWellness } from '@/context/WellnessContext';
+import { updateUserAliasApi } from '@/src/services/authService';
 import AdminDashboard from '@/components/dashboards/AdminDashboard';
-import AppGuideModal from '@/components/AppGuideModal';
 
 const JUCOCH_GREEN = '#2D6A4F';
 
@@ -69,9 +69,10 @@ export default function ProfileScreen() {
     refreshUserData,
     isMasked,
     setIsMasked,
+    notificationPrefs,
+    updateNotificationPrefs,
   } = useWellness();
 
-  const [showGuideModal, setShowGuideModal] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [showReportsModal, setShowReportsModal] = useState(false);
   const [showAchievementsModal, setShowAchievementsModal] = useState(false);
@@ -83,23 +84,34 @@ export default function ProfileScreen() {
   const [editAliasInput, setEditAliasInput] = useState(userAlias || '');
   const [toastMsg, setToastMsg] = useState('');
   const [isSyncing, setIsSyncing] = useState(false);
-
-  // Smart Notifications State
-  const [notifDailyCheckin, setNotifDailyCheckin] = useState(true);
-  const [notifBedtimePrompt, setNotifBedtimePrompt] = useState(true);
-  const [notifStudyBreak, setNotifStudyBreak] = useState(true);
-  const [notifAiDistressAlert, setNotifAiDistressAlert] = useState(true);
+  const [isSavingAlias, setIsSavingAlias] = useState(false);
 
   const showToast = (msg: string) => {
     setToastMsg(msg);
     setTimeout(() => setToastMsg(''), 3000);
   };
 
-  const handleSaveAlias = () => {
-    if (!editAliasInput.trim()) return;
-    setUserAlias(editAliasInput.trim());
-    setShowSettingsModal(false);
-    showToast('Alias updated successfully!');
+  const handleSaveAlias = async () => {
+    const trimmed = editAliasInput.trim();
+    if (!trimmed) return;
+    if (trimmed.length < 2) {
+      showToast('Alias must be at least 2 characters long.');
+      return;
+    }
+
+    setIsSavingAlias(true);
+    try {
+      if (userToken) {
+        await updateUserAliasApi(userToken, trimmed);
+      }
+      setUserAlias(trimmed);
+      setShowSettingsModal(false);
+      showToast('Display alias updated in cloud database!');
+    } catch (err: any) {
+      showToast(err?.message || 'Failed to update alias. Please try again.');
+    } finally {
+      setIsSavingAlias(false);
+    }
   };
 
   const handleManualSync = async () => {
@@ -123,6 +135,14 @@ export default function ProfileScreen() {
   const avgSleep = sleepLogs.length > 0 
     ? (sleepLogs.reduce((sum, log) => sum + log.hours, 0) / sleepLogs.length).toFixed(1)
     : '0.0';
+
+  const unlockedBadgesCount = [
+    getCurrentStreak() >= 3,
+    sleepLogs.length > 0 && parseFloat(avgSleep) >= 7.0,
+    journalEntries.length >= 1,
+    activityEntries.length >= 1,
+    true, // Privacy Shield Pioneer (unlocked for all authenticated accounts)
+  ].filter(Boolean).length;
 
   const dynamicBg = isDarkMode ? '#121614' : '#F3F8F5';
   const dynamicCardBg = isDarkMode ? '#1C231F' : '#FFFFFF';
@@ -221,7 +241,7 @@ export default function ProfileScreen() {
                   <MenuItem 
                     icon={Award} 
                     title="My Achievements" 
-                    subtitle={`${getCurrentStreak()} active streak badges`} 
+                    subtitle={`${unlockedBadgesCount} of 5 badges unlocked`} 
                     onPress={() => setShowAchievementsModal(true)}
                     dynamicText={dynamicText} 
                     dynamicSub={dynamicSub} 
@@ -281,33 +301,43 @@ export default function ProfileScreen() {
                 />
               </View>
 
-              <Divider style={styles.divider} />
-              <MenuItem 
-                icon={Compass} 
-                title="App Walkthrough & Guide" 
-                subtitle="Replay interactive feature tour" 
-                onPress={() => setShowGuideModal(true)} 
-                dynamicText={dynamicText} 
-                dynamicSub={dynamicSub} 
-              />
-              <Divider style={styles.divider} />
-              <MenuItem 
-                icon={Shield} 
-                title="Privacy Control" 
-                subtitle="Anonymous alias & encryption" 
-                onPress={() => setShowPrivacyModal(true)}
-                dynamicText={dynamicText} 
-                dynamicSub={dynamicSub} 
-              />
-              <Divider style={styles.divider} />
-              <MenuItem 
-                icon={Bell} 
-                title="Smart Notifications" 
-                subtitle="Daily check-ins & early alerts" 
-                onPress={() => setShowNotificationsModal(true)}
-                dynamicText={dynamicText} 
-                dynamicSub={dynamicSub} 
-              />
+              {/* NON-ADMIN SPECIFIC PREFERENCES */}
+              {!isAdmin && (
+                <>
+                  <Divider style={styles.divider} />
+                  <MenuItem 
+                    icon={Compass} 
+                    title="App Walkthrough & Guide" 
+                    subtitle="Replay interactive feature tour" 
+                    onPress={() => {
+                      router.push({
+                        pathname: '/(tabs)',
+                        params: { startTour: '1' }
+                      });
+                    }} 
+                    dynamicText={dynamicText} 
+                    dynamicSub={dynamicSub} 
+                  />
+                  <Divider style={styles.divider} />
+                  <MenuItem 
+                    icon={Shield} 
+                    title="Privacy Control" 
+                    subtitle="Anonymous alias & encryption" 
+                    onPress={() => setShowPrivacyModal(true)}
+                    dynamicText={dynamicText} 
+                    dynamicSub={dynamicSub} 
+                  />
+                  <Divider style={styles.divider} />
+                  <MenuItem 
+                    icon={Bell} 
+                    title="Smart Notifications" 
+                    subtitle="Daily check-ins & early alerts" 
+                    onPress={() => setShowNotificationsModal(true)}
+                    dynamicText={dynamicText} 
+                    dynamicSub={dynamicSub} 
+                  />
+                </>
+              )}
             </Surface>
           </View>
 
@@ -322,8 +352,6 @@ export default function ProfileScreen() {
             <LogOut size={18} color="#FF6B6B" style={{ marginRight: 8 }} />
             <Text style={styles.logoutText}>Sign Out Securely</Text>
           </TouchableOpacity>
-
-          <Text style={styles.versionText}>Jucoch Platform v2.6.0 • Capstone Edition</Text>
         </View>
       </ScrollView>
 
@@ -421,7 +449,11 @@ export default function ProfileScreen() {
               />
 
               <View style={[styles.infoBanner, { backgroundColor: isDarkMode ? '#1E2E25' : '#E8F5EE', borderColor: dynamicBorder }]}>
-                <GraduationCap size={16} color={JUCOCH_GREEN} style={{ marginRight: 8 }} />
+                {isStudent ? (
+                  <GraduationCap size={16} color={JUCOCH_GREEN} style={{ marginRight: 8 }} />
+                ) : (
+                  <User size={16} color={JUCOCH_GREEN} style={{ marginRight: 8 }} />
+                )}
                 <Text style={[styles.infoBannerText, { color: dynamicText }]}>
                   Registered Role: <Text style={{ fontWeight: 'bold' }}>{displayRole}</Text>
                 </Text>
@@ -440,11 +472,13 @@ export default function ProfileScreen() {
             </ScrollView>
 
             <TouchableOpacity
-              style={styles.submitModalBtn}
+              style={[styles.submitModalBtn, isSavingAlias && { opacity: 0.6 }]}
               onPress={handleSaveAlias}
-              disabled={!editAliasInput.trim()}
+              disabled={!editAliasInput.trim() || isSavingAlias}
             >
-              <Text style={styles.submitModalBtnText}>Save Profile Changes</Text>
+              <Text style={styles.submitModalBtnText}>
+                {isSavingAlias ? 'Saving to Database...' : 'Save Profile Changes'}
+              </Text>
             </TouchableOpacity>
           </Surface>
         </Modal>
@@ -550,7 +584,7 @@ export default function ProfileScreen() {
               <AchievementItem
                 title="Deep Sleep Champion"
                 desc="Averaged 7 or more hours of healthy sleep."
-                unlocked={parseFloat(avgSleep) >= 7.0}
+                unlocked={sleepLogs.length > 0 && parseFloat(avgSleep) >= 7.0}
                 icon="🌙"
                 dynamicText={dynamicText}
                 dynamicSub={dynamicSub}
@@ -564,10 +598,12 @@ export default function ProfileScreen() {
                 dynamicSub={dynamicSub}
               />
               <AchievementItem
-                title="Campus Scholar"
-                desc="Logged academic routines and student activities."
-                unlocked={isStudent || activityEntries.length >= 1}
-                icon="🎓"
+                title={isStudent ? "Campus Scholar" : "Daily Habit Champion"}
+                desc={isStudent 
+                  ? "Logged academic routines and student study activities." 
+                  : "Logged personal wellness habits and daily lifestyle routines."}
+                unlocked={activityEntries.length >= 1}
+                icon={isStudent ? "🎓" : "⚡"}
                 dynamicText={dynamicText}
                 dynamicSub={dynamicSub}
               />
@@ -607,7 +643,9 @@ export default function ProfileScreen() {
             </View>
 
             <Text style={[styles.modalSub, { color: dynamicSub }]}>
-              Your student privacy is guaranteed. No real names or emails are ever published.
+              {isStudent 
+                ? 'Your student privacy is guaranteed. No real names or emails are ever published.'
+                : 'Your personal privacy is guaranteed. No real names or emails are ever published.'}
             </Text>
 
             <ScrollView style={{ maxHeight: 340 }} showsVerticalScrollIndicator={false}>
@@ -633,7 +671,9 @@ export default function ProfileScreen() {
                 <View style={{ flex: 1 }}>
                   <Text style={{ fontWeight: 'bold', fontSize: 12, color: JUCOCH_GREEN }}>256-Bit Encrypted Storage</Text>
                   <Text style={{ fontSize: 11, color: dynamicSub, marginTop: 2 }}>
-                    Reflections and mood check-ins are protected with strict student privacy protocols.
+                    {isStudent
+                      ? 'Reflections and mood check-ins are protected with strict student privacy protocols.'
+                      : 'Reflections and mood check-ins are protected with strict personal privacy protocols.'}
                   </Text>
                 </View>
               </View>
@@ -683,9 +723,9 @@ export default function ProfileScreen() {
                   <Text style={[styles.privacyItemSub, { color: dynamicSub }]}>Gentle morning prompt to record how you feel.</Text>
                 </View>
                 <Switch 
-                  value={notifDailyCheckin} 
+                  value={notificationPrefs.dailyCheckin} 
                   onValueChange={(val) => {
-                    setNotifDailyCheckin(val);
+                    updateNotificationPrefs({ dailyCheckin: val });
                     showToast(val ? 'Morning reminder enabled.' : 'Morning reminder disabled.');
                   }} 
                   color={JUCOCH_GREEN} 
@@ -700,9 +740,9 @@ export default function ProfileScreen() {
                   <Text style={[styles.privacyItemSub, { color: dynamicSub }]}>Reminder to unwind and prepare for rest.</Text>
                 </View>
                 <Switch 
-                  value={notifBedtimePrompt} 
+                  value={notificationPrefs.bedtimePrompt} 
                   onValueChange={(val) => {
-                    setNotifBedtimePrompt(val);
+                    updateNotificationPrefs({ bedtimePrompt: val });
                     showToast(val ? 'Sleep reminder enabled.' : 'Sleep reminder disabled.');
                   }} 
                   color={JUCOCH_GREEN} 
@@ -713,13 +753,19 @@ export default function ProfileScreen() {
 
               <View style={styles.privacyItemRow}>
                 <View style={{ flex: 1, paddingRight: 10 }}>
-                  <Text style={[styles.privacyItemTitle, { color: dynamicText }]}>Study Break & Hydration</Text>
-                  <Text style={[styles.privacyItemSub, { color: dynamicSub }]}>Prompts for students during intense study sessions.</Text>
+                  <Text style={[styles.privacyItemTitle, { color: dynamicText }]}>
+                    {isStudent ? 'Study Break & Hydration' : 'Mindful Break & Hydration'}
+                  </Text>
+                  <Text style={[styles.privacyItemSub, { color: dynamicSub }]}>
+                    {isStudent 
+                      ? 'Prompts for students during intense study sessions.' 
+                      : 'Prompts for mindful rests during busy work or daily sessions.'}
+                  </Text>
                 </View>
                 <Switch 
-                  value={notifStudyBreak} 
+                  value={notificationPrefs.studyBreak} 
                   onValueChange={(val) => {
-                    setNotifStudyBreak(val);
+                    updateNotificationPrefs({ studyBreak: val });
                     showToast(val ? 'Study break alerts enabled.' : 'Study break alerts disabled.');
                   }} 
                   color={JUCOCH_GREEN} 
@@ -734,9 +780,9 @@ export default function ProfileScreen() {
                   <Text style={[styles.privacyItemSub, { color: dynamicSub }]}>Safety tips when continuous stress patterns are detected.</Text>
                 </View>
                 <Switch 
-                  value={notifAiDistressAlert} 
+                  value={notificationPrefs.aiDistressAlert} 
                   onValueChange={(val) => {
-                    setNotifAiDistressAlert(val);
+                    updateNotificationPrefs({ aiDistressAlert: val });
                     showToast(val ? 'AI distress alerts active.' : 'AI distress alerts muted.');
                   }} 
                   color={JUCOCH_GREEN} 
@@ -750,9 +796,6 @@ export default function ProfileScreen() {
           </Surface>
         </Modal>
       </Portal>
-
-      {/* Guide Modal */}
-      <AppGuideModal visible={showGuideModal} onClose={() => setShowGuideModal(false)} />
     </View>
   );
 }

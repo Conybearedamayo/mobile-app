@@ -55,6 +55,7 @@ export default function AdminDashboard() {
   const [editUserAlias, setEditUserAlias] = useState('');
   const [editUserRole, setEditUserRole] = useState('Individual');
   const [deletingUserId, setDeletingUserId] = useState<string | null>(null);
+  const [adminList, setAdminList] = useState(OFFICIAL_ADMIN_GROUP);
 
   const showToast = (msg: string) => {
     setModerationMsg(msg);
@@ -73,10 +74,24 @@ export default function AdminDashboard() {
         'Content-Type': 'application/json'
       };
 
-      const [usersRes, actRes] = await Promise.all([
+      const [usersRes, actRes, adminsRes] = await Promise.all([
         fetch(`${API_BASE_URL}/api/admin/users`, { headers }).catch(() => null),
         fetch(`${API_BASE_URL}/api/admin/activities`, { headers }).catch(() => null),
+        fetch(`${API_BASE_URL}/api/admin/admins`, { headers }).catch(() => null),
       ]);
+
+      if (adminsRes && adminsRes.ok) {
+        const data = await adminsRes.json();
+        if (data.admins && Array.isArray(data.admins)) {
+          setAdminList(prev => prev.map(official => {
+            const found = data.admins.find((a: any) => a.email.toLowerCase() === official.email.toLowerCase());
+            return {
+              ...official,
+              alias: found?.alias || official.alias,
+            };
+          }));
+        }
+      }
 
       if (usersRes && usersRes.ok) {
         const data = await usersRes.json();
@@ -94,16 +109,19 @@ export default function AdminDashboard() {
       if (actRes && actRes.ok) {
         const data = await actRes.json();
         if (data.activities) {
-          setDailyActivities(data.activities.map((a: any) => ({
-            id: a.id,
-            alias: a.alias,
-            role: a.role,
-            action: a.action,
-            detail: a.detail,
-            time: formatEventDate(a.createdAt),
-            icon: a.action.includes('Mood') ? Smile : a.action.includes('Sleep') ? Moon : a.action.includes('Journal') ? BookOpen : Activity,
-            color: a.action.includes('Mood') ? '#48BB78' : a.action.includes('Sleep') ? '#5F27CD' : a.action.includes('Journal') ? '#D97706' : JUCOCH_GREEN,
-          })));
+          setDailyActivities(data.activities.map((a: any) => {
+            const actionStr = String(a.action || '');
+            return {
+              id: a.id,
+              alias: a.alias || 'Anonymous User',
+              role: a.role || 'Individual',
+              action: actionStr,
+              detail: a.detail || '',
+              time: formatEventDate(a.createdAt),
+              icon: actionStr.includes('Mood') ? Smile : actionStr.includes('Sleep') ? Moon : actionStr.includes('Journal') ? BookOpen : Activity,
+              color: actionStr.includes('Mood') ? '#48BB78' : actionStr.includes('Sleep') ? '#5F27CD' : actionStr.includes('Journal') ? '#D97706' : JUCOCH_GREEN,
+            };
+          }));
         }
       }
     } catch (e) {
@@ -199,13 +217,27 @@ export default function AdminDashboard() {
   };
 
   const filteredUsers = registeredUsers.filter(u => {
-    const matchesSearch = u.alias.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                          u.email.toLowerCase().includes(searchQuery.toLowerCase());
+    const aliasStr = String(u.alias || '').toLowerCase();
+    const emailStr = String(u.email || '').toLowerCase();
+    const queryStr = String(searchQuery || '').toLowerCase();
+    const matchesSearch = aliasStr.includes(queryStr) || emailStr.includes(queryStr);
     const matchesRole = selectedRoleFilter === 'All' || u.role === selectedRoleFilter;
     return matchesSearch && matchesRole;
   });
 
   const countByRole = (r: string) => registeredUsers.filter(u => u.role === r).length;
+
+  const displayAdmins = adminList.map((admin) => {
+    const adminKey = admin.name.toLowerCase().replace('admin ', '').trim();
+    const isCurrentAdmin = Boolean(
+      userAlias && (
+        admin.alias.toLowerCase() === userAlias.toLowerCase() ||
+        userAlias.toLowerCase().includes(adminKey) ||
+        admin.name.toLowerCase().includes(userAlias.toLowerCase())
+      )
+    );
+    return isCurrentAdmin ? { ...admin, alias: userAlias } : admin;
+  });
 
   return (
     <View style={styles.container}>
@@ -216,14 +248,14 @@ export default function AdminDashboard() {
         </View>
         <View style={{ flex: 1 }}>
           <Text style={[styles.headerTitle, { color: JUCOCH_GREEN }]}>System Admin Master Panel</Text>
-          <Text style={[styles.headerSub, { color: dynamicSub }]}>Official Creator Admins ({OFFICIAL_ADMIN_GROUP.length} Members)</Text>
+          <Text style={[styles.headerSub, { color: dynamicSub }]}>Official Creator Admins ({displayAdmins.length} Members)</Text>
         </View>
       </View>
 
       {/* Overview Stat Counters */}
       <View style={styles.statsRow}>
         <Surface style={[styles.statCard, { backgroundColor: dynamicCardBg, borderColor: dynamicBorder }]} elevation={1}>
-          <Text style={[styles.statNumber, { color: dynamicText }]}>{registeredUsers.length + OFFICIAL_ADMIN_GROUP.length}</Text>
+          <Text style={[styles.statNumber, { color: dynamicText }]}>{registeredUsers.length + displayAdmins.length}</Text>
           <Text style={[styles.statLabel, { color: dynamicSub }]}>Total Users</Text>
         </Surface>
 
@@ -243,7 +275,10 @@ export default function AdminDashboard() {
       <View style={styles.switchRow}>
         <TouchableOpacity
           style={[styles.switchBtn, { backgroundColor: dynamicCardBg, borderColor: dynamicBorder }, activeTab === 'users' && styles.selectedSwitchBtn]}
-          onPress={() => setActiveTab('users')}
+          onPress={() => {
+            setActiveTab('users');
+            fetchAdminData();
+          }}
         >
           <Users size={12} color={activeTab === 'users' ? '#FFF' : dynamicSub} style={{ marginRight: 4 }} />
           <Text style={[styles.switchText, { color: dynamicSub }, activeTab === 'users' && styles.selectedSwitchText]}>
@@ -253,7 +288,10 @@ export default function AdminDashboard() {
 
         <TouchableOpacity
           style={[styles.switchBtn, { backgroundColor: dynamicCardBg, borderColor: dynamicBorder }, activeTab === 'activity' && styles.selectedSwitchBtn]}
-          onPress={() => setActiveTab('activity')}
+          onPress={() => {
+            setActiveTab('activity');
+            fetchAdminData();
+          }}
         >
           <Activity size={12} color={activeTab === 'activity' ? '#FFF' : dynamicSub} style={{ marginRight: 4 }} />
           <Text style={[styles.switchText, { color: dynamicSub }, activeTab === 'activity' && styles.selectedSwitchText]}>
@@ -267,7 +305,7 @@ export default function AdminDashboard() {
         >
           <ShieldCheck size={12} color={activeTab === 'admins' ? '#FFF' : dynamicSub} style={{ marginRight: 4 }} />
           <Text style={[styles.switchText, { color: dynamicSub }, activeTab === 'admins' && styles.selectedSwitchText]}>
-            Admins (2)
+            Admins ({OFFICIAL_ADMIN_GROUP.length})
           </Text>
         </TouchableOpacity>
       </View>
@@ -332,7 +370,7 @@ export default function AdminDashboard() {
                 const RoleIcon = u.role === 'Student' ? GraduationCap : User;
                 const roleColor = u.role === 'Student' ? '#1E88E5' : JUCOCH_GREEN;
                 const isUserMasked = u.alias === 'Anonymous User';
-                const displayAlias = isUserMasked ? 'Anonymous User (Masked)' : u.alias;
+                const displayAlias = isUserMasked ? 'Anonymous User (Masked)' : (u.alias || 'User');
 
                 return (
                   <View key={u.id}>
@@ -398,12 +436,31 @@ export default function AdminDashboard() {
         return (
           <Surface style={[styles.listContainer, { backgroundColor: dynamicCardBg, borderColor: dynamicBorder }]} elevation={2}>
             <View style={styles.feedHeader}>
-              <View style={{ flex: 1, minWidth: 160 }}>
+              <View style={{ flex: 1, minWidth: 140 }}>
                 <Text style={styles.rosterTitle}>LIVE USER ENGAGEMENT AUDIT FEED</Text>
               </View>
-              <Surface style={[styles.liveBadgeSurface, { backgroundColor: isDarkMode ? '#193324' : '#E8F5EE' }]} elevation={0}>
-                <Text style={styles.liveBadge}>● PRIVACY-ENCRYPTED</Text>
-              </Surface>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <TouchableOpacity
+                  onPress={fetchAdminData}
+                  disabled={loading}
+                  style={[
+                    styles.refreshFeedBtn,
+                    { backgroundColor: isDarkMode ? '#1E3A2B' : '#E8F5EE', borderColor: isDarkMode ? '#2D6A4F' : '#C2E6D1' }
+                  ]}
+                  activeOpacity={0.7}
+                >
+                  {loading ? (
+                    <ActivityIndicator size={12} color={JUCOCH_GREEN} style={{ marginRight: 4 }} />
+                  ) : (
+                    <RefreshCw size={12} color={JUCOCH_GREEN} style={{ marginRight: 4 }} />
+                  )}
+                  <Text style={styles.refreshFeedText}>{loading ? 'Refreshing...' : 'Refresh'}</Text>
+                </TouchableOpacity>
+
+                <Surface style={[styles.liveBadgeSurface, { backgroundColor: isDarkMode ? '#193324' : '#E8F5EE' }]} elevation={0}>
+                  <Text style={styles.liveBadge}>● PRIVACY-ENCRYPTED</Text>
+                </Surface>
+              </View>
             </View>
             <Text style={[styles.feedSubtitle, { color: dynamicSub }]}>
               🔒 End-to-End Privacy Active: User journals and personal notes are anonymized & 256-bit encrypted.
@@ -473,12 +530,27 @@ export default function AdminDashboard() {
                     ? 'When users check in, log moods, or chat with AI, their live activities will display here.'
                     : `No ${activityFilter} activity records currently logged.`}
                 </Text>
+                <TouchableOpacity
+                  onPress={fetchAdminData}
+                  disabled={loading}
+                  style={[styles.refreshEmptyBtn, { backgroundColor: JUCOCH_GREEN }]}
+                  activeOpacity={0.8}
+                >
+                  {loading ? (
+                    <ActivityIndicator size={14} color="#FFF" style={{ marginRight: 6 }} />
+                  ) : (
+                    <RefreshCw size={14} color="#FFF" style={{ marginRight: 6 }} />
+                  )}
+                  <Text style={{ color: '#FFF', fontWeight: 'bold', fontSize: 12 }}>
+                    {loading ? 'Refreshing...' : 'Refresh Activities'}
+                  </Text>
+                </TouchableOpacity>
               </View>
             ) : (
               filteredList.map((act, index) => {
-                const IconComp = act.icon;
+                const IconComp = act.icon || Activity;
                 const isActMasked = act.alias === 'Anonymous User';
-                const displayActAlias = isActMasked ? 'Anonymous User (Masked)' : act.alias;
+                const displayActAlias = isActMasked ? 'Anonymous User (Masked)' : (act.alias || 'User');
                 const isJournal = act.action === 'Journal Reflection';
 
                 return (
@@ -538,11 +610,11 @@ export default function AdminDashboard() {
       {/* VIEW 3: OFFICIAL CREATOR ADMIN GMAIL ACCOUNTS */}
       {activeTab === 'admins' && (
         <Surface style={[styles.listContainer, { backgroundColor: dynamicCardBg, borderColor: dynamicBorder }]} elevation={2}>
-          <Text style={styles.rosterTitle}>AUTHORIZED SYSTEM CREATOR ADMINS ({OFFICIAL_ADMIN_GROUP.length} MEMBERS)</Text>
+          <Text style={styles.rosterTitle}>AUTHORIZED SYSTEM CREATOR ADMINS ({displayAdmins.length} MEMBERS)</Text>
           <Text style={[styles.feedSubtitle, { color: dynamicSub }]}>Public signups cannot register as Admin. Reserved exclusively for designated creator Gmails.</Text>
           <Divider style={{ marginVertical: 10 }} />
 
-          {OFFICIAL_ADMIN_GROUP.map((admin, index) => (
+          {displayAdmins.map((admin, index) => (
             <View key={admin.email}>
               {index > 0 && <Divider style={styles.divider} />}
               <View style={styles.userRow}>
@@ -879,6 +951,27 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: 'bold',
     color: JUCOCH_GREEN,
+  },
+  refreshFeedBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+    borderWidth: 1,
+  },
+  refreshFeedText: {
+    fontSize: 10,
+    fontWeight: 'bold',
+    color: JUCOCH_GREEN,
+  },
+  refreshEmptyBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 9,
+    borderRadius: 12,
+    marginTop: 12,
   },
   activityFilterRow: {
     flexDirection: 'row',

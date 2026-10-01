@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, ScrollView, TouchableOpacity, Platform } from 'react-native';
+import { View, StyleSheet, ScrollView, TouchableOpacity, Platform, Modal } from 'react-native';
 import { Text, Surface, Divider } from 'react-native-paper';
 import { 
   ChevronLeft, 
@@ -17,10 +17,14 @@ import {
   Award, 
   Clock, 
   CheckCircle,
-  ShieldCheck
+  ShieldCheck,
+  Trash2,
+  Edit3,
+  X,
+  AlertTriangle
 } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
-import { useWellness } from '@/context/WellnessContext';
+import { useWellness, ActivityEntry } from '@/context/WellnessContext';
 import { LinearGradient } from 'expo-linear-gradient';
 
 const JUCOCH_GREEN = '#2D6A4F';
@@ -53,7 +57,7 @@ const DURATIONS = [15, 30, 45, 60, 90, 120];
 
 export default function ActivityLoggerScreen() {
   const router = useRouter();
-  const { userRole, addActivityEntry, isDarkMode, activityEntries } = useWellness();
+  const { userRole, addActivityEntry, editActivityEntry, deleteActivityEntry, isDarkMode, activityEntries } = useWellness();
   
   // Strictly lock category to user's registered account role (Student vs Individual)
   const isStudent = userRole === 'Student';
@@ -62,6 +66,13 @@ export default function ActivityLoggerScreen() {
   const [selectedActivities, setSelectedActivities] = useState<string[]>([]);
   const [selectedDuration, setSelectedDuration] = useState<number>(30);
   const [successMsg, setSuccessMsg] = useState('');
+
+  // Edit State
+  const [editingActivity, setEditingActivity] = useState<ActivityEntry | null>(null);
+  const [editDuration, setEditDuration] = useState<number>(30);
+
+  // Delete State
+  const [deletingActivityId, setDeletingActivityId] = useState<string | number | null>(null);
 
   const dynamicBg = isDarkMode ? '#121614' : '#F3F8F5';
   const dynamicCardBg = isDarkMode ? '#1C231F' : '#FFFFFF';
@@ -109,6 +120,27 @@ export default function ActivityLoggerScreen() {
       setSuccessMsg('');
       router.back();
     }, 1200);
+  };
+
+  const handleStartEdit = (entry: ActivityEntry) => {
+    setEditingActivity(entry);
+    setEditDuration(entry.duration || 30);
+  };
+
+  const handleSaveEdit = () => {
+    if (!editingActivity) return;
+    editActivityEntry(editingActivity.id, editingActivity.type, editDuration);
+    setEditingActivity(null);
+    setSuccessMsg('Activity duration updated successfully!');
+    setTimeout(() => setSuccessMsg(''), 2500);
+  };
+
+  const handleConfirmDelete = () => {
+    if (!deletingActivityId) return;
+    deleteActivityEntry(deletingActivityId);
+    setDeletingActivityId(null);
+    setSuccessMsg('Activity entry deleted successfully.');
+    setTimeout(() => setSuccessMsg(''), 2500);
   };
 
   return (
@@ -278,8 +310,22 @@ export default function ActivityLoggerScreen() {
                   <Text style={[styles.recentTitle, { color: dynamicText }]}>{entry.type.replace('[Individual] ', '').replace('[Student] ', '')}</Text>
                   <Text style={[styles.recentSub, { color: dynamicSub }]}>{formatEventDate(entry.timestamp)}</Text>
                 </View>
-                <View style={[styles.durationBadge, { backgroundColor: `${themeColor}20` }]}>
+                <View style={[styles.durationBadge, { backgroundColor: `${themeColor}20`, marginRight: 8 }]}>
                   <Text style={[styles.durationBadgeText, { color: themeColor }]}>{entry.duration} mins</Text>
+                </View>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <TouchableOpacity 
+                    onPress={() => handleStartEdit(entry)}
+                    style={{ padding: 6, borderRadius: 8, backgroundColor: isDarkMode ? '#28332C' : '#F0F7F2' }}
+                  >
+                    <Edit3 size={15} color={themeColor} />
+                  </TouchableOpacity>
+                  <TouchableOpacity 
+                    onPress={() => setDeletingActivityId(entry.id)}
+                    style={{ padding: 6, borderRadius: 8, backgroundColor: isDarkMode ? '#331F21' : '#FFE5E5' }}
+                  >
+                    <Trash2 size={15} color="#D90429" />
+                  </TouchableOpacity>
                 </View>
               </Surface>
             ))}
@@ -287,6 +333,96 @@ export default function ActivityLoggerScreen() {
         )}
 
       </ScrollView>
+
+      {/* Edit Activity Modal */}
+      <Modal
+        visible={!!editingActivity}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setEditingActivity(null)}
+      >
+        <View style={styles.modalOverlay}>
+          <Surface style={[styles.modalCard, { backgroundColor: dynamicCardBg }]} elevation={4}>
+            <View style={styles.modalHeader}>
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <Edit3 size={18} color={themeColor} style={{ marginRight: 8 }} />
+                <Text style={{ fontSize: 16, fontWeight: 'bold', color: dynamicText }}>Edit Activity Duration</Text>
+              </View>
+              <TouchableOpacity onPress={() => setEditingActivity(null)}>
+                <X size={20} color={dynamicSub} />
+              </TouchableOpacity>
+            </View>
+
+            <Text style={{ fontSize: 13, color: dynamicSub, marginBottom: 16 }}>
+              Activity: <Text style={{ fontWeight: 'bold', color: dynamicText }}>{editingActivity?.type?.replace('[Individual] ', '').replace('[Student] ', '')}</Text>
+            </Text>
+
+            <Text style={[styles.sectionLabel, { color: dynamicSub, marginBottom: 10 }]}>SELECT NEW DURATION</Text>
+            <View style={[styles.durationRow, { marginBottom: 20 }]}>
+              {DURATIONS.map((dur) => (
+                <TouchableOpacity
+                  key={dur}
+                  style={[
+                    styles.durationChip,
+                    { backgroundColor: dynamicCardBg, borderColor: dynamicBorder },
+                    editDuration === dur && { backgroundColor: themeColor, borderColor: themeColor }
+                  ]}
+                  onPress={() => setEditDuration(dur)}
+                >
+                  <Text style={[styles.durationChipText, { color: dynamicSub }, editDuration === dur && { color: '#FFF', fontWeight: 'bold' }]}>
+                    {dur}m
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <View style={styles.modalFooter}>
+              <TouchableOpacity style={[styles.modalCancelBtn, { borderColor: dynamicBorder }]} onPress={() => setEditingActivity(null)}>
+                <Text style={{ color: dynamicSub, fontWeight: '600' }}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[styles.modalSaveBtn, { backgroundColor: themeColor }]} onPress={handleSaveEdit}>
+                <Text style={styles.modalSaveBtnText}>Save Changes</Text>
+              </TouchableOpacity>
+            </View>
+          </Surface>
+        </View>
+      </Modal>
+
+      {/* Delete Activity Modal */}
+      <Modal
+        visible={!!deletingActivityId}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setDeletingActivityId(null)}
+      >
+        <View style={styles.modalOverlay}>
+          <Surface style={[styles.deleteModalCard, { backgroundColor: dynamicCardBg }]} elevation={4}>
+            <View style={styles.deleteIconCircle}>
+              <AlertTriangle size={24} color="#D90429" />
+            </View>
+            <Text style={{ fontSize: 16, fontWeight: 'bold', color: dynamicText, marginTop: 12, marginBottom: 6 }}>
+              Delete Activity Entry?
+            </Text>
+            <Text style={{ fontSize: 13, color: dynamicSub, textAlign: 'center', marginBottom: 20 }}>
+              This will permanently delete this activity record from your timeline and wellness stats.
+            </Text>
+            <View style={{ flexDirection: 'row', gap: 12, width: '100%' }}>
+              <TouchableOpacity 
+                style={[styles.modalCancelBtn, { flex: 1, borderColor: dynamicBorder }]} 
+                onPress={() => setDeletingActivityId(null)}
+              >
+                <Text style={{ color: dynamicSub, fontWeight: '600' }}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={[styles.deleteConfirmBtn, { flex: 1 }]} 
+                onPress={handleConfirmDelete}
+              >
+                <Text style={{ color: '#FFF', fontWeight: 'bold' }}>Delete</Text>
+              </TouchableOpacity>
+            </View>
+          </Surface>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -502,5 +638,72 @@ const styles = StyleSheet.create({
   durationBadgeText: {
     fontSize: 10,
     fontWeight: 'bold',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  modalCard: {
+    width: '100%',
+    maxWidth: 420,
+    borderRadius: 24,
+    padding: 20,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  modalFooter: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: 12,
+  },
+  modalCancelBtn: {
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalSaveBtn: {
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalSaveBtnText: {
+    color: '#FFF',
+    fontWeight: 'bold',
+    fontSize: 14,
+  },
+  deleteModalCard: {
+    width: '100%',
+    maxWidth: 380,
+    borderRadius: 24,
+    padding: 24,
+    alignItems: 'center',
+  },
+  deleteIconCircle: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: '#FFE5E5',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  deleteConfirmBtn: {
+    backgroundColor: '#D90429',
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });

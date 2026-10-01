@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { View, StyleSheet, ScrollView, TouchableOpacity, Dimensions, DimensionValue, Platform } from 'react-native';
 import { Text, Badge, Surface, Divider } from 'react-native-paper';
-import { TrendingUp, AlertCircle, Clock, Activity, Zap, Moon, Sparkles, ShieldCheck, Heart, ChevronRight, BarChart2 } from 'lucide-react-native';
+import { TrendingUp, AlertCircle, Clock, Activity, Zap, Moon, Sparkles, ShieldCheck, Heart, ChevronRight, BarChart2, AlertTriangle, MessageCircle, Wind, PhoneCall } from 'lucide-react-native';
+import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useWellness } from '@/context/WellnessContext';
 
@@ -9,7 +10,8 @@ const { width } = Dimensions.get('window');
 const JUCOCH_GREEN = '#2D6A4F';
 
 export default function InsightsScreen() {
-  const { wellnessScore, sleepLogs, moodLogs, journalEntries, activityEntries, isDarkMode } = useWellness();
+  const router = useRouter();
+  const { wellnessScore, sleepLogs, moodLogs, journalEntries, activityEntries, isDarkMode, notificationPrefs } = useWellness();
   const [timeFilter, setTimeFilter] = useState<'7d' | '30d' | '90d'>('7d');
 
   const dynamicBg = isDarkMode ? '#121614' : '#F3F8F5';
@@ -36,9 +38,10 @@ export default function InsightsScreen() {
   };
 
   // Generate dynamic event timeline from actual user logs (Moods, Sleep, Activities, Journals)
-  const dynamicTimeline = [
+  const rawTimeline = [
     ...moodLogs.map((m) => ({
       id: `mood-${m.id}`,
+      timestamp: m.timestamp,
       date: formatEventDate(m.timestamp),
       title: `Logged mood as ${m.emoji} ${m.mood}.${m.note ? ` Note: "${m.note}"` : ''}`,
       tags: ['Mood Check-in', 'Emotional Health'],
@@ -46,6 +49,7 @@ export default function InsightsScreen() {
     })),
     ...sleepLogs.map((s) => ({
       id: `sleep-${s.id}`,
+      timestamp: s.timestamp,
       date: formatEventDate(s.timestamp),
       title: `Recorded ${s.hours} hours of sleep (${s.quality} quality).`,
       tags: ['Sleep', 'Rest'],
@@ -53,6 +57,7 @@ export default function InsightsScreen() {
     })),
     ...activityEntries.map((a) => ({
       id: `act-${a.id}`,
+      timestamp: a.timestamp,
       date: formatEventDate(a.timestamp),
       title: `Completed activity: ${a.type.replace('[Individual] ', '').replace('[Student] ', '')} (${a.duration} mins).`,
       tags: ['Daily Activity', 'Routine'],
@@ -60,6 +65,7 @@ export default function InsightsScreen() {
     })),
     ...journalEntries.map((j) => ({
       id: `journal-${j.id}`,
+      timestamp: j.timestamp,
       date: formatEventDate(j.timestamp),
       title: `Completed journal entry: "${j.content.slice(0, 45)}..."`,
       tags: ['Reflection', 'Journal'],
@@ -67,7 +73,19 @@ export default function InsightsScreen() {
     })),
   ];
 
+  // Chronological sort: newest events first
+  const dynamicTimeline = rawTimeline.sort((a, b) => {
+    const timeA = a.timestamp ? new Date(a.timestamp).getTime() : 0;
+    const timeB = b.timestamp ? new Date(b.timestamp).getTime() : 0;
+    return timeB - timeA;
+  });
+
   const totalLogsCount = moodLogs.length + sleepLogs.length + activityEntries.length + journalEntries.length;
+
+  // Automated Early Distress Detection calculation
+  const recentAwfulCount = moodLogs.slice(0, 3).filter(m => m.mood === 'Awful' || m.mood === 'Bad').length;
+  const recentPoorSleepCount = sleepLogs.slice(0, 2).filter(s => s.hours < 6 || s.quality === 'Restless' || s.quality === 'Poor').length;
+  const isDistressDetected = (wellnessScore > 0 && wellnessScore < 50) || recentAwfulCount >= 2 || (recentAwfulCount >= 1 && recentPoorSleepCount >= 1);
 
   // Dynamic Weekly Mood Frequency calculation from actual user moodLogs
   const moodValueMap: Record<string, number> = {
@@ -161,18 +179,22 @@ export default function InsightsScreen() {
 
           {/* Hero Mental Health Stability Card */}
           <LinearGradient
-            colors={['#1B4332', '#2D6A4F', '#40916C']}
+            colors={isDistressDetected 
+              ? ['#7A1C1C', '#A82828', '#D90429']
+              : ['#1B4332', '#2D6A4F', '#40916C']}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={styles.heroCardGradient}
           >
             <View style={styles.heroHeader}>
               <View style={styles.heroBadge}>
-                <Sparkles size={12} color="#FFF" style={{ marginRight: 4 }} />
-                <Text style={styles.heroBadgeText}>AI BEHAVIORAL STABILITY</Text>
+                {isDistressDetected ? <AlertTriangle size={12} color="#FFF" style={{ marginRight: 4 }} /> : <Sparkles size={12} color="#FFF" style={{ marginRight: 4 }} />}
+                <Text style={styles.heroBadgeText}>{isDistressDetected ? 'AI DISTRESS DETECTED' : 'AI BEHAVIORAL STABILITY'}</Text>
               </View>
-              <Surface style={styles.statusBadge} elevation={0}>
-                <Text style={styles.statusBadgeText}>{totalLogsCount > 0 ? 'STABLE' : 'NEW USER'}</Text>
+              <Surface style={[styles.statusBadge, isDistressDetected && { backgroundColor: '#FFF' }]} elevation={0}>
+                <Text style={[styles.statusBadgeText, isDistressDetected && { color: '#D90429' }]}>
+                  {totalLogsCount === 0 ? 'NEW USER' : isDistressDetected ? 'NEEDS ATTENTION' : 'STABLE'}
+                </Text>
               </Surface>
             </View>
 
@@ -183,15 +205,60 @@ export default function InsightsScreen() {
               </View>
 
               <View style={styles.heroInfo}>
-                <Text style={styles.heroTitle}>{totalLogsCount > 0 ? 'Resilience Pattern Active' : 'Initial Wellness Baseline'}</Text>
+                <Text style={styles.heroTitle}>
+                  {isDistressDetected 
+                    ? 'Elevated Distress Pattern' 
+                    : totalLogsCount > 0 
+                      ? 'Resilience Pattern Active' 
+                      : 'Initial Wellness Baseline'}
+                </Text>
                 <Text style={styles.heroSub}>
-                  {totalLogsCount > 0 
-                    ? 'Your emotional indicators show consistent resilience. Your regular sleep and mood logging contribute positively.'
-                    : 'Welcome! Log your mood, sleep, or journal reflections to generate your personalized AI analytics report.'}
+                  {isDistressDetected
+                    ? 'Our automated Early Warning System flagged consecutive low moods or inadequate sleep. Support interventions are available below.'
+                    : totalLogsCount > 0 
+                      ? 'Your emotional indicators show consistent resilience. Your regular sleep and mood logging contribute positively.'
+                      : 'Welcome! Log your mood, sleep, or journal reflections to generate your personalized AI analytics report.'}
                 </Text>
               </View>
             </View>
           </LinearGradient>
+
+          {/* AI Early Distress Alert Intervention Card */}
+          {isDistressDetected && (notificationPrefs?.aiDistressAlert ?? true) && (
+            <Surface style={[styles.distressAlertCard, { backgroundColor: isDarkMode ? '#2D1517' : '#FFF0F0', borderColor: '#FFB8B8' }]} elevation={3}>
+              <View style={styles.distressAlertHeader}>
+                <View style={styles.distressIconBg}>
+                  <AlertTriangle size={20} color="#D90429" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.distressAlertTitle, { color: '#D90429' }]}>Automated Early Warning Active</Text>
+                  <Text style={[styles.distressAlertSub, { color: dynamicText }]}>
+                    You do not have to carry this alone. Choose an immediate healthy step:
+                  </Text>
+                </View>
+              </View>
+
+              <View style={styles.distressActionRow}>
+                <TouchableOpacity 
+                  style={[styles.distressActionBtn, { backgroundColor: '#D90429' }]}
+                  onPress={() => router.push('/(tabs)/chat')}
+                  activeOpacity={0.8}
+                >
+                  <MessageCircle size={15} color="#FFF" style={{ marginRight: 6 }} />
+                  <Text style={styles.distressActionBtnText}>Talk to Jucoch AI</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity 
+                  style={[styles.distressActionBtn, { backgroundColor: JUCOCH_GREEN }]}
+                  onPress={() => router.push('/(tabs)')}
+                  activeOpacity={0.8}
+                >
+                  <Wind size={15} color="#FFF" style={{ marginRight: 6 }} />
+                  <Text style={styles.distressActionBtnText}>Guided Breathing</Text>
+                </TouchableOpacity>
+              </View>
+            </Surface>
+          )}
 
           {/* Weekly Mood Trend Bar Chart */}
           <Surface style={[styles.chartCard, { backgroundColor: dynamicCardBg, borderColor: dynamicBorder }]} elevation={2}>
@@ -244,10 +311,16 @@ export default function InsightsScreen() {
                 <View style={[styles.correlatorIconBg, { backgroundColor: '#FFF0F0' }]}>
                   <Activity size={20} color="#D90429" />
                 </View>
-                <Text style={[styles.correlatorTitle, { color: dynamicText }]}>Physical Exercise</Text>
-                <Text style={[styles.correlatorDesc, { color: dynamicSub }]}>30-minute walks reduce anxiety triggers significantly.</Text>
+                <Text style={[styles.correlatorTitle, { color: dynamicText }]}>Physical Activities</Text>
+                <Text style={[styles.correlatorDesc, { color: dynamicSub }]}>
+                  {activityEntries.length > 0 
+                    ? `${activityEntries.length} routines (${activityEntries.reduce((sum, a) => sum + a.duration, 0)} mins total) recorded.`
+                    : 'Log campus routines or walks to track anxiety reduction.'}
+                </Text>
                 <View style={[styles.corrTag, { backgroundColor: '#FFE5E5' }]}>
-                  <Text style={[styles.corrTagText, { color: '#D90429' }]}>+64% Impact</Text>
+                  <Text style={[styles.corrTagText, { color: '#D90429' }]}>
+                    {activityEntries.length > 0 ? '+64% Impact' : 'Pending Data'}
+                  </Text>
                 </View>
               </Surface>
             </View>
@@ -596,5 +669,53 @@ const styles = StyleSheet.create({
   },
   divider: {
     backgroundColor: '#F0F4F2',
+  },
+  distressAlertCard: {
+    borderRadius: 20,
+    padding: 16,
+    marginBottom: 20,
+    borderWidth: 1.5,
+  },
+  distressAlertHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  distressIconBg: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    backgroundColor: 'rgba(217, 4, 41, 0.12)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  distressAlertTitle: {
+    fontSize: 13,
+    fontWeight: 'bold',
+  },
+  distressAlertSub: {
+    fontSize: 11,
+    marginTop: 2,
+    lineHeight: 16,
+  },
+  distressActionRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 4,
+  },
+  distressActionBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 14,
+  },
+  distressActionBtnText: {
+    color: '#FFF',
+    fontSize: 12,
+    fontWeight: 'bold',
   },
 });

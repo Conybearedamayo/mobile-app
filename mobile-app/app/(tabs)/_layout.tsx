@@ -1,14 +1,16 @@
 import React from 'react';
-import { View, Platform, Dimensions } from 'react-native';
-import { Home, BarChart2, PlusCircle, MessageCircle, User } from 'lucide-react-native';
+import { View, Platform, Dimensions, Pressable, StyleSheet } from 'react-native';
+import { Home, BarChart2, Plus, MessageCircle, User } from 'lucide-react-native';
 import { Tabs } from 'expo-router';
 import { useWellness } from '@/context/WellnessContext';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const { width } = Dimensions.get('window');
 const JUCOCH_GREEN = '#2D6A4F';
 
 export default function TabLayout() {
   const { userRole, isDarkMode } = useWellness();
+  const insets = useSafeAreaInsets();
 
   // Hide non-management tabs for Admin
   const isAdmin = userRole === 'Admin';
@@ -17,6 +19,14 @@ export default function TabLayout() {
   const tabBorder = isDarkMode ? '#2C3A31' : '#EBF2EE';
   const inactiveColor = isDarkMode ? '#9EB3A5' : '#888888';
 
+  // Responsive offsets so bottom tab bar fits perfectly on cellphones and web preview
+  const horizontalMargin = width < 360 ? 10 : 14;
+  const bottomOffset = Platform.OS === 'ios'
+    ? (insets.bottom > 0 ? insets.bottom : 14)
+    : Platform.OS === 'android'
+      ? (insets.bottom > 0 ? insets.bottom + 8 : 12)
+      : 16;
+
   return (
     <Tabs
       screenOptions={{
@@ -24,35 +34,41 @@ export default function TabLayout() {
         tabBarInactiveTintColor: inactiveColor,
         headerShown: false,
         tabBarShowLabel: true,
+        tabBarItemStyle: {
+          justifyContent: 'center',
+          alignItems: 'center',
+          paddingVertical: 4,
+        },
         tabBarLabelStyle: {
           fontSize: 10,
           fontWeight: '600',
-          marginBottom: Platform.OS === 'ios' ? 0 : 6,
+          letterSpacing: -0.2,
+          marginTop: 2,
+          marginBottom: 0,
         },
         tabBarStyle: {
           position: 'absolute',
-          bottom: 20,
-          left: 16,
-          right: 16,
-          height: 68,
-          borderRadius: 26,
+          bottom: bottomOffset,
+          left: horizontalMargin,
+          right: horizontalMargin,
+          height: 64,
+          borderRadius: 24,
           backgroundColor: tabBg,
           borderColor: tabBorder,
           borderWidth: 1.5,
           elevation: 8,
           shadowColor: JUCOCH_GREEN,
-          shadowOffset: { width: 0, height: 6 },
-          shadowOpacity: 0.15,
-          shadowRadius: 16,
-          paddingTop: 8,
-          paddingBottom: Platform.OS === 'ios' ? 12 : 8,
+          shadowOffset: { width: 0, height: 4 },
+          shadowOpacity: 0.14,
+          shadowRadius: 14,
+          paddingHorizontal: 4,
         }
       }}>
       <Tabs.Screen
         name="index"
         options={{
           title: 'Home',
-          tabBarIcon: ({ color }) => <Home size={22} color={color} />,
+          tabBarIcon: ({ color }) => <Home size={21} color={color} strokeWidth={2.2} />,
         }}
       />
       <Tabs.Screen
@@ -60,31 +76,32 @@ export default function TabLayout() {
         options={{
           title: 'Insights',
           href: isAdmin ? null : undefined,
-          tabBarIcon: ({ color }) => <BarChart2 size={22} color={color} />,
+          tabBarIcon: ({ color }) => <BarChart2 size={21} color={color} strokeWidth={2.2} />,
         }}
       />
       <Tabs.Screen
         name="add"
         options={{
+          title: '',
           tabBarLabel: () => null,
-          href: isAdmin ? null : undefined,
-          tabBarIcon: () => (
-            <View style={{
-              width: 48,
-              height: 48,
-              borderRadius: 24,
-              backgroundColor: JUCOCH_GREEN,
-              justifyContent: 'center',
-              alignItems: 'center',
-              marginTop: Platform.OS === 'ios' ? -8 : -6,
-              elevation: 6,
-              shadowColor: JUCOCH_GREEN,
-              shadowOffset: { width: 0, height: 3 },
-              shadowOpacity: 0.35,
-              shadowRadius: 6,
-            }}>
-              <PlusCircle size={26} color="#FFF" />
-            </View>
+          tabBarItemStyle: isAdmin ? { display: 'none' } : undefined,
+          tabBarButton: isAdmin ? () => null : (props) => (
+            <Pressable
+              onPress={props.onPress}
+              onLongPress={props.onLongPress}
+              accessibilityRole="button"
+              accessibilityState={props.accessibilityState}
+              accessibilityLabel={props.accessibilityLabel}
+              testID={props.testID}
+              style={[
+                props.style,
+                styles.centerButtonContainer,
+              ]}
+            >
+              <View style={styles.centerPlusCircle}>
+                <Plus size={24} color="#FFFFFF" strokeWidth={2.8} />
+              </View>
+            </Pressable>
           ),
         }}
       />
@@ -93,14 +110,14 @@ export default function TabLayout() {
         options={{
           title: 'Chat',
           href: isAdmin ? null : undefined,
-          tabBarIcon: ({ color }) => <MessageCircle size={22} color={color} />,
+          tabBarIcon: ({ color }) => <MessageCircle size={21} color={color} strokeWidth={2.2} />,
         }}
       />
       <Tabs.Screen
         name="profile"
         options={{
           title: 'Profile',
-          tabBarIcon: ({ color }) => <User size={22} color={color} />,
+          tabBarIcon: ({ color }) => <User size={21} color={color} strokeWidth={2.2} />,
         }}
       />
       {/* Hide default two.tsx */}
@@ -113,3 +130,24 @@ export default function TabLayout() {
     </Tabs>
   );
 }
+
+const styles = StyleSheet.create({
+  centerButtonContainer: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    flex: 1,
+  },
+  centerPlusCircle: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: JUCOCH_GREEN,
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 4,
+    shadowColor: JUCOCH_GREEN,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+  },
+});
