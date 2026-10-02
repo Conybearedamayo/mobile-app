@@ -48,20 +48,17 @@ export default function TabLayout() {
         },
         tabBarStyle: {
           position: 'absolute',
-          bottom: bottomOffset,
-          left: horizontalMargin,
-          right: horizontalMargin,
-          height: 64,
-          borderRadius: 24,
+          bottom: 0,
+          left: 0,
+          right: 0,
+          height: 62 + (insets.bottom > 0 ? insets.bottom : 8),
           backgroundColor: tabBg,
-          borderColor: tabBorder,
-          borderWidth: 1.5,
+          borderTopColor: tabBorder,
+          borderTopWidth: 1,
+          borderWidth: 0,
           elevation: 8,
-          shadowColor: JUCOCH_GREEN,
-          shadowOffset: { width: 0, height: 4 },
-          shadowOpacity: 0.14,
-          shadowRadius: 14,
           paddingHorizontal: 4,
+          paddingBottom: insets.bottom > 0 ? insets.bottom : 8,
         }
       }}>
       <Tabs.Screen
@@ -145,9 +142,5 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     elevation: 4,
-    shadowColor: JUCOCH_GREEN,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
   },
 });

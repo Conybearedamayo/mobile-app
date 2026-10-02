@@ -146,20 +146,24 @@ export default function HomeScreen() {
     }
     const next = tourStep + 1;
     setTourStep(next);
-    if (next <= 4) {
-      const targetY = cardLayoutY[next] !== undefined ? Math.max(0, cardLayoutY[next] - 40) : 0;
-      homeScrollRef.current?.scrollTo({ y: targetY, animated: true });
-    } else {
-      homeScrollRef.current?.scrollToEnd({ animated: true });
-    }
+    setTimeout(() => {
+      if (next <= 4) {
+        const targetY = cardLayoutY[next] !== undefined ? Math.max(0, cardLayoutY[next] - 30) : 0;
+        homeScrollRef.current?.scrollTo({ y: targetY, animated: true });
+      } else {
+        homeScrollRef.current?.scrollToEnd({ animated: true });
+      }
+    }, 70);
   };
 
   const handlePrevTourStep = () => {
     if (tourStep === null || tourStep <= 1) return;
     const prev = tourStep - 1;
     setTourStep(prev);
-    const targetY = cardLayoutY[prev] !== undefined ? Math.max(0, cardLayoutY[prev] - 40) : 0;
-    homeScrollRef.current?.scrollTo({ y: targetY, animated: true });
+    setTimeout(() => {
+      const targetY = cardLayoutY[prev] !== undefined ? Math.max(0, cardLayoutY[prev] - 30) : 0;
+      homeScrollRef.current?.scrollTo({ y: targetY, animated: true });
+    }, 70);
   };
 
   const handleSkipTour = () => {
@@ -442,7 +446,7 @@ export default function HomeScreen() {
               activeOpacity={0.8}
             >
               <Text style={styles.popoverNextText}>
-                {isLast ? 'Got It! 🎉' : 'Next Step ➔'}
+                {isLast ? 'Got It! 🎉' : 'Next Step →'}
               </Text>
             </TouchableOpacity>
           </View>
@@ -664,7 +668,7 @@ export default function HomeScreen() {
                 <View style={{ position: 'relative' }}>
                   {tourStep === 2 && renderCirclePointer('Tap Your Mood', '#FFB703', {
                     position: 'absolute',
-                    top: -16,
+                    top: -24,
                     alignSelf: 'center',
                     zIndex: 10005,
                   })}
@@ -731,7 +735,7 @@ export default function HomeScreen() {
                           onPress={() => router.push(action.route as any)}
                           activeOpacity={0.8}
                         >
-                          <Surface style={[styles.gridCard, { backgroundColor: dynamicCardBg, borderColor: dynamicBorder }]} elevation={2}>
+                          <Surface style={[styles.gridCard, { backgroundColor: dynamicCardBg, borderColor: dynamicBorder }]} elevation={0}>
                             <View style={[styles.gridIconBg, { backgroundColor: `${action.color}20` }]}>
                               <IconComp size={22} color={action.color} />
                             </View>
@@ -1064,11 +1068,7 @@ const styles = StyleSheet.create({
     borderRadius: 28,
     padding: 22,
     marginBottom: 24,
-    shadowColor: JUCOCH_GREEN,
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.25,
-    shadowRadius: 16,
-    elevation: 6,
+    elevation: 3,
   },
   heroHeader: {
     flexDirection: 'row',
@@ -1479,15 +1479,11 @@ const styles = StyleSheet.create({
     opacity: 0.22,
   },
   activeTargetGlow: {
-    borderWidth: 2.5,
-    borderStyle: 'dashed',
+    borderWidth: 2,
+    borderStyle: 'solid',
     borderColor: '#48BB78',
     borderRadius: 24,
-    shadowColor: '#48BB78',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.8,
-    shadowRadius: 16,
-    elevation: 8,
+    backgroundColor: 'rgba(72, 187, 120, 0.05)',
   },
   popoverCardWrapper: {
     width: '100%',
@@ -1535,12 +1531,12 @@ const styles = StyleSheet.create({
   },
   circlePointerRadar: {
     position: 'absolute',
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    borderWidth: 2.5,
-    borderStyle: 'dashed',
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    borderWidth: 2,
+    borderStyle: 'solid',
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
   },
   circlePointerCore: {
     width: 36,
@@ -1548,11 +1544,7 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     alignItems: 'center',
     justifyContent: 'center',
-    elevation: 6,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.35,
-    shadowRadius: 6,
+    elevation: 4,
   },
   circlePointerBadge: {
     position: 'absolute',
@@ -1560,11 +1552,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 2,
     borderRadius: 8,
-    elevation: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3,
+    elevation: 3,
   },
   circlePointerBadgeTop: {
     position: 'absolute',
@@ -1572,11 +1560,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 2,
     borderRadius: 8,
-    elevation: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3,
+    elevation: 3,
   },
   circlePointerBadgeText: {
     color: '#FFF',
@@ -1615,11 +1599,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     borderWidth: 1.5,
     padding: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.25,
-    shadowRadius: 16,
-    elevation: 10,
+    elevation: 4,
     zIndex: 10002,
   },
   popoverHeaderRow: {
