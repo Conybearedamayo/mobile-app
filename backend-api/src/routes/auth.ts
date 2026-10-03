@@ -448,8 +448,21 @@ router.post('/reset-password', async (req: Request, res: Response): Promise<void
   try {
     const { email, code, newPassword } = req.body;
 
-    if (!email || !newPassword || newPassword.trim().length < 4) {
-      res.status(400).json({ error: 'Email and valid new password (at least 4 chars) are required.' });
+    const trimmedPass = (newPassword || '').trim();
+    if (!email || !trimmedPass || trimmedPass.length < 8) {
+      res.status(400).json({ error: 'Password must be at least 8 characters long.' });
+      return;
+    }
+
+    const hasUpper = /[A-Z]/.test(trimmedPass);
+    const hasLower = /[a-z]/.test(trimmedPass);
+    const hasNumber = /[0-9]/.test(trimmedPass);
+    const hasSpecial = /[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]/.test(trimmedPass);
+
+    if (!hasUpper || !hasLower || !hasNumber || !hasSpecial) {
+      res.status(400).json({ 
+        error: 'Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character.' 
+      });
       return;
     }
 

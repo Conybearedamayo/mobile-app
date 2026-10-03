@@ -1,16 +1,22 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, TouchableOpacity, ScrollView, Dimensions, KeyboardAvoidingView, Platform } from 'react-native';
 import { Text, TextInput, Surface, ActivityIndicator } from 'react-native-paper';
 import { useRouter } from 'expo-router';
-import { User, GraduationCap, Sparkles, ShieldCheck, AlertCircle, ArrowRight } from 'lucide-react-native';
+import { User, GraduationCap, Sparkles, ShieldCheck, AlertCircle, ArrowRight, Lock } from 'lucide-react-native';
 import { useWellness } from '@/context/WellnessContext';
 import { LinearGradient } from 'expo-linear-gradient';
 import { loginUser, AuthResponse } from '@/src/services/authService';
 import OtpModal from '@/components/OtpModal';
 import ForgotPassModal from '@/components/ForgotPassModal';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const { width } = Dimensions.get('window');
 const JUCOCH_GREEN = '#2D6A4F';
+
+const MAX_LOGIN_ATTEMPTS = 5;
+const LOCKOUT_DURATION_SECONDS = 60;
+const STORAGE_FAILED_ATTEMPTS = '@jucoch_login_failed_attempts';
+const STORAGE_LOCKOUT_UNTIL = '@jucoch_login_lockout_until';
 
 export default function LoginScreen() {
   const { setUserAlias, setUserRole, setUserToken } = useWellness();
@@ -22,10 +28,60 @@ export default function LoginScreen() {
   const [showOtpModal, setShowOtpModal] = useState(false);
   const [otpEmail, setOtpEmail] = useState('');
   const [showForgotModal, setShowForgotModal] = useState(false);
+  const [failedAttempts, setFailedAttempts] = useState(0);
+  const [lockoutRemaining, setLockoutRemaining] = useState(0);
 
   const router = useRouter();
 
+  // Load and check any existing lockout state on mount
+  useEffect(() => {
+    const checkLockout = async () => {
+      try {
+        const storedUntil = await AsyncStorage.getItem(STORAGE_LOCKOUT_UNTIL);
+        const storedAttempts = await AsyncStorage.getItem(STORAGE_FAILED_ATTEMPTS);
+        if (storedAttempts) {
+          setFailedAttempts(parseInt(storedAttempts, 10) || 0);
+        }
+        if (storedUntil) {
+          const diffSeconds = Math.ceil((parseInt(storedUntil, 10) - Date.now()) / 1000);
+          if (diffSeconds > 0) {
+            setLockoutRemaining(diffSeconds);
+            setError(`Too many failed login attempts. Account temporarily locked for ${diffSeconds}s.`);
+          } else {
+            await AsyncStorage.multiRemove([STORAGE_LOCKOUT_UNTIL, STORAGE_FAILED_ATTEMPTS]);
+            setFailedAttempts(0);
+            setLockoutRemaining(0);
+          }
+        }
+      } catch (e) {}
+    };
+    checkLockout();
+  }, []);
+
+  // Countdown timer when locked out
+  useEffect(() => {
+    if (lockoutRemaining <= 0) return;
+    const interval = setInterval(() => {
+      setLockoutRemaining((prev) => {
+        if (prev <= 1) {
+          clearInterval(interval);
+          AsyncStorage.multiRemove([STORAGE_LOCKOUT_UNTIL, STORAGE_FAILED_ATTEMPTS]).catch(() => {});
+          setFailedAttempts(0);
+          setError('');
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [lockoutRemaining]);
+
   const handleLogin = async () => {
+    if (lockoutRemaining > 0) {
+      setError(`Account is temporarily locked for security. Please wait ${lockoutRemaining} seconds.`);
+      return;
+    }
+
     const trimmedEmail = email.trim();
     const trimmedPassword = password.trim();
 
@@ -43,6 +99,11 @@ export default function LoginScreen() {
     setLoading(true);
     try {
       const res = await loginUser(trimmedEmail, password);
+      // Reset failed attempts on success
+      await AsyncStorage.multiRemove([STORAGE_LOCKOUT_UNTIL, STORAGE_FAILED_ATTEMPTS]).catch(() => {});
+      setFailedAttempts(0);
+      setLockoutRemaining(0);
+
       if (res?.requiresOtp) {
         setOtpEmail(res.email || trimmedEmail);
         setShowOtpModal(true);
@@ -52,10 +113,22 @@ export default function LoginScreen() {
         setUserToken(res.token);
         router.replace('/(tabs)');
       } else {
-        setError('Login failed. Unable to authenticate account.');
+        throw new Error('Login failed. Unable to authenticate account.');
       }
     } catch (err: any) {
-      setError(err?.message || 'Login failed. Please check your credentials.');
+      const nextAttempts = failedAttempts + 1;
+      setFailedAttempts(nextAttempts);
+      await AsyncStorage.setItem(STORAGE_FAILED_ATTEMPTS, nextAttempts.toString()).catch(() => {});
+
+      if (nextAttempts >= MAX_LOGIN_ATTEMPTS) {
+        const lockoutUntil = Date.now() + LOCKOUT_DURATION_SECONDS * 1000;
+        await AsyncStorage.setItem(STORAGE_LOCKOUT_UNTIL, lockoutUntil.toString()).catch(() => {});
+        setLockoutRemaining(LOCKOUT_DURATION_SECONDS);
+        setError(`Too many failed login attempts (${nextAttempts}/${MAX_LOGIN_ATTEMPTS}). Your account is temporarily locked for 60 seconds.`);
+      } else {
+        const remaining = MAX_LOGIN_ATTEMPTS - nextAttempts;
+        setError(`${err?.message || 'Invalid credentials. Incorrect password.'} (Attempt ${nextAttempts} of ${MAX_LOGIN_ATTEMPTS}. ${remaining} attempt${remaining === 1 ? '' : 's'} remaining).`);
+      }
     } finally {
       setLoading(false);
     }
@@ -180,18 +253,23 @@ export default function LoginScreen() {
             {/* Submit Button */}
             <TouchableOpacity 
               onPress={handleLogin}
-              disabled={loading}
+              disabled={loading || lockoutRemaining > 0}
               activeOpacity={0.85}
-              style={styles.signInButtonWrapper}
+              style={[styles.signInButtonWrapper, lockoutRemaining > 0 && { opacity: 0.65 }]}
             >
               <LinearGradient
-                colors={['#1B4332', JUCOCH_GREEN, '#2D6A4F']}
+                colors={lockoutRemaining > 0 ? ['#475569', '#334155'] : ['#1B4332', JUCOCH_GREEN, '#2D6A4F']}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
                 style={styles.gradientButton}
               >
                 {loading ? (
                   <ActivityIndicator color="#FFF" />
+                ) : lockoutRemaining > 0 ? (
+                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <Lock size={18} color="#FFF" style={{ marginRight: 8 }} />
+                    <Text style={styles.gradientButtonText}>Account Locked ({lockoutRemaining}s)</Text>
+                  </View>
                 ) : (
                   <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                     <Text style={styles.gradientButtonText}>Log In to Your Account</Text>
@@ -286,10 +364,7 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     marginBottom: 16,
     elevation: 2,
-    shadowColor: JUCOCH_GREEN,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 6,
+    boxShadow: '0px 2px 6px rgba(45, 106, 79, 0.08)',
   },
   systemBadgeText: {
     fontSize: 10,
@@ -301,10 +376,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     borderRadius: 24,
     elevation: 8,
-    shadowColor: JUCOCH_GREEN,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.3,
-    shadowRadius: 12,
+    boxShadow: '0px 6px 12px rgba(45, 106, 79, 0.3)',
   },
   logoGradient: {
     width: 64,
@@ -338,11 +410,8 @@ const styles = StyleSheet.create({
     padding: width > 400 ? 26 : 20,
     borderWidth: 1.5,
     borderColor: '#D8F3DC',
-    shadowColor: JUCOCH_GREEN,
-    shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.12,
-    shadowRadius: 24,
     elevation: 6,
+    boxShadow: '0px 12px 24px rgba(45, 106, 79, 0.12)',
   },
   roleSection: {
     marginBottom: 20,
@@ -373,10 +442,7 @@ const styles = StyleSheet.create({
     backgroundColor: JUCOCH_GREEN,
     borderColor: JUCOCH_GREEN,
     elevation: 3,
-    shadowColor: JUCOCH_GREEN,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 8,
+    boxShadow: '0px 4px 8px rgba(45, 106, 79, 0.25)',
   },
   roleIconBg: {
     width: 34,
@@ -450,10 +516,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     elevation: 6,
-    shadowColor: JUCOCH_GREEN,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.3,
-    shadowRadius: 12,
+    boxShadow: '0px 6px 12px rgba(45, 106, 79, 0.3)',
   },
   gradientButtonText: {
     color: '#FFF',

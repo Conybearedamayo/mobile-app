@@ -25,7 +25,7 @@ function ConfettiPiece({ delay }: { delay: number }) {
       toValue: 1,
       duration: 2000 + Math.random() * 1500,
       delay: delay,
-      useNativeDriver: true,
+      useNativeDriver: Platform.OS !== 'web',
     }).start();
   }, [animatedValue, delay]);
 

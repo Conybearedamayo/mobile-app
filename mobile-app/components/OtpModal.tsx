@@ -11,7 +11,7 @@ interface OtpModalProps {
   visible: boolean;
   email: string;
   onClose: () => void;
-  onVerified: (authData: AuthResponse) => void;
+  onVerified: (authData: AuthResponse, code?: string) => void;
 }
 
 export default function OtpModal({ visible, email, onClose, onVerified }: OtpModalProps) {
@@ -51,7 +51,7 @@ export default function OtpModal({ visible, email, onClose, onVerified }: OtpMod
       const res = await verifyOtp(email, code.trim());
       setSuccessMsg('Code verified successfully!');
       setTimeout(() => {
-        onVerified(res);
+        onVerified(res, code.trim());
       }, 500);
     } catch (err: any) {
       setError(err?.message || 'Invalid verification code. Please check your email.');
@@ -295,10 +295,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     elevation: 4,
-    shadowColor: JUCOCH_GREEN,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
+    boxShadow: '0px 4px 8px rgba(45, 106, 79, 0.2)',
   },
   verifyBtnText: {
     color: '#FFF',

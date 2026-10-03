@@ -330,7 +330,6 @@ export const WellnessProvider = ({ children }: { children: React.ReactNode }) =>
         '@jucoch_user_alias',
         '@jucoch_user_role',
         '@jucoch_user_avatar',
-        '@jucoch_tour_shown',
         '@jucoch_local_mood_logs',
         '@jucoch_local_sleep_logs',
         '@jucoch_local_activity_logs',

@@ -47,9 +47,36 @@ interface ChatSession {
   messages: Message[];
 }
 
+const stripRepeatedIntro = (text: string): string => {
+  if (!text) return text;
+  let cleaned = text.trim();
+  for (let i = 0; i < 6; i++) {
+    const prev = cleaned;
+    cleaned = cleaned
+      // Match 'Hello (and/ug) welcome (to/sa) ...!'
+      .replace(/^(Hello\s*(and|ug|,)?\s*welcome(\s+(to|sa)\s+[^.!?\n]+)?[.!?]\s*)/i, '')
+      // Match 'Welcome (to/sa) ...!'
+      .replace(/^(Welcome(\s+(to|sa)\s+[^.!?\n]+)?[.!?]\s*)/i, '')
+      // Match 'Hello/Hi/Hey/Kumusta/Maayong adlaw [Name]! (I am / Ako si) Jucoch...'
+      .replace(/^((Hello|Hi|Hey|Kumusta|Maayong\s+(adlaw|buntag|hapon|gabii))(\s+[^.!?\n,]+)?([,!?.])\s*(I\s+am|I'm|Ako\s+si)\s+Jucoch[^.!?\n]*?[.!?]\s*)/i, '')
+      // Match 'I am Jucoch AI...' / 'I'm Jucoch AI...'
+      .replace(/^(I\s+am\s+Jucoch\s+AI[^.!?\n]*?[.!?]\s*)/i, '')
+      .replace(/^(I'm\s+Jucoch\s+AI[^.!?\n]*?[.!?]\s*)/i, '')
+      // Match 'Ako si Jucoch AI...'
+      .replace(/^(Ako\s+si\s+Jucoch\s+AI[^.!?\n]*?[.!?]\s*)/i, '')
+      // Match 'Hello! Jucoch AI here...'
+      .replace(/^(Hello!?\s*👋?\s*(I\s+am|I'm|this\s+is)\s+Jucoch[^.!?\n]*?[.!?]\s*)/i, '')
+      // Match 'Kumusta! Ako si Jucoch...'
+      .replace(/^(Kumusta!?\s*👋?\s*Ako\s+si\s+Jucoch[^.!?\n]*?[.!?]\s*)/i, '')
+      .trim();
+    if (cleaned === prev) break;
+  }
+  return cleaned || text;
+};
+
 export default function ChatScreen() {
   const scrollViewRef = useRef<ScrollView>(null);
-  const { userAlias, isDarkMode, userAvatar } = useWellness();
+  const { userAlias, isDarkMode, userAvatar, moodLogs, sleepLogs, journalEntries } = useWellness();
 
   const dynamicBg = isDarkMode ? '#121614' : '#F3F8F5';
   const dynamicCardBg = isDarkMode ? '#1C231F' : '#FFFFFF';
@@ -258,7 +285,81 @@ export default function ChatScreen() {
   };
 
   const getAIResponse = (userText: string): string => {
-    const text = userText.toLowerCase();
+    const text = userText.toLowerCase().trim();
+    const isBisaya = /kumusta|musta|maayong|bai|bay|agy|kaayo|nako|gikapoy|guol|karon|unsa|ngano|gibati|salamat|amping|walay|sapayan|ginhawa|tudlui|matulog|tulog|katulgon|hinaut|sabot|kinsa/i.test(text);
+
+    // 1. Mood Query: User asking about their mood / current feeling
+    const isMoodQuery = /(unsa(y)?\s+(ang\s+)?(akong\s+)?(na\s*feel|gibati|mood)|unsa\s+akong\s+gibati|kumusta\s+akong\s+mood|what('s|\s+is)\s+my\s+mood|how\s+am\s+i\s+feeling|ano\s+(ang\s+)?(aking\s+)?pakiramdam|unsa\s+akong\s+nafeel)/i.test(text);
+    if (isMoodQuery) {
+      if (moodLogs && moodLogs.length > 0) {
+        const latest = moodLogs[0];
+        if (isBisaya) {
+          return `Base sa imong pinaka-ulahing tala sa Mood Logger sa app, nitala ka nga ang imong gibati kay ${latest.mood} ${latest.emoji || ''}${latest.note ? ` ("${latest.note}")` : ''}. Kumusta man, mao gihapon ni imong gibati karon o nausab na? Ania ra ko maminaw nimo.`;
+        }
+        return `Based on your latest entry in the Mood Logger, you recorded feeling ${latest.mood} ${latest.emoji || ''}${latest.note ? ` ("${latest.note}")` : ''}. How are you feeling right now? Is it still the same or has anything changed?`;
+      } else {
+        if (isBisaya) {
+          return "Wala pa koy nakit-an nga na-log nimo nga mood karon sa app. Pwede ka mobisita sa Mood Logger tab aron ma-record nato ang imong gibati adlaw-adlaw! Kumusta man ang imong gibati karon?";
+        }
+        return "You haven't logged any mood entries yet today in the app. You can tap on the Mood Logger to record how you're feeling so we can track it together! How are you feeling right now?";
+      }
+    }
+
+    // 2. Gratitude / Conversational Closing Handler (e.g. "thank you jucoch ai", "salamat kaayo")
+    const isGratitude = /\b(thank\s*you|thanks|thx|ty|tysm|salamat|salamats|daghang\s+salamat|maraming\s+salamat|gracias)\b/i.test(text);
+    if (isGratitude) {
+      if (isBisaya) {
+        return "Walay sapayan! 🌿 Nalipay kaayo ko nga nakatabang nimo karong adlawa. Hinumdomi nga ania ra ko kanunay maminaw nimo bisan unsang orasa. Ampingi kanunay ang imong kaugalingon ug pagpahulay og maayo! 💚";
+      }
+      return "You're very welcome! 🌿 I'm truly glad I could support you today. Remember that I'm always right here whenever you need someone to talk to or check in on your wellbeing. Take gentle care of yourself! 💚";
+    }
+
+    // 3. Farewell Handler (e.g. "bye", "goodbye", "babay", "out nako", "una nako")
+    const isFarewell = /\b(bye|goodbye|babay|ba-bye|cya|see\s+ya|see\s+you|adios|una\s+nako|out\s+nako|sige\s+una\s+ko|sige\s+bai|bye\s+bye)\b/i.test(text);
+    if (isFarewell) {
+      if (isBisaya) {
+        return "Sige, amping kanunay! 🌿 Mobalik ra ka dinhi bisan kanus-a kon kinahanglan nimo og kapahuwayan sa hunahuna o kaestorya. Maayong adlaw kanimo! ✨";
+      }
+      return "Goodbye for now! 🌿 Take gentle care of yourself, and remember you can always come back anytime you need a listening ear. Have a peaceful time ahead! ✨";
+    }
+
+    // 4. Bedtime / Sleep Farewell Handler (e.g. "goodnight", "matulog nako")
+    const isBedtime = /\b(goodnight|good\s+night|matulog\s+nako|tulog\s+nako|katulgon\s+nako|tulog\s+sa\s+ko|matulog\s+na\s+ko)\b/i.test(text);
+    if (isBedtime) {
+      if (isBisaya) {
+        return "Maayong pagkatulog! 🌙💤 Hinaut makapahulay og mahimbing ang imong lawas ug utok karong gabii. Pwede sab nimo i-log ang imong tulog sa Sleep Tracker ugma sa buntag aron ma-monitor nato imong pahulay. Sweet dreams! 🌿";
+      }
+      return "Good night! 🌙💤 Wishing you a restful and restorative sleep. You can also record your sleep hours and rest quality in the Jucoch Sleep Tracker tomorrow morning. Sweet dreams! 🌿";
+    }
+
+    // 5. App Guide & Features (e.g. "unsa ning jucoch", "what is jucoch", "unsaon pag gamit")
+    const isAppInfo = /(unsa\s+(ning|ang|kini|mani)\s+jucoch|what\s+is\s+jucoch|unsa\s+(imong\s+)?(features|mabuhat|functions)|what\s+can\s+you\s+do|how\s+to\s+use(\s+this)?\s+app|unsaon\s+pag\s*gamit|unsa\s+(ang\s+)?purpose\s+sa\s+app)/i.test(text);
+    if (isAppInfo) {
+      if (isBisaya) {
+        return "Ang Jucoch kay imong personal nga emotional wellness ug mental health companion sa capstone app! 🌿\n\nKini ang mga nag-unang features nga makatabang nimo:\n• **Mood Logger** - I-record imong gibati adlaw-adlaw ug tan-awa ang imong mood trends.\n• **Gratitude Journal** - Pagsulat og mga butang nga imong gipasalamatan aron mogaan ang imong pamati.\n• **Sleep Tracker** - I-monitor ang imong mga oras sa pagkatulog ug kalidad sa pahulay.\n• **Jucoch AI Companion** - Ania ra ko 24/7 aron maminaw nimo, maggiya og relaxation exercises, ug motabang sa imong wellbeing nga walay paghukom!";
+      }
+      return "Jucoch is your personal mental health and emotional wellness companion! 🌿\n\nHere are the core features you can explore:\n• **Mood Logger** - Record your daily emotions and track mood trends.\n• **Gratitude Journal** - Write down moments of gratitude to build positivity and peace of mind.\n• **Sleep Tracker** - Monitor your sleep hours and rest quality.\n• **Jucoch AI Companion** - I'm here 24/7 to listen without judgment, guide relaxation exercises, and support your emotional wellbeing!";
+    }
+
+    // 6. Guided Calming / Box Breathing Exercise
+    const isBreathing = /\b(breathe|breathing|inhale|exhale|ginhawa|pagginhawa|guided breathing|box breathing)\b/i.test(text);
+    if (isBreathing) {
+      if (isBisaya) {
+        return "🌿 Dungan ta'g 4-4-4 Box Breathing karon aron makalma imong pamati:\n\n1. **Inhale (Suyop)**: Hinay-hinay og suyop sa hangin sa imong ilong (1... 2... 3... 4)\n2. **Hold (Pugngi)**: Pugngi ang hangin sa makadiyot (1... 2... 3... 4)\n3. **Exhale (Ipagawas)**: Ipagawas og hinay pinaagi sa imong baba (1... 2... 3... 4)\n\nBalika kini og 3 ka higayon. Kumusta man imong pamati karon? Ania ra ko uban nimo.";
+      }
+      return "🌿 Let's practice a 4-4-4 Box Breathing exercise together to calm your mind and body:\n\n1. **Inhale**: Inhale gently through your nose (1... 2... 3... 4)\n2. **Hold**: Hold your breath peacefully (1... 2... 3... 4)\n3. **Exhale**: Exhale slowly through your mouth (1... 2... 3... 4)\n\nRepeat this 3 times. How is your body feeling right now? I'm right here with you.";
+    }
+
+    // 7. Acknowledgment (ok, sige, noted)
+    const isAck = /^(ok|okay|noted|alright|sige|ge|copy|cge|sabot|gets)\b/i.test(text) && text.split(/\s+/).length <= 3;
+    if (isAck) {
+      if (isBisaya) {
+        return "Sige, sabot nako! Ayaw pagdali ug paminawa ang imong kaugalingon. Ania ra ko kung andam na ka makig-estorya o mag-explore og dugang wellness tips. 🌿";
+      }
+      return "Got it! Take all the time you need. I'm right here whenever you want to share, reflect, or explore more wellness tips. 🌿";
+    }
+
+    // 8. Specific emotional states and quick prompts
     if (text.includes('stress') || text.includes('stressful') || text.includes('pressure') || text.includes('overwhelm') || text.includes('stressed')) {
       return "I understand you're feeling stressed. When pressure builds up, try taking 3 deep breaths (inhale for 4s, hold for 4s, exhale for 4s). It stimulates the vagus nerve to calm your body. Let's do it together?";
     }
@@ -268,13 +369,22 @@ export default function ChatScreen() {
     if (text.includes('sad') || text.includes('down') || text.includes('depressed') || text.includes('lonely') || text.includes('hurt')) {
       return "I'm really sorry to hear you're feeling down. Remember that it's completely okay to feel this way. You don't have to carry it all alone. Writing down your specific thoughts in your Gratitude Journal can help release some weight.";
     }
-    const isBisaya = /kumusta|musta|maayong|bai|bay|agy|kaayo|nako|gikapoy|guol|karon/i.test(text);
-    if (text.includes('hello') || text.includes('hi') || text.includes('hey') || text.includes('jucoch') || text.includes('kumusta') || text.includes('kamusta')) {
-      if (isBisaya) {
-        return `Hello ug welcome sa Jucoch! 👋 Ako si Jucoch AI, ang imong kauban alang sa mental health ug emotional wellness. Kumusta man ang imong adlaw o gibati karon, ${userAlias || 'amigo'}?`;
+
+    // 9. Pure Greetings (only when explicitly greeting, NOT for jucoch mentions)
+    const isGreeting = /^(hi|hello|hey|kumusta|kamusta|musta|morning|good morning|good afternoon|good evening|maayong buntag|maayong hapon|maayong gabii)\b/i.test(text);
+    if (isGreeting) {
+      if (messages.length > 1) {
+        if (isBisaya) {
+          return `Kumusta! Ania ra ko kanunay maminaw nimo. Unsay anaa sa imong hunahuna o gibati karon?`;
+        }
+        return `Hello! I am right here with you. What is on your mind or how can I support you today?`;
       }
-      return `Hello and welcome to Jucoch! 👋 I am Jucoch AI, your specialized mental health companion. How are you feeling today, ${userAlias || 'friend'}?`;
+      if (isBisaya) {
+        return `Kumusta ${userAlias || 'amigo'}! 👋 Ania ko para maminaw ug motabang sa imong mental wellness. Kumusta man ang imong adlaw o gibati karon?`;
+      }
+      return `Hello ${userAlias || 'friend'}! 👋 I am here to support your mental wellness. How are you feeling today?`;
     }
+
     if (text.includes('quote') || text.includes('positive') || text.includes('mindset') || text.includes('inspire') || text.includes('motivate')) {
       const inspiringQuotes = [
         "🌱 'It is okay to rest. Even the sun sets to rise again tomorrow.'\n(Okey ra kaayo mopahuway. Bisan ang adlaw mosalop aron mosubang pag-usab ugma.)",
@@ -286,6 +396,7 @@ export default function ChatScreen() {
       const picked = inspiringQuotes[Math.floor(Math.random() * inspiringQuotes.length)];
       return `Here is your reminder for today:\n\n${picked}`;
     }
+
     // Bisaya emotional keywords fallback
     if (text.includes('kapoy') || text.includes('gikapoy')) {
       return "Nakasabot ko nga gikapoy ka. Ang pagpahulay dili usa ka ganti; usa kini ka panginahanglan. Paminawa ang imong lawas ug pahuway kadiyot karon. 🌿";
@@ -296,6 +407,7 @@ export default function ChatScreen() {
     if (text.includes('kabalaka') || text.includes('hadlok') || text.includes('kulba')) {
       return "Maka-overwhelm gyud ang kabalaka, apan luwas ka dinhi. Sulayi ang hinay nga pagginhawa: suyop og 4 segundos, pugngi og 4, ug ipagawas og 4. Ania ra ko uban nimo.";
     }
+
     // Tagalog emotional keywords fallback
     if (text.includes('pagod') || text.includes('napagod')) {
       return "Naiintindihan ko na pagod ka na. Hindi kasalanan ang magpahinga. Pakinggan ang iyong katawan at bigyan ang sarili ng oras para mag-recharge ngayon. 🌿";
@@ -303,12 +415,10 @@ export default function ChatScreen() {
     if (text.includes('lungkot') || text.includes('nalulungkot')) {
       return "Nalulungkot akong marinig iyan. Tandaan mong hindi ka nag-iisa at normal lang maramdaman iyan paminsan-minsan. Nandito lang ako para makinig sa iyo.";
     }
-    if (text.includes('breathe') || text.includes('calm') || text.includes('relax') || text.includes('panic')) {
-      return "🌿 Let's pause together right now. Inhale gently through your nose (1... 2... 3... 4), hold peace in your mind (1... 2... 3... 4), and exhale slowly (1... 2... 3... 4). How does your body feel now?";
-    }
     if (text.includes('good') || text.includes('happy') || text.includes('great') || text.includes('amazing')) {
       return "That's wonderful to hear! Capitalizing on positive moments is just as important for building emotional resilience. What made today feel so good?";
     }
+
     return isBisaya
       ? "Salamat sa pagpaambit niana kanako. Ania ra ko kanunay maminaw nimo. Unsa may usa ka gamay nga butang nga makapahayahay nimo karong adlawa?"
       : "Thank you for sharing your thoughts with me. I'm right here with you. What is one small, kind thing you can do for yourself in the next 5 minutes?";
@@ -353,19 +463,31 @@ export default function ChatScreen() {
 
     setIsTyping(true);
 
+    const isFollowUp = updatedMessages.length > 1;
+    const latestMood = moodLogs && moodLogs.length > 0 ? moodLogs[0] : null;
+    const recentMoods = moodLogs && moodLogs.length > 0 ? moodLogs.slice(0, 5) : [];
+
     try {
-      const res = await sendAiChatApi(query);
-      let aiResponseText = res?.reply || getAIResponse(query);
+      const res = await sendAiChatApi(query, {
+        userAlias,
+        latestMood,
+        recentMoods,
+        isFollowUp,
+      });
 
-      const lowerQuery = query.toLowerCase().trim();
-      const isGreeting = /^(hi|hello|hey|yo|sup|kumusta|kamusta|musta|morning|good morning|good afternoon|good evening|maayong buntag|maayong hapon|maayong gabii)\b/i.test(lowerQuery) || ['hi', 'hello', 'hey', 'kumusta', 'kamusta', 'musta'].includes(lowerQuery);
+      let rawResponse = res?.reply || getAIResponse(query);
+      let aiResponseText = stripRepeatedIntro(rawResponse);
 
-      // If user is just greeting, ensure response is a warm greeting rather than a robotic "thank you for sharing"
-      if (isGreeting && (aiResponseText.includes("Thank you for sharing that with me") || aiResponseText.includes("Salamat sa pagpaambit") || aiResponseText.includes("How has your mood or sleep been"))) {
-        const isBisayaQuery = /kumusta|musta|maayong|bai|bay|agy/i.test(lowerQuery);
-        aiResponseText = isBisayaQuery
-          ? `Hello ug welcome sa Jucoch! 👋 Ako si Jucoch AI, ang imong kauban alang sa mental health ug emotional wellness. Kumusta man ang imong adlaw o gibati karon, ${userAlias || 'amigo'}?`
-          : `Hello and welcome to Jucoch! 👋 I am Jucoch AI, your specialized mental health companion. How are you feeling today, ${userAlias || 'friend'}?`;
+      // CRITICAL INTENT GUARD: If the user was expressing gratitude ("thank you jucoch ai"), farewell, or bedtime,
+      // but the response received from backend asks a conversation-opening question:
+      const isClosingQuery = /\b(thank\s*you|thanks|thx|ty|tysm|salamat|salamats|daghang\s+salamat|maraming\s+salamat|gracias|bye|goodbye|babay|out\s+nako|una\s+nako|goodnight|good\s+night|matulog\s+nako|tulog\s+nako)\b/i.test(query);
+      const isAwkwardRestart = /(how are you feeling|what is on your mind|how can i (support|help)|unsay anaa sa imong hunahuna|kumusta ang imong pakiramdam|i'm here to listen|i am here to listen)/i.test(aiResponseText);
+      if (isClosingQuery && isAwkwardRestart) {
+        aiResponseText = getAIResponse(query);
+      }
+
+      if (!aiResponseText.trim()) {
+        aiResponseText = getAIResponse(query);
       }
 
       const aiMsg: Message = {
@@ -387,7 +509,10 @@ export default function ChatScreen() {
       setSessions(finalSessions);
       saveSessionsToStorage(finalSessions);
     } catch (error) {
-      const fallbackText = getAIResponse(query);
+      let fallbackText = getAIResponse(query);
+      if (typeof fallbackText === 'string') {
+        fallbackText = stripRepeatedIntro(fallbackText);
+      }
       const aiMsg: Message = {
         id: `ai-${Date.now() + 1}`,
         text: fallbackText,
@@ -771,10 +896,7 @@ const styles = StyleSheet.create({
   userBubble: {
     borderTopRightRadius: 4,
     elevation: 3,
-    shadowColor: JUCOCH_GREEN,
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.15,
-    shadowRadius: 6,
+    boxShadow: '0px 3px 6px rgba(45, 106, 79, 0.15)',
   },
   typingBubble: {
     borderStyle: 'dashed',
@@ -833,10 +955,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderWidth: 1.5,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
+    boxShadow: '0px 4px 8px rgba(0, 0, 0, 0.05)',
   },
   textInput: {
     flex: 1,

@@ -145,14 +145,14 @@ export const deleteActivityApi = async (token: string, id: string | number) => {
   return response.json();
 };
 
-export const sendAiChatApi = async (message: string) => {
+export const sendAiChatApi = async (message: string, context?: any) => {
   try {
     const response = await fetch(`${API_BASE_URL}/api/ai/chat`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ message }),
+      body: JSON.stringify({ message, context }),
     });
     if (!response.ok) return null;
     return await response.json();

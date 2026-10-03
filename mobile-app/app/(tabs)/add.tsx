@@ -138,10 +138,7 @@ const styles = StyleSheet.create({
     marginBottom: 24,
     alignItems: 'center',
     elevation: 4,
-    shadowColor: JUCOCH_GREEN,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.2,
-    shadowRadius: 12,
+    boxShadow: '0px 6px 12px rgba(45, 106, 79, 0.2)',
   },
   headerIconBg: {
     width: 48,

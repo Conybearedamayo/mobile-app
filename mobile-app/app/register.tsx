@@ -2,11 +2,12 @@ import React, { useState } from 'react';
 import { View, StyleSheet, TouchableOpacity, ScrollView, Dimensions, KeyboardAvoidingView, Platform } from 'react-native';
 import { Text, TextInput, IconButton, Surface, ActivityIndicator } from 'react-native-paper';
 import { useRouter } from 'expo-router';
-import { ShieldCheck, Info, Lock, GraduationCap, User, BookOpen, AlertCircle, Key } from 'lucide-react-native';
+import { ShieldCheck, Info, Lock, GraduationCap, User, BookOpen, AlertCircle, ArrowRight } from 'lucide-react-native';
 import { useWellness } from '@/context/WellnessContext';
 import { LinearGradient } from 'expo-linear-gradient';
 import { registerUser, AuthResponse } from '@/src/services/authService';
 import OtpModal from '@/components/OtpModal';
+import CreatePasswordModal from '@/components/CreatePasswordModal';
 
 const { width } = Dimensions.get('window');
 const JUCOCH_GREEN = '#2D6A4F';
@@ -15,22 +16,22 @@ export default function RegisterScreen() {
   const { setUserAlias, setUserRole, setUserToken } = useWellness();
   const [alias, setAlias] = useState('');
   const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
   const [role, setRole] = useState('Individual');
-  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [showOtpModal, setShowOtpModal] = useState(false);
   const [otpEmail, setOtpEmail] = useState('');
+  const [verifiedCode, setVerifiedCode] = useState('');
+  const [verifiedAuth, setVerifiedAuth] = useState<AuthResponse | null>(null);
+  const [showCreatePasswordModal, setShowCreatePasswordModal] = useState(false);
   const router = useRouter();
 
   const handleRegister = async () => {
     const trimmedAlias = alias.trim();
     const trimmedEmail = email.trim();
-    const trimmedPassword = password.trim();
 
-    if (!trimmedAlias || !trimmedEmail || !trimmedPassword) {
-      setError('Invalid input: Alias, email, and password cannot be empty or contain only spaces.');
+    if (!trimmedAlias || !trimmedEmail) {
+      setError('Please enter your chosen alias and email address.');
       return;
     }
 
@@ -44,24 +45,13 @@ export default function RegisterScreen() {
       return;
     }
 
-    if (trimmedPassword.length < 4) {
-      setError('Password must be at least 4 characters long.');
-      return;
-    }
-
     setError('');
     setLoading(true);
     try {
-      const res = await registerUser(trimmedAlias, trimmedEmail, password, role);
-      if (res.requiresOtp) {
-        setOtpEmail(res.email || trimmedEmail);
-        setShowOtpModal(true);
-      } else if (res.user && res.token) {
-        setUserAlias(res.user.alias);
-        setUserRole(res.user.role || role);
-        setUserToken(res.token);
-        router.replace('/(tabs)');
-      }
+      const tempPendingPassword = `Jucoch_Pending_${Date.now()}_!aA9`;
+      const res = await registerUser(trimmedAlias, trimmedEmail, tempPendingPassword, role);
+      setOtpEmail(res.email || trimmedEmail);
+      setShowOtpModal(true);
     } catch (err: any) {
       setError(err.message || 'Registration failed. Please try again.');
     } finally {
@@ -69,12 +59,20 @@ export default function RegisterScreen() {
     }
   };
 
-  const handleOtpVerified = (res: AuthResponse) => {
+  const handleOtpVerified = (res: AuthResponse, code?: string) => {
     setShowOtpModal(false);
-    const verifiedRole = res.user?.role || role;
-    setUserAlias(res.user?.alias || alias);
+    setVerifiedAuth(res);
+    setVerifiedCode(code || '');
+    // Immediately open Step 3: Create Strong Password
+    setShowCreatePasswordModal(true);
+  };
+
+  const handlePasswordCreated = (savedPassword: string) => {
+    setShowCreatePasswordModal(false);
+    const verifiedRole = verifiedAuth?.user?.role || role;
+    setUserAlias(verifiedAuth?.user?.alias || alias);
     setUserRole(verifiedRole);
-    setUserToken(res.token || 'jwt-user-token');
+    setUserToken(verifiedAuth?.token || 'jwt-user-token');
     router.replace('/(tabs)');
   };
 
@@ -161,7 +159,7 @@ export default function RegisterScreen() {
               />
 
               <TextInput
-                label="Email (For recovery only)"
+                label="Email Address"
                 value={email}
                 onChangeText={setEmail}
                 mode="outlined"
@@ -175,33 +173,13 @@ export default function RegisterScreen() {
                 autoCapitalize="none"
                 left={<TextInput.Icon icon="email-outline" color={JUCOCH_GREEN} />}
               />
-
-              <TextInput
-                label="Password"
-                value={password}
-                onChangeText={setPassword}
-                secureTextEntry={!showPassword}
-                mode="outlined"
-                outlineColor="#EBF2EE"
-                activeOutlineColor={JUCOCH_GREEN}
-                style={styles.input}
-                outlineStyle={{ borderRadius: 16 }}
-                textColor="#1C1F1D"
-                placeholderTextColor="#707571"
-                left={<TextInput.Icon icon="lock-outline" color={JUCOCH_GREEN} />}
-                right={
-                  <TextInput.Icon 
-                    icon={showPassword ? "eye-off-outline" : "eye-outline"} 
-                    color={JUCOCH_GREEN}
-                    onPress={() => setShowPassword(!showPassword)} 
-                  />
-                }
-              />
             </View>
 
             <View style={styles.securityNote}>
-              <Lock size={12} color="#909591" />
-              <Text style={styles.securityText}>Your data is end-to-end encrypted.</Text>
+              <Lock size={13} color="#707571" />
+              <Text style={styles.securityText}>
+                Step 1 of 2: We verify your email via OTP before setting your password.
+              </Text>
             </View>
 
             {!!error && (
@@ -226,7 +204,10 @@ export default function RegisterScreen() {
                 {loading ? (
                   <ActivityIndicator color="#FFF" />
                 ) : (
-                  <Text style={styles.gradientButtonText}>Create Account ({role})</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <Text style={styles.gradientButtonText}>Continue & Verify Email</Text>
+                    <ArrowRight size={18} color="#FFF" style={{ marginLeft: 8 }} />
+                  </View>
                 )}
               </LinearGradient>
             </TouchableOpacity>
@@ -245,6 +226,14 @@ export default function RegisterScreen() {
         email={otpEmail}
         onClose={() => setShowOtpModal(false)}
         onVerified={handleOtpVerified}
+      />
+
+      <CreatePasswordModal
+        visible={showCreatePasswordModal}
+        email={otpEmail || email.trim()}
+        code={verifiedCode}
+        onClose={() => setShowCreatePasswordModal(false)}
+        onSuccess={handlePasswordCreated}
       />
     </KeyboardAvoidingView>
   );
@@ -355,11 +344,8 @@ const styles = StyleSheet.create({
     padding: width > 400 ? 24 : 18,
     borderWidth: 1,
     borderColor: '#E2EFE7',
-    shadowColor: JUCOCH_GREEN,
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.08,
-    shadowRadius: 16,
     elevation: 4,
+    boxShadow: '0px 8px 16px rgba(45, 106, 79, 0.08)',
   },
   roleSection: { 
     marginBottom: 20 
@@ -393,10 +379,7 @@ const styles = StyleSheet.create({
     backgroundColor: JUCOCH_GREEN,
     borderColor: JUCOCH_GREEN,
     elevation: 2,
-    shadowColor: JUCOCH_GREEN,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
+    boxShadow: '0px 2px 4px rgba(45, 106, 79, 0.2)',
   },
   roleIcon: {
     marginRight: 6,
@@ -416,6 +399,24 @@ const styles = StyleSheet.create({
   input: { 
     marginBottom: 14, 
     backgroundColor: '#FFF' 
+  },
+  passwordHintContainer: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: '#F3F8F5',
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#E2EFE7',
+    marginTop: -4,
+    marginBottom: 14,
+  },
+  passwordHintText: {
+    flex: 1,
+    fontSize: 11,
+    color: '#4B554E',
+    lineHeight: 16,
   },
   securityNote: { 
     flexDirection: 'row', 
@@ -437,10 +438,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     elevation: 5,
-    shadowColor: JUCOCH_GREEN,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.25,
-    shadowRadius: 10,
+    boxShadow: '0px 6px 10px rgba(45, 106, 79, 0.25)',
   },
   gradientButtonText: {
     color: '#FFF',

@@ -873,10 +873,7 @@ const styles = StyleSheet.create({
     marginBottom: 14,
     position: 'relative',
     elevation: 4,
-    shadowColor: '#2D6A4F',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 10,
+    boxShadow: '0px 4px 10px rgba(45, 106, 79, 0.1)',
   },
   avatarCircle: {
     width: 96,

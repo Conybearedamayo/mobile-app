@@ -66,7 +66,7 @@ const QUICK_ACTIONS = [
 
 export default function HomeScreen() {
   const router = useRouter();
-  const params = useLocalSearchParams<{ startTour?: string }>();
+  const params = useLocalSearchParams<{ startTour?: string; action?: string; t?: string }>();
   const { userAlias, userRole, userAvatar, moodLogs, sleepLogs, activityEntries, wellnessScore, getCurrentStreak, addMoodLog, isDarkMode, notificationPrefs } = useWellness();
   const isAdmin = (userRole || 'Individual') === 'Admin';
 
@@ -117,8 +117,12 @@ export default function HomeScreen() {
     if (isAdmin) return;
     const checkFirstTimeTour = async () => {
       try {
-        const hasSeen = await AsyncStorage.getItem('@jucoch_tour_shown');
-        if (!hasSeen) {
+        const userTourKey = userAlias ? `@jucoch_tour_shown_${userAlias.trim().toLowerCase()}` : null;
+        const [hasSeenGlobal, hasSeenUser] = await Promise.all([
+          AsyncStorage.getItem('@jucoch_tour_shown'),
+          userTourKey ? AsyncStorage.getItem(userTourKey) : Promise.resolve(null),
+        ]);
+        if (!hasSeenGlobal && !hasSeenUser) {
           setTimeout(() => {
             if (!isAdmin) {
               handleStartTour();
@@ -128,11 +132,20 @@ export default function HomeScreen() {
       } catch (e) {}
     };
     checkFirstTimeTour();
-  }, [isAdmin]);
+  }, [isAdmin, userAlias]);
+
+  const markTourShown = () => {
+    const userTourKey = userAlias ? `@jucoch_tour_shown_${userAlias.trim().toLowerCase()}` : null;
+    AsyncStorage.setItem('@jucoch_tour_shown', 'true').catch(() => {});
+    if (userTourKey) {
+      AsyncStorage.setItem(userTourKey, 'true').catch(() => {});
+    }
+  };
 
   const handleStartTour = () => {
     if (isAdmin) return;
     setTourStep(1);
+    markTourShown();
     const targetY = cardLayoutY[1] !== undefined ? Math.max(0, cardLayoutY[1] - 40) : 0;
     homeScrollRef.current?.scrollTo({ y: targetY, animated: true });
   };
@@ -141,7 +154,7 @@ export default function HomeScreen() {
     if (tourStep === null) return;
     if (tourStep >= 5) {
       setTourStep(null);
-      AsyncStorage.setItem('@jucoch_tour_shown', 'true').catch(() => {});
+      markTourShown();
       return;
     }
     const next = tourStep + 1;
@@ -168,7 +181,7 @@ export default function HomeScreen() {
 
   const handleSkipTour = () => {
     setTourStep(null);
-    AsyncStorage.setItem('@jucoch_tour_shown', 'true').catch(() => {});
+    markTourShown();
   };
 
   // Live Guided Breathing Exercise Timer & Animation State
@@ -262,6 +275,25 @@ export default function HomeScreen() {
     setBreatheFinished(false);
     setShowBreathingModal(false);
   };
+
+  const lastOpenedBreathingRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (params?.action === 'breathing') {
+      const triggerKey = params?.t || `${Date.now()}`;
+      if (lastOpenedBreathingRef.current !== triggerKey) {
+        lastOpenedBreathingRef.current = triggerKey;
+        // Scroll smoothly to the Guided Breathing section on the Dashboard
+        const targetY = cardLayoutY[4] !== undefined ? Math.max(0, cardLayoutY[4] - 30) : 850;
+        homeScrollRef.current?.scrollTo({ y: targetY, animated: true });
+
+        // Launch the live interactive Guided Breathing modal
+        setTimeout(() => {
+          handleOpenBreathingModal();
+        }, 300);
+      }
+    }
+  }, [params?.action, params?.t, cardLayoutY]);
 
   const displayName = userAlias || 'User';
   const displayRole = userRole || 'Individual';
@@ -381,7 +413,6 @@ export default function HomeScreen() {
             transform: [{ scale: tourPulseAnim }],
           },
         ]}
-        pointerEvents="none"
       >
         <View style={[styles.circlePointerRadar, { borderColor: color, backgroundColor: `${color}25` }]} />
         <View style={[styles.circlePointerCore, { backgroundColor: color }]}>
@@ -930,7 +961,7 @@ export default function HomeScreen() {
       {/* Floating Interactive App Guide Tour for Step 5 (Chat Tab) in Portal */}
       {tourStep === 5 && (
         <Portal>
-          <View style={styles.tourStep5Container} pointerEvents="box-none">
+          <View style={styles.tourStep5Container}>
             {/* Dimmed backdrop covering screen above the tab bar */}
             <TouchableOpacity 
               activeOpacity={1}
@@ -1498,13 +1529,14 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     zIndex: 99999,
+    pointerEvents: 'box-none' as any,
   },
   tourStep5DimBackdrop: {
     position: 'absolute',
     top: 0,
     left: 0,
     right: 0,
-    bottom: 95,
+    bottom: 70,
     backgroundColor: 'rgba(5, 14, 9, 0.55)',
   },
   tourStep5PointerTouchable: {
@@ -1528,6 +1560,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 10001,
+    pointerEvents: 'none' as any,
   },
   circlePointerRadar: {
     position: 'absolute',

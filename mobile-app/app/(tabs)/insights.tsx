@@ -250,7 +250,7 @@ export default function InsightsScreen() {
 
                 <TouchableOpacity 
                   style={[styles.distressActionBtn, { backgroundColor: JUCOCH_GREEN }]}
-                  onPress={() => router.push('/(tabs)')}
+                  onPress={() => router.push({ pathname: '/(tabs)', params: { action: 'breathing', t: Date.now().toString() } })}
                   activeOpacity={0.8}
                 >
                   <Wind size={15} color="#FFF" style={{ marginRight: 6 }} />
@@ -442,11 +442,8 @@ const styles = StyleSheet.create({
     borderRadius: 26,
     padding: 22,
     marginBottom: 22,
-    shadowColor: JUCOCH_GREEN,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.2,
-    shadowRadius: 12,
     elevation: 5,
+    boxShadow: '0px 6px 12px rgba(45, 106, 79, 0.2)',
   },
   heroHeader: {
     flexDirection: 'row',
