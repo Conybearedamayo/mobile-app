@@ -3,6 +3,11 @@ import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import { prisma } from '../prisma';
 import { sendOtpEmail } from '../services/emailService';
+import {
+  runTransaction,
+  TransactionError,
+  handleRouteError,
+} from '../utils/transaction';
 
 const router = Router();
 const JWT_SECRET = process.env.JWT_SECRET || 'jucoch_secret_key_2026';
@@ -17,31 +22,43 @@ router.post('/send-otp', async (req: Request, res: Response): Promise<void> => {
   try {
     const { email } = req.body;
 
-    if (!email) {
+    if (!email || !String(email).trim()) {
       res.status(400).json({ error: 'Email is required.' });
       return;
     }
 
-    const trimmedEmail = email.trim();
+    const trimmedEmail = String(email).trim();
     const otpCode = generate6DigitCode();
     const otpExpiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
 
-    // Find existing user or create temporary pending user
-    let user = await prisma.user.findFirst({
-      where: {
-        OR: [{ email: trimmedEmail }, { alias: trimmedEmail }],
-      },
+    // TRANSACTION: Atomically find user and persist OTP code + expiration
+    const targetUser = await runTransaction('auth.sendOtp', async (tx) => {
+      const user = await tx.user.findFirst({
+        where: {
+          OR: [{ email: trimmedEmail }, { alias: trimmedEmail }],
+        },
+      });
+
+      if (user) {
+        return await tx.user.update({
+          where: { id: user.id },
+          data: { otpCode, otpExpiresAt },
+          select: { id: true, email: true, alias: true },
+        });
+      }
+
+      return null;
     });
 
-    if (user) {
-      await prisma.user.update({
-        where: { id: user.id },
-        data: { otpCode, otpExpiresAt },
-      });
-      sendOtpEmail(user.email, otpCode, user.alias).catch((e) => console.error('OTP email error:', e));
+    // Send OTP email AFTER database COMMIT
+    if (targetUser) {
+      sendOtpEmail(targetUser.email, otpCode, targetUser.alias).catch((e) =>
+        console.error('OTP email error:', e)
+      );
     } else {
-      // Send OTP for email verification during register
-      sendOtpEmail(trimmedEmail, otpCode, trimmedEmail.split('@')[0] || 'User').catch((e) => console.error('OTP email error:', e));
+      sendOtpEmail(trimmedEmail, otpCode, trimmedEmail.split('@')[0] || 'User').catch((e) =>
+        console.error('OTP email error:', e)
+      );
     }
 
     res.json({
@@ -49,8 +66,7 @@ router.post('/send-otp', async (req: Request, res: Response): Promise<void> => {
       email: trimmedEmail,
     });
   } catch (error: any) {
-    console.error('Send OTP Error:', error);
-    res.status(500).json({ error: 'Failed to send verification code.' });
+    handleRouteError(res, error, 'Failed to send verification code.', 'Send OTP Error');
   }
 });
 
@@ -64,43 +80,48 @@ router.post('/verify-otp', async (req: Request, res: Response): Promise<void> =>
       return;
     }
 
-    const trimmedEmail = email.trim();
-    const trimmedCode = code.trim();
+    const trimmedEmail = String(email).trim();
+    const trimmedCode = String(code).trim();
 
-    const user = await prisma.user.findFirst({
-      where: {
-        OR: [{ email: trimmedEmail }, { alias: trimmedEmail }],
-      },
+    // TRANSACTION: Atomically verify OTP, check expiration, mark user verified, and consume OTP
+    const updatedUser = await runTransaction('auth.verifyOtp', async (tx) => {
+      const user = await tx.user.findFirst({
+        where: {
+          OR: [{ email: trimmedEmail }, { alias: trimmedEmail }],
+        },
+      });
+
+      if (!user) {
+        throw new TransactionError(404, 'User account not found.');
+      }
+
+      const isDbCodeValid = user.otpCode && user.otpCode === trimmedCode;
+      if (!isDbCodeValid) {
+        throw new TransactionError(
+          400,
+          'Invalid verification code. Please check your email inbox.'
+        );
+      }
+
+      if (user.otpExpiresAt && user.otpExpiresAt < new Date()) {
+        throw new TransactionError(
+          400,
+          'Verification code has expired. Please request a new code.'
+        );
+      }
+
+      // Mark as verified and clear OTP inside the same transaction (prevents reuse)
+      return await tx.user.update({
+        where: { id: user.id },
+        data: {
+          isVerified: true,
+          otpCode: null,
+          otpExpiresAt: null,
+        },
+      });
     });
 
-    if (!user) {
-      res.status(404).json({ error: 'User account not found.' });
-      return;
-    }
-
-    const isDbCodeValid = user.otpCode && user.otpCode === trimmedCode;
-
-    if (!isDbCodeValid) {
-      res.status(400).json({ error: 'Invalid verification code. Please check your email inbox.' });
-      return;
-    }
-
-    if (user.otpExpiresAt && user.otpExpiresAt < new Date()) {
-      res.status(400).json({ error: 'Verification code has expired. Please request a new code.' });
-      return;
-    }
-
-    // Mark as verified and clear OTP
-    const updatedUser = await prisma.user.update({
-      where: { id: user.id },
-      data: {
-        isVerified: true,
-        otpCode: null,
-        otpExpiresAt: null,
-      },
-    });
-
-    // Generate JWT token
+    // Generate JWT token after transaction COMMIT
     const token = jwt.sign(
       { userId: updatedUser.id, alias: updatedUser.alias, role: updatedUser.role },
       JWT_SECRET,
@@ -120,8 +141,7 @@ router.post('/verify-otp', async (req: Request, res: Response): Promise<void> =>
       },
     });
   } catch (error: any) {
-    console.error('Verify OTP Error:', error);
-    res.status(500).json({ error: 'Failed to verify code.' });
+    handleRouteError(res, error, 'Failed to verify code.', 'Verify OTP Error');
   }
 });
 
@@ -131,62 +151,14 @@ router.post('/register', async (req: Request, res: Response): Promise<void> => {
     const { alias, email, password, role } = req.body;
 
     if (!alias || !alias.trim() || !email || !email.trim() || !password || !password.trim()) {
-      res.status(400).json({ error: 'Alias, email, and password are required and cannot be empty or contain only spaces.' });
+      res.status(400).json({
+        error: 'Alias, email, and password are required and cannot be empty or contain only spaces.',
+      });
       return;
     }
 
     const trimmedEmail = email.trim();
     const trimmedAlias = alias.trim();
-
-    // Check if email or alias exists
-    const existingEmail = await prisma.user.findUnique({ where: { email: trimmedEmail } });
-    if (existingEmail) {
-      if (existingEmail.isVerified) {
-        res.status(400).json({ error: 'An account with this email already exists. Please log in.' });
-        return;
-      }
-
-      // If unverified, update pending credentials and re-issue OTP
-      const hashedPassword = await bcrypt.hash(password, 10);
-      const otpCode = generate6DigitCode();
-      const otpExpiresAt = new Date(Date.now() + 10 * 60 * 1000);
-      let assignedRole = role || 'Individual';
-      if (assignedRole === 'Admin') assignedRole = 'Individual';
-
-      const updatedUser = await prisma.user.update({
-        where: { id: existingEmail.id },
-        data: {
-          alias: trimmedAlias,
-          password: hashedPassword,
-          role: assignedRole,
-          otpCode,
-          otpExpiresAt,
-        },
-      });
-
-      sendOtpEmail(updatedUser.email, otpCode, updatedUser.alias).catch((e) => console.error('Re-send registration email error:', e));
-
-      res.status(200).json({
-        message: 'A 6-digit verification code was sent to your email.',
-        requiresOtp: true,
-        email: updatedUser.email,
-        alias: updatedUser.alias,
-        userId: updatedUser.id,
-        role: updatedUser.role,
-      });
-      return;
-    }
-
-    const existingAlias = await prisma.user.findUnique({ where: { alias: trimmedAlias } });
-    if (existingAlias && existingAlias.isVerified) {
-      res.status(400).json({ error: 'This alias is already taken. Please choose another.' });
-      return;
-    }
-
-    // Hash password & generate initial OTP
-    const hashedPassword = await bcrypt.hash(password, 10);
-    const otpCode = generate6DigitCode();
-    const otpExpiresAt = new Date(Date.now() + 10 * 60 * 1000);
 
     // Restrict Admin role creation via public registration
     let assignedRole = role || 'Individual';
@@ -194,42 +166,92 @@ router.post('/register', async (req: Request, res: Response): Promise<void> => {
       assignedRole = 'Individual';
     }
 
-    const newUser = await prisma.user.create({
-      data: {
-        alias: trimmedAlias,
-        email: trimmedEmail,
-        password: hashedPassword,
-        role: assignedRole,
-        otpCode,
-        otpExpiresAt,
-        isVerified: false,
-      },
+    // Perform CPU-heavy password hashing BEFORE opening DB transaction
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const otpCode = generate6DigitCode();
+    const otpExpiresAt = new Date(Date.now() + 10 * 60 * 1000);
+
+    // TRANSACTION: Atomically validate email/alias uniqueness and create or update pending account
+    const { user: savedUser, isNew } = await runTransaction('auth.register', async (tx) => {
+      const existingEmail = await tx.user.findUnique({ where: { email: trimmedEmail } });
+      if (existingEmail && existingEmail.isVerified) {
+        throw new TransactionError(
+          400,
+          'An account with this email already exists. Please log in.'
+        );
+      }
+
+      const existingAlias = await tx.user.findUnique({ where: { alias: trimmedAlias } });
+      if (existingAlias && existingAlias.id !== existingEmail?.id) {
+        throw new TransactionError(
+          400,
+          'This alias is already taken. Please choose another.'
+        );
+      }
+
+      if (existingEmail) {
+        // Re-issue OTP and update pending unverified credentials atomically
+        const updatedUser = await tx.user.update({
+          where: { id: existingEmail.id },
+          data: {
+            alias: trimmedAlias,
+            password: hashedPassword,
+            role: assignedRole,
+            otpCode,
+            otpExpiresAt,
+          },
+        });
+        return { user: updatedUser, isNew: false };
+      }
+
+      const newUser = await tx.user.create({
+        data: {
+          alias: trimmedAlias,
+          email: trimmedEmail,
+          password: hashedPassword,
+          role: assignedRole,
+          otpCode,
+          otpExpiresAt,
+          isVerified: false,
+        },
+      });
+      return { user: newUser, isNew: true };
     });
 
-    // Send verification code asynchronously in background
-    sendOtpEmail(newUser.email, otpCode, newUser.alias).catch((e) => console.error('Registration email error:', e));
+    // Send verification email ONLY after transaction COMMIT
+    sendOtpEmail(savedUser.email, otpCode, savedUser.alias).catch((e) =>
+      console.error('Registration email error:', e)
+    );
 
-    res.status(201).json({
-      message: 'Account created! A 6-digit verification code was sent to your email.',
+    res.status(isNew ? 201 : 200).json({
+      message: isNew
+        ? 'Account created! A 6-digit verification code was sent to your email.'
+        : 'A 6-digit verification code was sent to your email.',
       requiresOtp: true,
-      email: newUser.email,
-      alias: newUser.alias,
-      userId: newUser.id,
-      role: newUser.role,
+      email: savedUser.email,
+      alias: savedUser.alias,
+      userId: savedUser.id,
+      role: savedUser.role,
     });
   } catch (error: any) {
-    console.error('Registration error:', error);
-    res.status(500).json({ error: 'Failed to create account. Please try again.' });
+    handleRouteError(
+      res,
+      error,
+      'Failed to create account. Please try again.',
+      'Registration error'
+    );
   }
 });
 
 // POST /api/auth/login
 router.post('/login', async (req: Request, res: Response): Promise<void> => {
   try {
-    const { email, password, role, requireOtp } = req.body;
+    const { email, password } = req.body;
 
     if (!email || !email.trim() || !password || !password.trim()) {
-      res.status(400).json({ error: 'Email and password are required and cannot be empty or contain only spaces.' });
+      res.status(400).json({
+        error: 'Email and password are required and cannot be empty or contain only spaces.',
+      });
       return;
     }
 
@@ -254,36 +276,49 @@ router.post('/login', async (req: Request, res: Response): Promise<void> => {
 
     // STRICT SECURITY: Block unverified accounts from logging in
     if (!user.isVerified) {
-      res.status(403).json({ 
-        error: 'This account is unverified. Please complete your email verification first before logging in.' 
+      res.status(403).json({
+        error:
+          'This account is unverified. Please complete your email verification first before logging in.',
       });
       return;
     }
 
-    // Automatic Role Detection from Neon PostgreSQL Database
-    const activeRole = user.role;
-
-    // Send OTP email code on login
     const otpCode = generate6DigitCode();
     const otpExpiresAt = new Date(Date.now() + 10 * 60 * 1000);
 
-    await prisma.user.update({
-      where: { id: user.id },
-      data: { otpCode, otpExpiresAt },
+    // TRANSACTION: Atomically verify account is still active/verified and issue login OTP
+    const updatedUser = await runTransaction('auth.loginIssueOtp', async (tx) => {
+      const current = await tx.user.findUnique({ where: { id: user.id } });
+      if (!current) {
+        throw new TransactionError(401, 'Invalid credentials. User not found.');
+      }
+      if (!current.isVerified) {
+        throw new TransactionError(
+          403,
+          'This account is unverified. Please complete your email verification first before logging in.'
+        );
+      }
+
+      return await tx.user.update({
+        where: { id: current.id },
+        data: { otpCode, otpExpiresAt },
+        select: { id: true, email: true, alias: true, role: true },
+      });
     });
 
-    sendOtpEmail(user.email, otpCode, user.alias).catch((e) => console.error('Login email error:', e));
+    sendOtpEmail(updatedUser.email, otpCode, updatedUser.alias).catch((e) =>
+      console.error('Login email error:', e)
+    );
 
     res.json({
       message: 'Login successful! Verification code sent to your email.',
       requiresOtp: true,
-      email: user.email,
-      alias: user.alias,
-      role: activeRole,
+      email: updatedUser.email,
+      alias: updatedUser.alias,
+      role: updatedUser.role,
     });
   } catch (error: any) {
-    console.error('Login error:', error);
-    res.status(500).json({ error: 'Internal server error during login.' });
+    handleRouteError(res, error, 'Internal server error during login.', 'Login error');
   }
 });
 
@@ -344,7 +379,14 @@ router.put('/privacy', async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    const decoded = jwt.verify(token, JWT_SECRET) as any;
+    let decoded: any;
+    try {
+      decoded = jwt.verify(token, JWT_SECRET);
+    } catch {
+      res.status(401).json({ error: 'Invalid or expired authentication token.' });
+      return;
+    }
+
     if (!decoded?.userId) {
       res.status(401).json({ error: 'Invalid authentication token payload.' });
       return;
@@ -353,16 +395,24 @@ router.put('/privacy', async (req: Request, res: Response): Promise<void> => {
     const userId = decoded.userId;
     const { isAnonymous } = req.body;
 
-    const updatedUser = await prisma.user.update({
-      where: { id: userId },
-      data: { isAnonymous: Boolean(isAnonymous) },
-      select: {
-        id: true,
-        alias: true,
-        email: true,
-        role: true,
-        isAnonymous: true,
-      },
+    // TRANSACTION: Verify user exists and update privacy setting atomically
+    const updatedUser = await runTransaction('auth.updatePrivacy', async (tx) => {
+      const existing = await tx.user.findUnique({ where: { id: userId } });
+      if (!existing) {
+        throw new TransactionError(404, 'User account not found.');
+      }
+
+      return await tx.user.update({
+        where: { id: userId },
+        data: { isAnonymous: Boolean(isAnonymous) },
+        select: {
+          id: true,
+          alias: true,
+          email: true,
+          role: true,
+          isAnonymous: true,
+        },
+      });
     });
 
     res.json({
@@ -370,8 +420,12 @@ router.put('/privacy', async (req: Request, res: Response): Promise<void> => {
       user: updatedUser,
     });
   } catch (error: any) {
-    console.error('Update Privacy Error:', error);
-    res.status(401).json({ error: 'Invalid or expired authentication token.' });
+    handleRouteError(
+      res,
+      error,
+      'Failed to update privacy settings.',
+      'Update Privacy Error'
+    );
   }
 });
 
@@ -390,7 +444,14 @@ router.put('/alias', async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    const decoded = jwt.verify(token, JWT_SECRET) as any;
+    let decoded: any;
+    try {
+      decoded = jwt.verify(token, JWT_SECRET);
+    } catch {
+      res.status(401).json({ error: 'Invalid or expired authentication token.' });
+      return;
+    }
+
     if (!decoded?.userId) {
       res.status(401).json({ error: 'Invalid authentication token.' });
       return;
@@ -408,29 +469,35 @@ router.put('/alias', async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    // Check if alias is already taken by another user
-    const existing = await prisma.user.findFirst({
-      where: {
-        alias: trimmedAlias,
-        id: { not: decoded.userId },
-      },
-    });
+    // TRANSACTION: Atomically check alias uniqueness and update display alias (prevents race condition)
+    const updatedUser = await runTransaction('auth.updateAlias', async (tx) => {
+      const currentUser = await tx.user.findUnique({ where: { id: decoded.userId } });
+      if (!currentUser) {
+        throw new TransactionError(404, 'User account not found.');
+      }
 
-    if (existing) {
-      res.status(400).json({ error: 'This alias is already taken. Please choose another.' });
-      return;
-    }
+      const existing = await tx.user.findFirst({
+        where: {
+          alias: trimmedAlias,
+          id: { not: decoded.userId },
+        },
+      });
 
-    const updatedUser = await prisma.user.update({
-      where: { id: decoded.userId },
-      data: { alias: trimmedAlias },
-      select: {
-        id: true,
-        alias: true,
-        email: true,
-        role: true,
-        isAnonymous: true,
-      },
+      if (existing) {
+        throw new TransactionError(400, 'This alias is already taken. Please choose another.');
+      }
+
+      return await tx.user.update({
+        where: { id: decoded.userId },
+        data: { alias: trimmedAlias },
+        select: {
+          id: true,
+          alias: true,
+          email: true,
+          role: true,
+          isAnonymous: true,
+        },
+      });
     });
 
     res.json({
@@ -438,15 +505,14 @@ router.put('/alias', async (req: Request, res: Response): Promise<void> => {
       user: updatedUser,
     });
   } catch (error: any) {
-    console.error('Update Alias Error:', error);
-    res.status(500).json({ error: 'Failed to update display alias.' });
+    handleRouteError(res, error, 'Failed to update display alias.', 'Update Alias Error');
   }
 });
 
 // POST /api/auth/reset-password - Real database password update
 router.post('/reset-password', async (req: Request, res: Response): Promise<void> => {
   try {
-    const { email, code, newPassword } = req.body;
+    const { email, newPassword } = req.body;
 
     const trimmedPass = (newPassword || '').trim();
     if (!email || !trimmedPass || trimmedPass.length < 8) {
@@ -460,43 +526,53 @@ router.post('/reset-password', async (req: Request, res: Response): Promise<void
     const hasSpecial = /[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]/.test(trimmedPass);
 
     if (!hasUpper || !hasLower || !hasNumber || !hasSpecial) {
-      res.status(400).json({ 
-        error: 'Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character.' 
+      res.status(400).json({
+        error:
+          'Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character.',
       });
       return;
     }
 
-    const trimmedEmail = email.trim();
-    const user = await prisma.user.findFirst({
-      where: {
-        OR: [{ email: trimmedEmail }, { alias: trimmedEmail }],
-      },
-    });
+    const trimmedEmail = String(email).trim();
+    const hashedPassword = await bcrypt.hash(trimmedPass, 10);
 
-    if (!user) {
-      res.status(404).json({ error: 'Account not found for this email address.' });
-      return;
-    }
+    // TRANSACTION: Atomically find user, update hashed password, and clear any residual OTP
+    const updatedUser = await runTransaction('auth.resetPassword', async (tx) => {
+      const user = await tx.user.findFirst({
+        where: {
+          OR: [{ email: trimmedEmail }, { alias: trimmedEmail }],
+        },
+      });
 
-    const hashedPassword = await bcrypt.hash(newPassword.trim(), 10);
+      if (!user) {
+        throw new TransactionError(404, 'Account not found for this email address.');
+      }
 
-    await prisma.user.update({
-      where: { id: user.id },
-      data: {
-        password: hashedPassword,
-        otpCode: null,
-        otpExpiresAt: null,
-      },
+      return await tx.user.update({
+        where: { id: user.id },
+        data: {
+          password: hashedPassword,
+          otpCode: null,
+          otpExpiresAt: null,
+        },
+        select: { id: true, email: true },
+      });
     });
 
     console.log(`====================================================`);
-    console.log(`🔑 Password successfully updated for: ${user.email}`);
+    console.log(`🔑 Password successfully updated for: ${updatedUser.email}`);
     console.log(`====================================================`);
 
-    res.json({ message: 'Password successfully updated! You can now log in with your new password.' });
+    res.json({
+      message: 'Password successfully updated! You can now log in with your new password.',
+    });
   } catch (error: any) {
-    console.error('Reset Password Error:', error);
-    res.status(500).json({ error: 'Failed to reset password in database.' });
+    handleRouteError(
+      res,
+      error,
+      'Failed to reset password in database.',
+      'Reset Password Error'
+    );
   }
 });
 
@@ -508,7 +584,8 @@ router.get('/smtp-status', async (req: Request, res: Response): Promise<void> =>
   if (!smtpUser || !smtpPass) {
     res.json({
       configured: false,
-      message: 'SMTP credentials missing in Render Environment Variables. Please add SMTP_USER and SMTP_PASS.',
+      message:
+        'SMTP credentials missing in Render Environment Variables. Please add SMTP_USER and SMTP_PASS.',
       hasUser: !!smtpUser,
       hasPass: !!smtpPass,
     });
@@ -537,7 +614,9 @@ router.get('/smtp-status', async (req: Request, res: Response): Promise<void> =>
       message: 'Gmail SMTP is fully configured and operational on Render!',
     });
   } catch (err: any) {
-    const maskedSender = smtpUser ? smtpUser.replace(/^(..)(.*)(@.*)$/, (_, a, b, c) => `${a}***${c}`) : '***';
+    const maskedSender = smtpUser
+      ? smtpUser.replace(/^(..)(.*)(@.*)$/, (_, a, b, c) => `${a}***${c}`)
+      : '***';
     res.json({
       configured: true,
       sender: maskedSender,

@@ -2,6 +2,11 @@ import { Router, Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
 import { prisma } from '../prisma';
 import { encryptSensitiveText, decryptSensitiveText } from '../services/cryptoService';
+import {
+  runTransaction,
+  TransactionError,
+  handleRouteError,
+} from '../utils/transaction';
 
 const router = Router();
 const JWT_SECRET = process.env.JWT_SECRET || 'jucoch_secret_key_2026';
@@ -27,7 +32,9 @@ const requireAuthUser = (req: Request, res: Response, next: () => void): void =>
     (req as any).userId = decoded.userId;
     next();
   } catch (error) {
-    res.status(401).json({ error: 'Invalid or expired authentication token. Please log in again.' });
+    res.status(401).json({
+      error: 'Invalid or expired authentication token. Please log in again.',
+    });
   }
 };
 
@@ -46,16 +53,23 @@ router.post('/mood', requireAuthUser, async (req: Request, res: Response): Promi
       return;
     }
 
-    // Encrypt mood note with AES-256 for student privacy
-    const encryptedNote = encryptSensitiveText(note ? note.trim() : null);
+    const encryptedNote = encryptSensitiveText(note ? String(note).trim() : null);
 
-    const newLog = await prisma.moodLog.create({
-      data: {
-        mood,
-        emoji,
-        note: encryptedNote,
-        userId,
-      },
+    // TRANSACTION: Verify user exists and insert encrypted mood log atomically
+    const newLog = await runTransaction('wellness.createMood', async (tx) => {
+      const user = await tx.user.findUnique({ where: { id: userId }, select: { id: true } });
+      if (!user) {
+        throw new TransactionError(404, 'User account not found.');
+      }
+
+      return await tx.moodLog.create({
+        data: {
+          mood: String(mood).trim(),
+          emoji: String(emoji).trim(),
+          note: encryptedNote,
+          userId,
+        },
+      });
     });
 
     res.status(201).json({
@@ -66,8 +80,7 @@ router.post('/mood', requireAuthUser, async (req: Request, res: Response): Promi
       },
     });
   } catch (error: any) {
-    console.error('Mood Log Error:', error);
-    res.status(500).json({ error: 'Failed to record mood log.' });
+    handleRouteError(res, error, 'Failed to record mood log.', 'Mood Log Error');
   }
 });
 
@@ -81,8 +94,7 @@ router.get('/mood', requireAuthUser, async (req: Request, res: Response): Promis
       orderBy: { createdAt: 'desc' },
     });
 
-    // Decrypt mood notes for the authenticated user
-    const decryptedLogs = logs.map(l => ({
+    const decryptedLogs = logs.map((l) => ({
       ...l,
       note: decryptSensitiveText(l.note),
     }));
@@ -106,24 +118,23 @@ router.put('/mood/:id', requireAuthUser, async (req: Request, res: Response): Pr
       return;
     }
 
-    const existing = await prisma.moodLog.findFirst({
-      where: { id, userId },
-    });
+    const encryptedNote = encryptSensitiveText(note ? String(note).trim() : null);
 
-    if (!existing) {
-      res.status(404).json({ error: 'Mood log not found or unauthorized.' });
-      return;
-    }
+    // TRANSACTION: Atomically verify ownership and update mood log
+    const updated = await runTransaction('wellness.updateMood', async (tx) => {
+      const existing = await tx.moodLog.findFirst({ where: { id, userId } });
+      if (!existing) {
+        throw new TransactionError(404, 'Mood log not found or unauthorized.');
+      }
 
-    const encryptedNote = encryptSensitiveText(note ? note.trim() : null);
-
-    const updated = await prisma.moodLog.update({
-      where: { id },
-      data: {
-        mood,
-        emoji,
-        note: encryptedNote,
-      },
+      return await tx.moodLog.update({
+        where: { id },
+        data: {
+          mood: String(mood).trim(),
+          emoji: String(emoji).trim(),
+          note: encryptedNote,
+        },
+      });
     });
 
     res.json({
@@ -134,8 +145,7 @@ router.put('/mood/:id', requireAuthUser, async (req: Request, res: Response): Pr
       },
     });
   } catch (error: any) {
-    console.error('Update Mood Log Error:', error);
-    res.status(500).json({ error: 'Failed to update mood log.' });
+    handleRouteError(res, error, 'Failed to update mood log.', 'Update Mood Log Error');
   }
 });
 
@@ -145,23 +155,19 @@ router.delete('/mood/:id', requireAuthUser, async (req: Request, res: Response):
     const userId = (req as any).userId;
     const id = req.params.id as string;
 
-    const existing = await prisma.moodLog.findFirst({
-      where: { id, userId },
-    });
+    // TRANSACTION: Atomically verify ownership and delete mood log
+    await runTransaction('wellness.deleteMood', async (tx) => {
+      const existing = await tx.moodLog.findFirst({ where: { id, userId } });
+      if (!existing) {
+        throw new TransactionError(404, 'Mood log not found or unauthorized.');
+      }
 
-    if (!existing) {
-      res.status(404).json({ error: 'Mood log not found or unauthorized.' });
-      return;
-    }
-
-    await prisma.moodLog.delete({
-      where: { id },
+      await tx.moodLog.delete({ where: { id } });
     });
 
     res.json({ message: 'Mood log deleted successfully!' });
   } catch (error: any) {
-    console.error('Delete Mood Log Error:', error);
-    res.status(500).json({ error: 'Failed to delete mood log.' });
+    handleRouteError(res, error, 'Failed to delete mood log.', 'Delete Mood Log Error');
   }
 });
 
@@ -180,12 +186,26 @@ router.post('/sleep', requireAuthUser, async (req: Request, res: Response): Prom
       return;
     }
 
-    const newLog = await prisma.sleepLog.create({
-      data: {
-        hours: parseFloat(hours),
-        quality,
-        userId,
-      },
+    const parsedHours = parseFloat(hours);
+
+    // TRANSACTION: Validate sleep range, verify user, and save sleep log atomically
+    const newLog = await runTransaction('wellness.createSleep', async (tx) => {
+      if (isNaN(parsedHours) || parsedHours <= 0 || parsedHours > 24) {
+        throw new TransactionError(400, 'Sleep hours must be a valid number between 0 and 24.');
+      }
+
+      const user = await tx.user.findUnique({ where: { id: userId }, select: { id: true } });
+      if (!user) {
+        throw new TransactionError(404, 'User account not found.');
+      }
+
+      return await tx.sleepLog.create({
+        data: {
+          hours: parsedHours,
+          quality: String(quality).trim(),
+          userId,
+        },
+      });
     });
 
     res.status(201).json({
@@ -193,8 +213,7 @@ router.post('/sleep', requireAuthUser, async (req: Request, res: Response): Prom
       sleepLog: newLog,
     });
   } catch (error: any) {
-    console.error('Sleep Log Error:', error);
-    res.status(500).json({ error: 'Failed to record sleep log.' });
+    handleRouteError(res, error, 'Failed to record sleep log.', 'Sleep Log Error');
   }
 });
 
@@ -227,21 +246,26 @@ router.put('/sleep/:id', requireAuthUser, async (req: Request, res: Response): P
       return;
     }
 
-    const existing = await prisma.sleepLog.findFirst({
-      where: { id, userId },
-    });
+    const parsedHours = parseFloat(hours);
 
-    if (!existing) {
-      res.status(404).json({ error: 'Sleep record not found or unauthorized.' });
-      return;
-    }
+    // TRANSACTION: Validate sleep range, verify ownership, and update atomically
+    const updated = await runTransaction('wellness.updateSleep', async (tx) => {
+      if (isNaN(parsedHours) || parsedHours <= 0 || parsedHours > 24) {
+        throw new TransactionError(400, 'Sleep hours must be a valid number between 0 and 24.');
+      }
 
-    const updated = await prisma.sleepLog.update({
-      where: { id },
-      data: {
-        hours: parseFloat(hours),
-        quality,
-      },
+      const existing = await tx.sleepLog.findFirst({ where: { id, userId } });
+      if (!existing) {
+        throw new TransactionError(404, 'Sleep record not found or unauthorized.');
+      }
+
+      return await tx.sleepLog.update({
+        where: { id },
+        data: {
+          hours: parsedHours,
+          quality: String(quality).trim(),
+        },
+      });
     });
 
     res.json({
@@ -249,8 +273,7 @@ router.put('/sleep/:id', requireAuthUser, async (req: Request, res: Response): P
       sleepLog: updated,
     });
   } catch (error: any) {
-    console.error('Update Sleep Log Error:', error);
-    res.status(500).json({ error: 'Failed to update sleep record.' });
+    handleRouteError(res, error, 'Failed to update sleep record.', 'Update Sleep Log Error');
   }
 });
 
@@ -260,23 +283,19 @@ router.delete('/sleep/:id', requireAuthUser, async (req: Request, res: Response)
     const userId = (req as any).userId;
     const id = req.params.id as string;
 
-    const existing = await prisma.sleepLog.findFirst({
-      where: { id, userId },
-    });
+    // TRANSACTION: Atomically verify ownership and delete sleep log
+    await runTransaction('wellness.deleteSleep', async (tx) => {
+      const existing = await tx.sleepLog.findFirst({ where: { id, userId } });
+      if (!existing) {
+        throw new TransactionError(404, 'Sleep record not found or unauthorized.');
+      }
 
-    if (!existing) {
-      res.status(404).json({ error: 'Sleep record not found or unauthorized.' });
-      return;
-    }
-
-    await prisma.sleepLog.delete({
-      where: { id },
+      await tx.sleepLog.delete({ where: { id } });
     });
 
     res.json({ message: 'Sleep record deleted successfully!' });
   } catch (error: any) {
-    console.error('Delete Sleep Log Error:', error);
-    res.status(500).json({ error: 'Failed to delete sleep record.' });
+    handleRouteError(res, error, 'Failed to delete sleep record.', 'Delete Sleep Log Error');
   }
 });
 
@@ -290,17 +309,31 @@ router.post('/activity', requireAuthUser, async (req: Request, res: Response): P
     const userId = (req as any).userId;
     const { type, duration } = req.body;
 
-    if (!type || !duration) {
+    if (!type || duration === undefined) {
       res.status(400).json({ error: 'Activity type and duration in minutes are required.' });
       return;
     }
 
-    const newLog = await prisma.activityLog.create({
-      data: {
-        type,
-        duration: parseInt(duration, 10),
-        userId,
-      },
+    const parsedDuration = parseInt(duration, 10);
+
+    // TRANSACTION: Validate duration, verify user, and insert activity log atomically
+    const newLog = await runTransaction('wellness.createActivity', async (tx) => {
+      if (isNaN(parsedDuration) || parsedDuration <= 0) {
+        throw new TransactionError(400, 'Activity duration must be a positive number of minutes.');
+      }
+
+      const user = await tx.user.findUnique({ where: { id: userId }, select: { id: true } });
+      if (!user) {
+        throw new TransactionError(404, 'User account not found.');
+      }
+
+      return await tx.activityLog.create({
+        data: {
+          type: String(type).trim(),
+          duration: parsedDuration,
+          userId,
+        },
+      });
     });
 
     res.status(201).json({
@@ -308,8 +341,7 @@ router.post('/activity', requireAuthUser, async (req: Request, res: Response): P
       activityLog: newLog,
     });
   } catch (error: any) {
-    console.error('Activity Log Error:', error);
-    res.status(500).json({ error: 'Failed to record activity log.' });
+    handleRouteError(res, error, 'Failed to record activity log.', 'Activity Log Error');
   }
 });
 
@@ -337,26 +369,31 @@ router.put('/activity/:id', requireAuthUser, async (req: Request, res: Response)
     const id = req.params.id as string;
     const { type, duration } = req.body;
 
-    if (!type || !duration) {
+    if (!type || duration === undefined) {
       res.status(400).json({ error: 'Activity type and duration in minutes are required.' });
       return;
     }
 
-    const existing = await prisma.activityLog.findFirst({
-      where: { id, userId },
-    });
+    const parsedDuration = parseInt(duration, 10);
 
-    if (!existing) {
-      res.status(404).json({ error: 'Activity log not found or unauthorized.' });
-      return;
-    }
+    // TRANSACTION: Validate duration, verify ownership, and update activity log atomically
+    const updated = await runTransaction('wellness.updateActivity', async (tx) => {
+      if (isNaN(parsedDuration) || parsedDuration <= 0) {
+        throw new TransactionError(400, 'Activity duration must be a positive number of minutes.');
+      }
 
-    const updated = await prisma.activityLog.update({
-      where: { id },
-      data: {
-        type,
-        duration: parseInt(duration, 10),
-      },
+      const existing = await tx.activityLog.findFirst({ where: { id, userId } });
+      if (!existing) {
+        throw new TransactionError(404, 'Activity log not found or unauthorized.');
+      }
+
+      return await tx.activityLog.update({
+        where: { id },
+        data: {
+          type: String(type).trim(),
+          duration: parsedDuration,
+        },
+      });
     });
 
     res.json({
@@ -364,8 +401,7 @@ router.put('/activity/:id', requireAuthUser, async (req: Request, res: Response)
       activityLog: updated,
     });
   } catch (error: any) {
-    console.error('Update Activity Log Error:', error);
-    res.status(500).json({ error: 'Failed to update activity log.' });
+    handleRouteError(res, error, 'Failed to update activity log.', 'Update Activity Log Error');
   }
 });
 
@@ -375,23 +411,19 @@ router.delete('/activity/:id', requireAuthUser, async (req: Request, res: Respon
     const userId = (req as any).userId;
     const id = req.params.id as string;
 
-    const existing = await prisma.activityLog.findFirst({
-      where: { id, userId },
-    });
+    // TRANSACTION: Atomically verify ownership and delete activity log
+    await runTransaction('wellness.deleteActivity', async (tx) => {
+      const existing = await tx.activityLog.findFirst({ where: { id, userId } });
+      if (!existing) {
+        throw new TransactionError(404, 'Activity log not found or unauthorized.');
+      }
 
-    if (!existing) {
-      res.status(404).json({ error: 'Activity log not found or unauthorized.' });
-      return;
-    }
-
-    await prisma.activityLog.delete({
-      where: { id },
+      await tx.activityLog.delete({ where: { id } });
     });
 
     res.json({ message: 'Activity log deleted successfully!' });
   } catch (error: any) {
-    console.error('Delete Activity Log Error:', error);
-    res.status(500).json({ error: 'Failed to delete activity log.' });
+    handleRouteError(res, error, 'Failed to delete activity log.', 'Delete Activity Log Error');
   }
 });
 
@@ -405,19 +437,26 @@ router.post('/journal', requireAuthUser, async (req: Request, res: Response): Pr
     const userId = (req as any).userId;
     const { content } = req.body;
 
-    if (!content || !content.trim()) {
+    if (!content || !String(content).trim()) {
       res.status(400).json({ error: 'Journal content cannot be empty.' });
       return;
     }
 
-    // Encrypt reflection content with AES-256 for student privacy
-    const encryptedContent = encryptSensitiveText(content.trim()) || '';
+    const encryptedContent = encryptSensitiveText(String(content).trim()) || '';
 
-    const newEntry = await prisma.journalEntry.create({
-      data: {
-        content: encryptedContent,
-        userId,
-      },
+    // TRANSACTION: Verify user exists and save encrypted journal entry atomically
+    const newEntry = await runTransaction('wellness.createJournal', async (tx) => {
+      const user = await tx.user.findUnique({ where: { id: userId }, select: { id: true } });
+      if (!user) {
+        throw new TransactionError(404, 'User account not found.');
+      }
+
+      return await tx.journalEntry.create({
+        data: {
+          content: encryptedContent,
+          userId,
+        },
+      });
     });
 
     res.status(201).json({
@@ -428,8 +467,7 @@ router.post('/journal', requireAuthUser, async (req: Request, res: Response): Pr
       },
     });
   } catch (error: any) {
-    console.error('Journal Entry Error:', error);
-    res.status(500).json({ error: 'Failed to save journal entry.' });
+    handleRouteError(res, error, 'Failed to save journal entry.', 'Journal Entry Error');
   }
 });
 
@@ -443,8 +481,7 @@ router.get('/journal', requireAuthUser, async (req: Request, res: Response): Pro
       orderBy: { createdAt: 'desc' },
     });
 
-    // Decrypt reflections for the authenticated user
-    const decryptedEntries = entries.map(e => ({
+    const decryptedEntries = entries.map((e) => ({
       ...e,
       content: decryptSensitiveText(e.content),
     }));
@@ -463,26 +500,24 @@ router.put('/journal/:id', requireAuthUser, async (req: Request, res: Response):
     const id = req.params.id as string;
     const { content } = req.body;
 
-    if (!content || !content.trim()) {
+    if (!content || !String(content).trim()) {
       res.status(400).json({ error: 'Journal content cannot be empty.' });
       return;
     }
 
-    // Strictly ensure user owns this journal entry
-    const existing = await prisma.journalEntry.findFirst({
-      where: { id, userId },
-    });
+    const encryptedContent = encryptSensitiveText(String(content).trim()) || '';
 
-    if (!existing) {
-      res.status(404).json({ error: 'Journal entry not found or unauthorized.' });
-      return;
-    }
+    // TRANSACTION: Atomically verify ownership and update encrypted journal entry
+    const updated = await runTransaction('wellness.updateJournal', async (tx) => {
+      const existing = await tx.journalEntry.findFirst({ where: { id, userId } });
+      if (!existing) {
+        throw new TransactionError(404, 'Journal entry not found or unauthorized.');
+      }
 
-    const encryptedContent = encryptSensitiveText(content.trim()) || '';
-
-    const updated = await prisma.journalEntry.update({
-      where: { id },
-      data: { content: encryptedContent },
+      return await tx.journalEntry.update({
+        where: { id },
+        data: { content: encryptedContent },
+      });
     });
 
     res.json({
@@ -493,8 +528,7 @@ router.put('/journal/:id', requireAuthUser, async (req: Request, res: Response):
       },
     });
   } catch (error: any) {
-    console.error('Update Journal Entry Error:', error);
-    res.status(500).json({ error: 'Failed to update journal entry.' });
+    handleRouteError(res, error, 'Failed to update journal entry.', 'Update Journal Entry Error');
   }
 });
 
@@ -504,48 +538,167 @@ router.delete('/journal/:id', requireAuthUser, async (req: Request, res: Respons
     const userId = (req as any).userId;
     const id = req.params.id as string;
 
-    // Strictly ensure user owns this journal entry
-    const existing = await prisma.journalEntry.findFirst({
-      where: { id, userId },
-    });
+    // TRANSACTION: Atomically verify ownership and delete journal entry
+    await runTransaction('wellness.deleteJournal', async (tx) => {
+      const existing = await tx.journalEntry.findFirst({ where: { id, userId } });
+      if (!existing) {
+        throw new TransactionError(404, 'Journal entry not found or unauthorized.');
+      }
 
-    if (!existing) {
-      res.status(404).json({ error: 'Journal entry not found or unauthorized.' });
-      return;
-    }
-
-    await prisma.journalEntry.delete({
-      where: { id },
+      await tx.journalEntry.delete({ where: { id } });
     });
 
     res.json({
       message: 'Journal entry deleted successfully!',
     });
   } catch (error: any) {
-    console.error('Delete Journal Entry Error:', error);
-    res.status(500).json({ error: 'Failed to delete journal entry.' });
+    handleRouteError(res, error, 'Failed to delete journal entry.', 'Delete Journal Entry Error');
   }
 });
 
-// GET /api/wellness/all - Load all user wellness records on startup/login
+// ==========================================
+// 5. ATOMIC MULTI-TABLE DAILY WELLNESS CHECK-IN
+// ==========================================
+
+// POST /api/wellness/daily-checkin
+// Saves Mood + Sleep + Activity + Journal across up to 4 tables in ONE atomic transaction.
+// If ANY section fails validation or DB insert, PostgreSQL executes ROLLBACK so 0 partial records are saved.
+router.post('/daily-checkin', requireAuthUser, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const userId = (req as any).userId;
+    const { mood, sleep, activity, journal } = req.body;
+
+    if (!mood && !sleep && !activity && !journal) {
+      res.status(400).json({
+        error: 'Provide at least one wellness entry (mood, sleep, activity, or journal).',
+      });
+      return;
+    }
+
+    const result = await runTransaction('wellness.dailyCheckin', async (tx) => {
+      const user = await tx.user.findUnique({ where: { id: userId }, select: { id: true } });
+      if (!user) {
+        throw new TransactionError(404, 'User account not found.');
+      }
+
+      let createdMood = null;
+      let createdSleep = null;
+      let createdActivity = null;
+      let createdJournal = null;
+
+      // Step 1: MoodLog
+      if (mood) {
+        if (!mood.mood || !mood.emoji) {
+          throw new TransactionError(
+            400,
+            'Mood section requires both mood and emoji. Rolling back daily check-in.'
+          );
+        }
+        createdMood = await tx.moodLog.create({
+          data: {
+            mood: String(mood.mood).trim(),
+            emoji: String(mood.emoji).trim(),
+            note: encryptSensitiveText(mood.note ? String(mood.note).trim() : null),
+            userId,
+          },
+        });
+      }
+
+      // Step 2: SleepLog
+      if (sleep) {
+        const parsedHours = parseFloat(sleep.hours);
+        if (isNaN(parsedHours) || parsedHours <= 0 || parsedHours > 24 || !sleep.quality) {
+          throw new TransactionError(
+            400,
+            'Sleep section requires valid hours (0-24) and quality. Rolling back daily check-in.'
+          );
+        }
+        createdSleep = await tx.sleepLog.create({
+          data: {
+            hours: parsedHours,
+            quality: String(sleep.quality).trim(),
+            userId,
+          },
+        });
+      }
+
+      // Step 3: ActivityLog
+      if (activity) {
+        const parsedDuration = parseInt(activity.duration, 10);
+        if (!activity.type || isNaN(parsedDuration) || parsedDuration <= 0) {
+          throw new TransactionError(
+            400,
+            'Activity section requires type and positive duration. Rolling back daily check-in.'
+          );
+        }
+        createdActivity = await tx.activityLog.create({
+          data: {
+            type: String(activity.type).trim(),
+            duration: parsedDuration,
+            userId,
+          },
+        });
+      }
+
+      // Step 4: JournalEntry
+      if (journal) {
+        if (!journal.content || !String(journal.content).trim()) {
+          throw new TransactionError(
+            400,
+            'Journal section cannot be empty. Rolling back daily check-in.'
+          );
+        }
+        createdJournal = await tx.journalEntry.create({
+          data: {
+            content: encryptSensitiveText(String(journal.content).trim()) || '',
+            userId,
+          },
+        });
+      }
+
+      return { createdMood, createdSleep, createdActivity, createdJournal };
+    });
+
+    res.status(201).json({
+      message: 'Daily wellness check-in committed atomically!',
+      moodLog: result.createdMood
+        ? { ...result.createdMood, note: decryptSensitiveText(result.createdMood.note) }
+        : null,
+      sleepLog: result.createdSleep,
+      activityLog: result.createdActivity,
+      journalEntry: result.createdJournal
+        ? { ...result.createdJournal, content: decryptSensitiveText(result.createdJournal.content) }
+        : null,
+    });
+  } catch (error: any) {
+    handleRouteError(
+      res,
+      error,
+      'Failed to save daily check-in. All changes were rolled back.',
+      'Daily Check-In Error'
+    );
+  }
+});
+
+// GET /api/wellness/all - Load all user wellness records in a single consistent read transaction
 router.get('/all', requireAuthUser, async (req: Request, res: Response): Promise<void> => {
   try {
     const userId = (req as any).userId;
 
-    const [moodLogs, sleepLogs, activityLogs, journalEntries] = await Promise.all([
+    // READ TRANSACTION: Consistent point-in-time snapshot across all 4 wellness tables
+    const [moodLogs, sleepLogs, activityLogs, journalEntries] = await prisma.$transaction([
       prisma.moodLog.findMany({ where: { userId }, orderBy: { createdAt: 'desc' } }),
       prisma.sleepLog.findMany({ where: { userId }, orderBy: { createdAt: 'desc' } }),
       prisma.activityLog.findMany({ where: { userId }, orderBy: { createdAt: 'desc' } }),
       prisma.journalEntry.findMany({ where: { userId }, orderBy: { createdAt: 'desc' } }),
     ]);
 
-    // Decrypt sensitive content for the authenticated user
-    const decryptedMoodLogs = moodLogs.map(m => ({
+    const decryptedMoodLogs = moodLogs.map((m) => ({
       ...m,
       note: decryptSensitiveText(m.note),
     }));
 
-    const decryptedJournalEntries = journalEntries.map(j => ({
+    const decryptedJournalEntries = journalEntries.map((j) => ({
       ...j,
       content: decryptSensitiveText(j.content),
     }));
